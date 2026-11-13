@@ -89,9 +89,11 @@ Mappable momentary buttons (since 0.43): Control Change, value 127 on press and 
 
 Natural velocity comes from the keybed/pad sensors (1–127). Fader 1 above 10 % overrides it at Note On (≈13 at just above 10 %, 127 at 100 %). Note Off velocity is 0.
 
-## ARP and Note Repeat output
+## ARP and Sustain output
 
-ARP and Note Repeat notes use the channel of the source they repeat (1, or 10 in Drum Mode). Each step is a complete Note On/Note Off pair; ARP gate 10–100 %, Note Repeat gate 50 %.
+ARP notes use the channel of the source they arpeggiate (1, or 10 in Drum Mode). Each step is a complete Note On/Note Off pair; gate 10–100 %.
+
+Sustain (NOTE REPEAT button, latching) and a sustain pedal share one state and send **CC 64 on channel 1**: 127 when either turns sustain on, 0 when both are off. No duplicates.
 
 ## Note ownership
 

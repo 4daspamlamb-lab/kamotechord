@@ -444,6 +444,7 @@ static unsigned animation_speed(void)
 
 /* -------------------------------------------------------------- buttons */
 static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLETON, controller, value); }
+static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
@@ -476,16 +477,16 @@ static void button(unsigned id, unsigned down, uint32_t now)
         ableton(KK_CC_RECORD, down ? 127 : 0); return;
     case KK_BTN_OCT_DOWN: if (down) kk_set_octave(kk_active_octave() - 1); return;
     case KK_BTN_OCT_UP: if (down) kk_set_octave(kk_active_octave() + 1); return;
-    case KK_BTN_SCALE: if (down) kk_set_mode(KK_MODE_KEY_SCALE); return;
-    case KK_BTN_SEQ: if (down) kk_set_mode(KK_MODE_PAD_SCALE); return;
+    /* 0.45: SCALE = Pad Scale Mode, SEQ = Key Scale Mode (swapped on request). */
+    case KK_BTN_SCALE: if (down) kk_set_mode(KK_MODE_PAD_SCALE); return;
+    case KK_BTN_SEQ: if (down) kk_set_mode(KK_MODE_KEY_SCALE); return;
     case KK_BTN_FX: if (down) kk_set_mode(KK_MODE_DRUM); return;
     case KK_BTN_ARP:
         if (!down && kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);
         else if (!down && kk.page == KK_PAGE_ARP && held_ms < 600) open_page(KK_PAGE_MAIN);
         return;
-    case KK_BTN_NOTE_REPEAT:
-        if (!down && kk.page != KK_PAGE_REPEAT && held_ms < 600) kk_set_repeat(!kk.repeat_on);
-        else if (!down && kk.page == KK_PAGE_REPEAT && held_ms < 600) open_page(KK_PAGE_MAIN);
+    case KK_BTN_NOTE_REPEAT:   /* 0.45: SUSTAIN latch (tap on, tap off) */
+        if (down) { kk.sustain_on = !kk.sustain_on; sustain_update(); }
         return;
     case KK_BTN_BT:
         if (down) open_page(kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG ? KK_PAGE_MAIN : KK_PAGE_BT);
@@ -506,10 +507,10 @@ static void button(unsigned id, unsigned down, uint32_t now)
 /* Long presses are detected while still held. */
 static void long_presses(uint32_t now)
 {
-    static const uint8_t ids[3] = {KK_BTN_ARP, KK_BTN_NOTE_REPEAT, KK_BTN_BT};
-    static const uint8_t pages[3] = {KK_PAGE_ARP, KK_PAGE_REPEAT, KK_PAGE_DIAG};
-    static const uint16_t limits[3] = {600, 600, 1500};
-    for (unsigned i = 0; i < 3; ++i) {
+    static const uint8_t ids[2] = {KK_BTN_ARP, KK_BTN_BT};
+    static const uint8_t pages[2] = {KK_PAGE_ARP, KK_PAGE_DIAG};
+    static const uint16_t limits[2] = {600, 1500};
+    for (unsigned i = 0; i < 2; ++i) {
         unsigned id = ids[i];
         if ((kk.buttons & (1U << id)) && now - kk.pressed_at[id] >= limits[i] && kk.page != pages[i])
             open_page(pages[i]);
@@ -517,7 +518,16 @@ static void long_presses(uint32_t now)
 }
 
 /* ------------------------------------------------------- physical events */
-static uint8_t pedal_down, wheel_sent[2] = {64, 0};
+static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
+/* Sustain (CC 64, channel 1) is on while the SUSTAIN button latch OR a
+ * sustain pedal is on; one shared state, so nothing is sent twice. */
+static void sustain_update(void)
+{
+    unsigned want = kk.sustain_on || pedal_down;
+    if (want == sustain_sent) return;
+    sustain_sent = (uint8_t)want;
+    kk_midi_cc(KK_CH_MELODIC, 64, want ? 127 : 0);
+}
 unsigned kk_pad_curve(unsigned v)
 {
     static const int8_t k[5] = {-50, -25, 0, 50, 100};
@@ -600,7 +610,7 @@ void smk37_control_event(unsigned kind, unsigned id, int value)
         unsigned down = value >= 64;
         if (down == pedal_down) return;
         pedal_down = (uint8_t)down;
-        kk_midi_cc(KK_CH_MELODIC, 64, down ? 127 : 0);
+        sustain_update();
     } else if (kind == SMK37_BUTTON && id < KK_BUTTONS) {
         button(id, (unsigned)!!value, now);
     }
@@ -612,7 +622,7 @@ void smk37_controls_panic(void)
     arp_stop();
     kk_midi_all_off();
     kk.keys = 0; kk.pads = 0; kk.buttons = 0; kk.chord_mods = 0; kk.anim_active = 0;
-    if (pedal_down) { pedal_down = 0; kk_midi_cc(KK_CH_MELODIC, 64, 0); }
+    pedal_down = 0; kk.sustain_on = 0; sustain_update();
     ++kk.edit_revision;
 }
 
@@ -717,7 +727,7 @@ void kk_perform_init(void)
     kk.chord_root = -1; kk.last_note = -1;
     kk.scale = (struct kk_scale_ctx){0, 0};
     arp_running = latched_count = repeat_running = 0; arp_note = -1;
-    pedal_down = 0; wheel_sent[0] = 64; wheel_sent[1] = 0;
+    pedal_down = 0; sustain_sent = 0; wheel_sent[0] = 64; wheel_sent[1] = 0;
     last_ms = fm1_millis(); clock_us = 0;
     synced_program = 255; synced_bpm = 0; program_revision = synced_revision = 0;
     kk_midi_init();

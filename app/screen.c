@@ -387,10 +387,7 @@ static void draw_status(void)
         text(38, w->y + 8, buf, 1, TEXT);
         if (kk.arp.mode == KK_ARP_LATCH) text(150, w->y + 8, "LATCH", 1, AMBER);
     } else text(10, w->y + 8, "ARP OFF", 1, FAINT);
-    if (kk.repeat_on) {
-        p = append(buf, "RPT "); append(p, kk_division_name(kk.repeat_division));
-        text_right(234, w->y + 8, buf, 1, GREEN);
-    }
+    if (kk.sustain_on) text_right(234, w->y + 8, "SUSTAIN", 1, GREEN);
     if (kk.anim_active) {
         p = append(buf, "LIGHT SHOW "); p = decimal(p, kk.anim_pattern + 1); p = append(p, "/8  SPEED ");
         decimal(p, kk.anim_speed / 10);
@@ -668,7 +665,7 @@ static void signatures(void)
     if (kk.mode == KK_MODE_CLIP) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p));
     wanted[W_PIANO] = h;
     h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);
-    h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.repeat_on * 16U + kk.repeat_division);
+    h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U);
     h = mixsig(h, kk_velocity_override()); h = mixsig(h, kk.chord_mods | kk.chord_lock << 12); h = mixsig(h, kk_midi_local());
     if (popup_until && (int32_t)(now_ms - popup_until) < 0) h = strsig(mixsig(h, 77), popup);
     if (kk.anim_active) h = mixsig(mixsig(h, kk.anim_pattern + 100U), kk.anim_speed / 10U);
@@ -801,7 +798,7 @@ static void main_input(void)
     if ((d = take(3))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
     if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
     if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
-    if ((d = take(6))) { kk_edit_repeat(d); popup_value("REPEAT", kk_division_name(kk.repeat_division)); }
+    (void)take(6);   /* E7: free (Note Repeat was replaced by SUSTAIN in 0.45) */
 }
 static void page_input(void)
 {

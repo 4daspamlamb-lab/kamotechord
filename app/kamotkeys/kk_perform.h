@@ -25,6 +25,7 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
     uint8_t rgb_timing;                      /* pad LED timing preset (saved)  */
+    uint8_t sustain_on;                      /* SUSTAIN button latch (0.45)      */
     uint8_t pad_sensitivity;                 /* pad velocity curve 1..5, 3 = linear (saved) */
     struct kk_scale_ctx scale;
     uint16_t bpm;

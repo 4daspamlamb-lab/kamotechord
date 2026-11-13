@@ -56,8 +56,8 @@ node tests/integration/sim_test.mjs simulator.wasm build/host
 |---|---|---|
 | Every button performs its function | `test_buttons`: CC 20/21/22/24/27 press and release, CC 25 toggle, octave, ARP tap/hold, PATCH, BT | ✅ |
 | Disabled buttons do nothing | CHORD/PARA taps and a 2 s hold: no MIDI (external or local), no page or mode change, LEDs off | ✅ |
-| SCALE and SEQ activate different modes, LEDs correct | SCALE → Key Scale with only the SCALE LED bright; SEQ → Pad Scale with only the SEQ LED; FX → Drum; second press → Normal | ✅ |
-| SEQ idle LED matches SCALE / NOTE REPEAT | equal levels asserted | ✅ |
+| SCALE and SEQ activate different modes, LEDs correct | SEQ → Key Scale with only the SEQ LED bright; SCALE → Pad Scale with only the SCALE LED (swapped in 0.45); FX → Drum; second press → Normal | ✅ |
+| SEQ idle LED matches SCALE / NOTE REPEAT (Sustain) | equal levels asserted | ✅ |
 | KNOB BANK LED momentary | bright while pressed, dim after release while the CC state stays on | ✅ |
 | SEQ REC controls animations, BT opens the BT menu | REC never opens BT; BT toggles the menu; ◀ acts as HOME there and sends no Undo, not even on release | ✅ |
 | 2nd C = tonic; keys above **and below** follow the scale | A major (8 keys), A minor pentatonic up and down (14 keys); all 23 scales × 12 roots: anchor = tonic, strictly ascending, every note in the scale | ✅ |
@@ -72,7 +72,7 @@ node tests/integration/sim_test.mjs simulator.wasm build/host
 | Display: labels, chord names, root/scale, octave, centring, transitions | 17 chord-naming cases plus inversion and single note; screenshots of every page; piano scroll mid/end frames | ✅ |
 | BPM and ARP restored; octave resets to 0 | settings round-trip (host); **integration: deferred flash save, simulated power cycle, BPM 126 and ARP restored, octave 0** | ✅ |
 | USB and BLE notes and CCs; no duplicates | AUTO → USB only while USB is ready, BLE when not; ALL → both; CCs on USB only in AUTO | ✅ |
-| No stuck notes during mode changes and disconnects | 20 000-event random fuzz (keys, pads, mode/ARP/Repeat/octave/REC buttons, faders, time): every owner count back to 0 and every external Note On balanced by exactly one Note Off per port and channel | ✅ |
+| No stuck notes during mode changes and disconnects | 20 000-event random fuzz (keys, pads, mode/ARP/Sustain/octave/REC buttons, faders, time): every owner count back to 0 and every external Note On balanced by exactly one Note Off per port and channel | ✅ |
 | Aurora LCD and RGB boot; Fader 4 = 0 prevents illumination; no old splash; main screen after boot | boot frames at 300/600/860 ms; pads stay 0 until Fader 4 has been read | ✅ (visual) |
 | Internal synth plays; drums never reach the melodic synth | integration: DX7 audio energy on a key; Drum Mode audio from the drum engine on channel 10 | ✅ |
 | Engine ARP never doubles notes | integration: engine ARP disabled on tracks 1 and 8 | ✅ |
@@ -93,7 +93,7 @@ Do these once after flashing; each takes seconds.
 3. Press each of the 18 buttons and compare with [CONTROLS.md](CONTROLS.md) (action, and LED dim/bright/off). CHORD and PARA must stay dark.
 4. Play the second C: the screen shows C4 (or the tonic in Key Scale Mode). Hold pad 2 + pad 9 and play a key → a minor 7th chord name.
 5. FX → pad 1 must be **red** and send note 36 on channel 10 (MIDI Monitor or Ableton). If pad 9 is red instead, the pad rows are swapped: report it.
-6. SEQ → pads green with cyan roots; move Fader 3 and watch the cyan pads move.
+6. SCALE → pads green with cyan roots; move Fader 3 and watch the cyan pads move.
 7. Fader 1 up → note velocity follows; hold SEQ REC → light show, Fader 1 changes speed.
 8. BT → Bluetooth menu; pair with the Mac; confirm notes arrive over BLE with USB unplugged (AUTO).
 9. Change BPM (E1) and ARP gate (E4), wait 3 s, power-cycle → both restored, octave 0.

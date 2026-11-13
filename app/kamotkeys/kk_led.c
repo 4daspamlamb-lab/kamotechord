@@ -87,7 +87,7 @@ enum { ROOT_CYAN = 0x60f0ff, GREEN = 0x00ff3c };
 /* Levels in permille of programmed brightness (0.43: resting pads visible
  * but calm; pressed/sounding pads about 4x brighter). Pad Scale roots rest
  * more than twice as bright as the other scale notes. */
-enum { IDLE_CHORD = 250, IDLE_SPARE = 180, IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
+enum { IDLE_CHORD = 250, IDLE_SPARE = 300, IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
 
 /* Clip Mode: the colour follows Ableton's real slot state. */
 static uint32_t clip_colour(unsigned pad, unsigned *level)
@@ -247,9 +247,9 @@ unsigned kk_led_button(unsigned id)
     case KK_BTN_PARA: return 0;                                       /* disabled */
     case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP ? 2 : 1;        /* Clip Mode */
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
-    case KK_BTN_NOTE_REPEAT: return kk.repeat_on || pressed ? 2 : 1;
-    case KK_BTN_SCALE: return kk.mode == KK_MODE_KEY_SCALE ? 2 : 1;   /* Key Scale only */
-    case KK_BTN_SEQ: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;     /* Pad Scale only */
+    case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
+    case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */
+    case KK_BTN_SEQ: return kk.mode == KK_MODE_KEY_SCALE ? 2 : 1;     /* Key Scale only */
     case KK_BTN_FX: return kk.mode == KK_MODE_DRUM ? 2 : 1;
     case KK_BTN_REC: return kk.anim_active ? 2 : 1;
     case KK_BTN_BT: return kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG || pressed ? 2 : 1;

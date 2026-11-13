@@ -1,5 +1,11 @@
 # Changelog
 
+## KamotKeys 0.45 (development snapshot)
+
+- **NOTE REPEAT button is now SUSTAIN:** tap to latch CC 64 = 127 (channel 1, internal synth and MIDI out), tap again for 0. LED bright and "SUSTAIN" in the status line while on. Combined with a sustain pedal through one shared state (no duplicate or contradictory CC 64); released on panic/reset. Note Repeat, its page and the E7 Repeat knob are removed.
+- **SCALE and SEQ swapped:** SCALE = Pad Scale Mode, SEQ = Key Scale Mode; their LEDs follow.
+- Spare (CC) pads 5-8 and 14-16 rest at 30 %, slightly brighter than the chord pads (25 %).
+
 ## KamotKeys 0.44 (development snapshot)
 
 - **Pad sensitivity** (Patch page, E4, saved): 1 = harder ... 3 = linear (as before) ... 5 = light hits give high velocity. A velocity curve on the pads only; keys are unaffected and the pad trigger threshold (factory calibration) is unchanged. Fader 1 above 10 % still overrides velocity.

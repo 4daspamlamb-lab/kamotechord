@@ -29,6 +29,7 @@ static void pad(unsigned n, unsigned vel) { smk37_control_event(SMK37_PAD, n - 1
 static void btn(unsigned id, unsigned down) { host_ms += 1; smk37_control_event(SMK37_BUTTON, id, (int)down); groove_midi_poll(); }
 static void tap(unsigned id) { btn(id, 1); btn(id, 0); }
 static void fader(unsigned id, unsigned v) { smk37_control_event(SMK37_FADER, id, (int)v); }
+static void pedal(unsigned v) { smk37_control_event(SMK37_PEDAL, 0, (int)v); groove_midi_poll(); }
 static void boot(void)
 {
     host_ms = 1000; groove_midi_init(); groove_screen_init(); groove_midi_poll();
@@ -59,7 +60,15 @@ static void notes_on(unsigned port, unsigned status, uint8_t *notes, unsigned *n
     for (unsigned i = 0; i < host_out_n; ++i)
         if (host_out[i].port == port && host_out[i].b[0] == status) notes[(*n)++] = host_out[i].b[1];
 }
-enum { USB = 1, BLE = 2, ON1 = 0x90, OFF1 = 0x80, ON10 = 0x99, OFF10 = 0x89, CC15 = 0xBE };
+enum { USB = 1, BLE = 2, ON1 = 0x90, OFF1 = 0x80, ON10 = 0x99, OFF10 = 0x89, CC1 = 0xB0, CC15 = 0xBE };
+/* Messages posted to the internal synth matching status and data1. */
+static unsigned local_count(unsigned status, int data1)
+{
+    unsigned n = 0;
+    for (unsigned i = 0; i < host_local_n; ++i)
+        if (host_local[i].b[0] == status && (data1 < 0 || host_local[i].b[1] == data1)) ++n;
+    return n;
+}
 
 /* -------------------------------------------------------- screenshots */
 static void shot(const char *name)
@@ -175,18 +184,18 @@ static void test_buttons(void)
     btn(KK_BTN_PARA, 1); host_ms += 2000; frames(3, 1); btn(KK_BTN_PARA, 0);
     CHECK(host_out_n == 0 && host_local_n == 0 && kk.page == page && kk.mode == mode, "PARA silent");
     CHECK(kk_led_button(KK_BTN_PARA) == 0 && kk_led_button(KK_BTN_CHORD) == 1, "PARA dark, CHORD (Clip Mode) dim");
-    /* SCALE and SEQ are independent. */
-    tap(KK_BTN_SCALE);
-    CHECK(kk.mode == KK_MODE_KEY_SCALE && kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_SEQ) == 1, "SCALE -> Key Scale only");
+    /* 0.45: SEQ = Key Scale, SCALE = Pad Scale, independent. */
     tap(KK_BTN_SEQ);
-    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "SEQ -> Pad Scale only");
-    CHECK(kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_FX) == 1, "SEQ LED");
+    CHECK(kk.mode == KK_MODE_KEY_SCALE && kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "SEQ -> Key Scale only");
+    tap(KK_BTN_SCALE);
+    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_SEQ) == 1, "SCALE -> Pad Scale only");
+    CHECK(kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_FX) == 1, "SCALE LED");
     tap(KK_BTN_FX);
-    CHECK(kk.mode == KK_MODE_DRUM && kk_led_button(KK_BTN_FX) == 2 && kk_led_button(KK_BTN_SEQ) == 1, "FX -> Drum");
+    CHECK(kk.mode == KK_MODE_DRUM && kk_led_button(KK_BTN_FX) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "FX -> Drum");
     tap(KK_BTN_FX);
     CHECK(kk.mode == KK_MODE_NORMAL, "same mode button returns to normal");
-    CHECK(kk_led_button(KK_BTN_SEQ) == kk_led_button(KK_BTN_SCALE) && kk_led_button(KK_BTN_SEQ) == kk_led_button(KK_BTN_NOTE_REPEAT),
-          "idle SEQ LED matches SCALE and NOTE REPEAT");
+    CHECK(kk_led_button(KK_BTN_SCALE) == kk_led_button(KK_BTN_SEQ) && kk_led_button(KK_BTN_SCALE) == kk_led_button(KK_BTN_NOTE_REPEAT),
+          "idle SEQ LED matches SCALE and SUSTAIN");
     /* BT opens the Bluetooth menu; REC never does. */
     tap(KK_BTN_REC); CHECK(kk.page == KK_PAGE_MAIN, "REC does not open BT");
     tap(KK_BTN_BT); CHECK(kk.page == KK_PAGE_BT && kk_led_button(KK_BTN_BT) == 2, "BT opens menu");
@@ -215,7 +224,7 @@ static void test_key_scale(void)
     fader(1, 10 * 128 / 23 + 2);   /* Minor Pentatonic */
     fader(2, 9 * 128 / 12 + 4);    /* A */
     CHECK(kk.scale.scale == 10 && kk.scale.root == 9, "faders select A minor pentatonic (%u %u)", kk.scale.scale, kk.scale.root);
-    tap(KK_BTN_SCALE);
+    tap(KK_BTN_SEQ);
     host_clear(); key(12, 90);
     CHECK(out_count(USB, ON1, 69) == 1 && last_out(USB, ON1, 0) == (69 | 90 << 8), "second C -> A4 natural velocity");
     key(12, 0); CHECK(out_count(USB, OFF1, 69) == 1, "note off");
@@ -242,7 +251,7 @@ static void test_key_scale(void)
     tap(KK_BTN_OCT_DOWN);
     /* Single note display. */
     key(16, 100); frames(60, 2); shot("03_key_scale_single"); key(16, 0);
-    tap(KK_BTN_SCALE);
+    tap(KK_BTN_SEQ);
 }
 
 static void test_velocity_faders(void)
@@ -280,15 +289,15 @@ static void test_velocity_faders(void)
     CHECK(((full >> 16) & 255) == KK_RGB_PEAK && ((half >> 16) & 255) * 2 >= KK_RGB_PEAK - 4 && ((half >> 16) & 255) * 2 <= KK_RGB_PEAK + 4, "brightness scales (%06x %06x)", full, half);
     pad(5, 0); frames(10, 3);
     unsigned released = (host_rgb[4] >> 16) & 255;
-    CHECK(released >= 16 && released <= 24, "release returns to idle at once (%u)", released);
+    CHECK(released >= 20 && released <= 28, "release returns to idle at once (%u)", released);
     settle();
     unsigned idle = (host_rgb[4] >> 16) & 255;
-    CHECK(idle >= 16 && idle <= 24, "spare idle 25%% of half brightness (%u)", idle);
+    CHECK(idle >= 20 && idle <= 28, "spare idle 30%% of half brightness, above chord 25%% (%u)", idle);
     fader(3, 10); CHECK(kk.screen_dim, "LCD dims at <= 10%%"); fader(3, 127); CHECK(!kk.screen_dim, "LCD normal");
     /* Every channel sent to the pads is a multiple of 4, in every mode and at
      * every Fader 4 position (values with bit 0/1 set flash on hardware). */
     {
-        static const uint8_t modes[] = {KK_BTN_SCALE, KK_BTN_SEQ, KK_BTN_FX, KK_BTN_CHORD};
+        static const uint8_t modes[] = {KK_BTN_SEQ, KK_BTN_SCALE, KK_BTN_FX, KK_BTN_CHORD};
         unsigned odd = 0;
         for (unsigned m = 0; m <= 4; ++m) {
             for (unsigned v = 0; v <= 127; v += 9) {
@@ -318,7 +327,7 @@ static void test_pad_modes(void)
 {
     boot();
     fader(1, 0); fader(2, 2 * 128 / 12 + 4);   /* D major */
-    tap(KK_BTN_SEQ);
+    tap(KK_BTN_SCALE);
     host_clear();
     for (unsigned p = 1; p <= 16; ++p) { pad(p, 100); pad(p, 0); }
     CHECK(out_count(USB, ON1, -1) == 16 && out_count(USB, OFF1, -1) == 16, "16 scale pads");
@@ -355,10 +364,10 @@ static void test_pad_modes(void)
     CHECK(out_count(USB, ON10, 36) >= 1 && out_count(USB, ON10, 38) >= 1 && out_count(USB, ON1, -1) == 0, "drum arp ch10");
     pad(1, 0); pad(2, 0); tap(KK_BTN_ARP); frames(100, 2);
     /* Mode change releases held pad notes. */
-    host_clear(); pad(4, 100); tap(KK_BTN_SEQ);
+    host_clear(); pad(4, 100); tap(KK_BTN_SCALE);
     CHECK(out_count(USB, OFF10, 42) == 1, "mode change releases drum note");
     pad(4, 0); CHECK(out_count(USB, OFF1, -1) == 0, "consumed pad stays silent");
-    tap(KK_BTN_SEQ);
+    tap(KK_BTN_SCALE);
 }
 
 static void test_spare_and_refcount(void)
@@ -376,9 +385,9 @@ static void test_spare_and_refcount(void)
     }
     host_clear(); tap(KK_BTN_ARP); pad(5, 100); tap(KK_BTN_ARP); pad(5, 0);
     CHECK(out_count(USB, CC15, 102) == 2, "ARP toggles never retrigger a held CC pad (%u)", out_count(USB, CC15, 102));
-    host_clear(); pad(6, 100); tap(KK_BTN_SEQ);
+    host_clear(); pad(6, 100); tap(KK_BTN_SCALE);
     CHECK(last_out(USB, CC15, 0) == 103, "mode change releases a held CC pad");
-    pad(6, 0); tap(KK_BTN_SEQ); CHECK(out_count(USB, CC15, 103) == 2, "and its release stays silent");
+    pad(6, 0); tap(KK_BTN_SCALE); CHECK(out_count(USB, CC15, 103) == 2, "and its release stays silent");
     /* Two sources sharing one note: C major on the second C and the G key. */
     host_clear(); pad(1, 100); key(12, 100); key(19, 100);
     CHECK(out_count(USB, ON1, 67) == 1, "shared note sent once");
@@ -395,10 +404,23 @@ static void test_spare_and_refcount(void)
     kk_midi_set_ports(KK_PORTS_ALL); host_clear(); key(0, 100); key(0, 0);
     CHECK(out_count(BLE, ON1, 48) == 1 && out_count(USB, ON1, 48) == 1, "ALL sends both");
     kk_midi_set_ports(KK_PORTS_AUTO);
-    /* Note Repeat: held key retriggers on the 1/16 grid. */
-    tap(KK_BTN_NOTE_REPEAT); host_clear(); key(0, 100); frames(250, 2); key(0, 0); frames(100, 2);
-    unsigned on = out_count(USB, ON1, 48), off = out_count(USB, OFF1, 48);
-    CHECK(on >= 4 && on <= 5 && on == off, "repeat 1/16 @120 = 125 ms (%u on %u off)", on, off);
+    /* 0.45: NOTE REPEAT button = SUSTAIN latch (CC 64 ch1), shared with a pedal. */
+    host_clear(); tap(KK_BTN_NOTE_REPEAT);
+    CHECK(kk.sustain_on && out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == (64 | 127 << 8) && kk_led_button(KK_BTN_NOTE_REPEAT) == 2,
+          "SUSTAIN tap -> CC64 127, LED bright");
+    CHECK(local_count(CC1, 64) == 1, "SUSTAIN also reaches the internal synth");
+    host_clear(); key(0, 100); frames(250, 2); key(0, 0); frames(100, 2);
+    CHECK(out_count(USB, ON1, 48) == 1 && out_count(USB, OFF1, 48) == 1, "SUSTAIN does not retrigger notes");
+    host_clear(); pedal(127); pedal(0);
+    CHECK(out_count(USB, CC1, 64) == 0, "pedal under a latched SUSTAIN sends nothing extra");
+    host_clear(); tap(KK_BTN_NOTE_REPEAT);
+    CHECK(!kk.sustain_on && out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == 64 && kk_led_button(KK_BTN_NOTE_REPEAT) == 1,
+          "SUSTAIN tap again -> CC64 0, LED dim");
+    host_clear(); pedal(127); tap(KK_BTN_NOTE_REPEAT); tap(KK_BTN_NOTE_REPEAT);
+    CHECK(out_count(USB, CC1, 64) == 1, "latch toggling under a held pedal keeps sustain on");
+    pedal(0); CHECK(out_count(USB, CC1, 64) == 2 && last_out(USB, CC1, 0) == 64, "pedal release ends it");
+    btn(KK_BTN_NOTE_REPEAT, 1); host_ms += 1000; frames(2, 1); btn(KK_BTN_NOTE_REPEAT, 0);
+    CHECK(kk.page == KK_PAGE_MAIN, "long SUSTAIN opens no page");
     tap(KK_BTN_NOTE_REPEAT);
 }
 
@@ -469,7 +491,7 @@ static void test_fuzz(void)
 {
     boot();
     srand(7);
-    static const uint8_t buttons[] = {KK_BTN_ARP, KK_BTN_NOTE_REPEAT, KK_BTN_SCALE, KK_BTN_SEQ, KK_BTN_FX, KK_BTN_OCT_UP, KK_BTN_OCT_DOWN, KK_BTN_REC};
+    static const uint8_t buttons[] = {KK_BTN_ARP, KK_BTN_NOTE_REPEAT, KK_BTN_SEQ, KK_BTN_SCALE, KK_BTN_FX, KK_BTN_OCT_UP, KK_BTN_OCT_DOWN, KK_BTN_REC};
     for (unsigned i = 0; i < 20000; ++i) {
         unsigned r = (unsigned)rand() % 100;
         if (r < 40) { unsigned k = (unsigned)rand() % 37; key(k, (kk.keys >> k) & 1 ? 0 : 1 + (unsigned)rand() % 127); }
@@ -482,7 +504,7 @@ static void test_fuzz(void)
     for (unsigned p = 1; p <= 16; ++p) pad(p, 0);
     for (unsigned b = 0; b < KK_BUTTONS; ++b) if ((kk.buttons >> b) & 1) btn(b, 0);
     if (kk.arp_on) tap(KK_BTN_ARP);
-    if (kk.repeat_on) tap(KK_BTN_NOTE_REPEAT);
+    if (kk.sustain_on) tap(KK_BTN_NOTE_REPEAT);
     frames(300, 3);
     unsigned stuck = 0;
     for (unsigned k = 0; k < 128; ++k) stuck += kk_midi_count(0, k) + kk_midi_count(9, k);

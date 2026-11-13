@@ -10,7 +10,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamotKeys"
-#define KAMOTKEYS_VERSION "0.44"
+#define KAMOTKEYS_VERSION "0.45"
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */

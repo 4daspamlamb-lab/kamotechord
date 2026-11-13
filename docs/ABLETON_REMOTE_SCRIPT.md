@@ -57,7 +57,7 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 | Queued to record | blinking red |
 | Recording | bright red |
 
-Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The LEDs follow Live's real state, including changes made with the mouse or other controllers. The script polls Live ~10 times a second, sends only changes, and resends everything every ~5 s and whenever KamotKeys asks (entering Clip Mode, USB plugged in, Bluetooth connected). Keys, ARP and the faders keep working in Clip Mode; Clip pads never use ARP or Note Repeat.
+Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The LEDs follow Live's real state, including changes made with the mouse or other controllers. The script polls Live ~10 times a second, sends only changes, and resends everything every ~5 s and whenever KamotKeys asks (entering Clip Mode, USB plugged in, Bluetooth connected). Keys, ARP and the faders keep working in Clip Mode; Clip pads never use ARP.
 
 ## Recording and transport (no mapping needed with the script)
 
@@ -74,7 +74,7 @@ All buttons send 127 on press and 0 on release (KNOB BANK is now momentary; its 
 
 ## Move-style note feedback from Ableton
 
-In Pad Scale and Drum Mode, pads light whenever their note sounds: your own pads, ARP steps, Note Repeat, the keyboard, **and notes played back by Live**. To see a clip's notes on the pads, set that MIDI track's *MIDI To* to the KamotKeys port, channel 1 (melodic) or 10 (drums). Turn **Internal synth** off (Patch page) if you do not want KamotKeys to sound those notes too.
+In Pad Scale and Drum Mode, pads light whenever their note sounds: your own pads, ARP steps, the keyboard, **and notes played back by Live**. To see a clip's notes on the pads, set that MIDI track's *MIDI To* to the KamotKeys port, channel 1 (melodic) or 10 (drums). Turn **Internal synth** off (Patch page) if you do not want KamotKeys to sound those notes too.
 
 ## Protocol (firmware ⇄ script)
 

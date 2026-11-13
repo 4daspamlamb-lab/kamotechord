@@ -64,7 +64,7 @@ tap(B.FX);
 
 // Key Scale Mode + chord pads + ARP with the real engine timing.
 ev(FADER, 1, 10 * 128 / 23 + 2 | 0); ev(FADER, 2, 9 * 128 / 12 + 4 | 0);
-tap(B.SCALE); ev(PAD, 1, 100); ev(PAD, 8, 100);
+tap(B.SEQ); ev(PAD, 1, 100); ev(PAD, 8, 100);
 midi = []; ev(KEY, 12, 100); ms(20);
 check(out(1, 0x90).map(m => m.d[1]).join(',') === '45,48,52,55', 'Am7 from second C in A minor pentatonic (octave -2)');
 ms(150);
@@ -74,7 +74,7 @@ tap(B.ARP); midi = [];
 ev(KEY, 12, 100); ev(KEY, 16, 100); ms(1000); ev(KEY, 12, 0); ev(KEY, 16, 0); ms(300);
 const arpOn = out(1, 0x90).length, arpOff = out(1, 0x80).length;
 check(arpOn >= 3 && arpOn <= 5 && arpOn === arpOff, `ARP 1/8 @120 in 1 s: ${arpOn} on / ${arpOff} off`);
-tap(B.ARP); tap(B.SCALE);
+tap(B.ARP); tap(B.SEQ);
 
 
 // Clip Mode (0.31): pads -> ch16 notes, feedback via the real MIDI input path.

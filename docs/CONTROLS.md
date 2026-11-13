@@ -7,11 +7,11 @@
  ┌──────────────┬──────────────┐    ┌───────┬─────────────┬────────┬────────┬────────┬────────┐
  │ [0] KNOB BANK│[1] FADER BANK│    │ [6]   │ [7]         │ [8]    │ [9]    │ [10]   │ [11]   │
  │ Rec/Overdub  │ Capture MIDI │    │ ARP   │ NOTE REPEAT │ SCALE  │ CHORD  │ GLOBE  │ BT     │
- │ CC25 mom.    │ CC22         │    │       │             │ KeyScl │ (off)  │ Stop   │ menu   │
+ │ CC25 mom.    │ CC22         │    │       │ SUSTAIN     │ PadScl │ Clip   │ Stop   │ menu   │
  ├──────────────┼──────────────┤    ├───────┼─────────────┼────────┼────────┼────────┼────────┤
  │ [2] ◀ LEFT   │ [3] RIGHT ▶  │    │ [12]  │ [13]        │ [14]   │ [15]   │ [16]   │ [17]   │
  │ Undo CC24    │ Redo CC27    │    │ PATCH │ PARA (off)  │ FX     │ SEQ    │ PLAY   │ REC    │
- ├──────────────┼──────────────┤    │       │             │ Drum   │ PadScl │ CC20   │ lights │
+ ├──────────────┼──────────────┤    │       │             │ Drum   │ KeyScl │ CC20   │ lights │
  │ [4] OCT −    │ [5] OCT +    │    └───────┴─────────────┴────────┴────────┴────────┴────────┘
  └──────────────┴──────────────┘
  [n] = scanner button index in app/board/scan.c (btnmap order)
@@ -26,15 +26,15 @@ The scanner lists its 18 buttons "left to right" (`btnmap`, 左到右), in pairs
 | Button | Action | LED |
 |---|---|---|
 | ARP | tap: ARP on/off; hold 0.6 s: ARP page | bright while ARP is on |
-| NOTE REPEAT | tap: Note Repeat on/off; hold 0.6 s: Repeat page | bright while Repeat is on |
-| SCALE | Key Scale Mode on/off | bright **only** in Key Scale Mode |
+| NOTE REPEAT | **SUSTAIN** latch: tap on (CC 64 = 127, ch 1), tap off (CC 64 = 0); combined with a pedal | bright while sustain is latched |
+| SCALE | Pad Scale Mode on/off | bright **only** in Pad Scale Mode |
 | CHORD | Clip Mode on/off | bright in Clip Mode |
 | GLOBE | Ableton Stop (CC 21) | dim; bright while pressed |
 | BT | Bluetooth menu on/off; hold 1.5 s: diagnostics | bright while a menu is open |
 | PATCH | Patch page on/off | bright while open |
 | PARA | disabled | off |
 | FX | Drum Mode on/off | bright in Drum Mode |
-| SEQ | Pad Scale Mode on/off | bright **only** in Pad Scale Mode |
+| SEQ | Key Scale Mode on/off | bright **only** in Key Scale Mode |
 | SEQ PLAY | Ableton Start (CC 20) | dim; bright while pressed |
 | SEQ REC | light show (next pattern per press, runs while held) | bright while running |
 | KNOB BANK | Ableton Session Record (CC 25, momentary) | dim; bright **only while pressed** |
