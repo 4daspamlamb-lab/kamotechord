@@ -113,7 +113,7 @@ All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK send on
 | very dim red | past the end of the clip |
 | while DRUM is held: white / teal / grey | active drum / Drum Rack pad with a sound / empty pad |
 
-**Keyboard (SMK-37), like Move's drum pads and buttons**
+**Keyboard (SMK-37), like Move's drum pads and buttons** ([diagram](diagrams/SMK37-Step-Mode.png))
 
 | Octave | Keys |
 |---|---|
