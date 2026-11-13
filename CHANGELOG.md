@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.47 (development snapshot)
+
+- Spare (CC) pads 5-8 and 14-16 rest **dimmer** than the chord pads again: 20 % (chord 25 %). 0.45/0.46 had them brighter by mistake.
+
 ## KamoteKeys 0.46 (development snapshot)
 
 - Renamed to **KamoteKeys** (was spelled "KamotKeys"): boot screen, version label, docs, package names and the Ableton Remote Script (now `KamoteKeys`; reselect it in Live's Control Surface list). Saved settings are kept.
@@ -8,7 +12,7 @@
 
 - **NOTE REPEAT button is now SUSTAIN:** tap to latch CC 64 = 127 (channel 1, internal synth and MIDI out), tap again for 0. LED bright and "SUSTAIN" in the status line while on. Combined with a sustain pedal through one shared state (no duplicate or contradictory CC 64); released on panic/reset. Note Repeat, its page and the E7 Repeat knob are removed.
 - **SCALE and SEQ swapped:** SCALE = Pad Scale Mode, SEQ = Key Scale Mode; their LEDs follow.
-- Spare (CC) pads 5-8 and 14-16 rest at 30 %, slightly brighter than the chord pads (25 %).
+- Spare (CC) pads 5-8 and 14-16 rest at 30 % (reverted in 0.47: they should be dimmer).
 
 ## KamoteKeys 0.44 (development snapshot)
 
