@@ -1,15 +1,15 @@
 # Tests and verification
 
-## KamoteKeys 0.57 (one codebase, all devices)
+## KamoteKeys 0.58 (one codebase, all devices)
 
 Run everything with `WASI_SDK=/path/to/wasi-sdk-27.0-x86_64-linux tools/test-all.sh` (it copies `core/` into both device trees first).
 
 | Suite | Device | Result |
 |---|---|---|
-| Host unit, behaviour and fuzz tests (`tests/host/run.sh`), incl. Clip Mode overdub/delete | SMK-37 | **6803 checks, 0 failures** (ASan + UBSan) |
+| Host unit, behaviour and fuzz tests (`tests/host/run.sh`), incl. Clip Mode overdub/delete | SMK-37 | **6815 checks, 0 failures** (ASan + UBSan) |
 | Browser-simulator integration, real SMK37 OPEN engine (`tests/integration/sim_test.mjs`) | SMK-37 | **15 checks, 0 failures** |
 | Browser-simulator integration, real FM1 OPEN engine (`tests/integration/fm1_sim_test.mjs`): chord keys, LOCK, every button and HOME combination, SAVE + knobs, Key Scale, Drum, Pad Scale, Clip launch/overdub/delete and feedback, LEDs, random play with no stuck notes | FM-1 | **56 checks, 0 failures** |
-| Remote Script against a mock Live API (incl. overdub / delete) | all | **20 tests, OK** |
+| Remote Script against a mock Live API (incl. overdub / delete) | all | **30 tests, OK** (10 for the step sequencer against a mock of the Live 12 note API) |
 | 32-bit embedded syntax check, all app sources, `-Wall -Wextra` | both | clean |
 | JieLi pi32v2 build and flash | SMK-37 Pro by the user up to 0.48; Elite and FM-1 not yet | |
 

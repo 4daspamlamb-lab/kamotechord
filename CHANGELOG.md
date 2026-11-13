@@ -1,5 +1,10 @@
 # Changelog
 
+## KamoteKeys 0.58 (development snapshot)
+
+- **Step Mode: drum step sequencer** (hold CHORD; FM-1: hold LFO). Writes straight into the selected session clip with the Live 12 note API (creates a named 1-bar clip in an empty slot), follows mouse edits, multi-page clips of any length, LENGTH (hold + step), DOUBLE, resolution 1/16, 1/8, 1/32, 1/16T, 1/8T, optional page follow, DRUM (hold) to pick the Drum Rack sound (loaded / empty / active colours), velocity per step as brightness, ties, copy page, clear page. New channel 14 protocol; new `StepSequencer.py` in the Remote Script folder.
+- CHORD now acts on release (tap = Clip Mode, hold = Step Mode).
+
 ## KamoteKeys 0.57 (development snapshot)
 
 - **Highlighted clip in violet:** the pad of Live's selected (highlighted) slot turns violet; if it is playing, queued or recording it pulses between its state colour and violet. FM-1: the key blinks slowly. Needs the updated Remote Script (CC 105).

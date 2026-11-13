@@ -10,6 +10,8 @@
  *  - Pad Scale Mode (0.52): the chord keys stay; keys 9..26, white and
  *    black, play consecutive scale notes (with chords). Root keys stay lit.
  *  - Drum Mode: white keys 01..16 are pads 1..16, black keys are silent.
+ *  - Step Mode (hold LFO): white keys 01..16 are steps, black keys are the
+ *    sequencer functions (kk_device.h).
  *  - Clip Mode: white keys 01..16 are clips; black keys held: F# = OVERDUB,
  *    G# = DELETE, A# = SELECT (+ a clip); C# (4th black key) = launch the
  *    selected scene; top D# / F# = scene up / down (handled by the core).
@@ -59,6 +61,10 @@ static int white_of(unsigned key)
 static unsigned classify(unsigned key, unsigned *id)
 {
     int white = white_of(key);
+    if (kk.mode == KK_MODE_STEP) {          /* white keys = steps, black keys = functions */
+        if (white >= 0) { *id = (unsigned)white; return AS_PAD; }
+        *id = key; return kk_step_key_function(key) >= 0 ? AS_KEY : AS_NONE;
+    }
     if (kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP) {
         if (white >= 0) { *id = (unsigned)white; return AS_PAD; }
         if (kk.mode == KK_MODE_CLIP && (key == KK_CLIP_OVERDUB_KEY || key == KK_CLIP_DELETE_KEY || key == KK_CLIP_SELECT_KEY ||
@@ -155,6 +161,14 @@ void kk_fm1_input(const struct fm1_controls *c)
 static unsigned blink(unsigned period_ms) { return (fm1_millis() / period_ms) & 1U; }
 static unsigned pad_led(unsigned pad)
 {
+    if (kk.mode == KK_MODE_STEP) {          /* on/off rendering of the step colour codes */
+        unsigned code = kk_midi_step_code(pad);
+        if (kk_pad_lit(pad)) return 1;
+        if (code == KK_STEPC_PLAY_EMPTY || code == KK_STEPC_PLAY_NOTE) return blink(90);      /* playhead */
+        if ((code >= KK_STEPC_NOTE_1 && code <= KK_STEPC_TIE) || code == KK_STEPC_DRUM_ACTIVE) return 1;
+        if (code == KK_STEPC_DRUM_LOADED) return blink(400);
+        return 0;
+    }
     if (kk.mode == KK_MODE_CLIP) {
         if (kk_pad_lit(pad)) return 1;
         switch (kk_midi_clip_state(pad)) {

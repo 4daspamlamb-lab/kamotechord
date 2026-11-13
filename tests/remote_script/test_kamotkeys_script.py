@@ -45,7 +45,19 @@ class ControlSurface(object):
     def update_display(self): pass
     def refresh_state(self): pass
     def disconnect(self): pass
+    def schedule_message(self, delay, callback): scheduled.append(callback)
+scheduled = []
+def run_scheduled():
+    while scheduled: scheduled.pop(0)()
 cs.ControlSurface = ControlSurface
+# Live 12 note API used by the step sequencer.
+live = types.ModuleType('Live')
+live.Clip = types.SimpleNamespace()
+class MidiNoteSpecification(object):
+    def __init__(self, pitch, start_time, duration, velocity=100, mute=False):
+        self.pitch, self.start_time, self.duration, self.velocity, self.mute = pitch, start_time, duration, velocity, mute
+live.Clip.MidiNoteSpecification = MidiNoteSpecification
+sys.modules['Live'] = live
 for name, mod in (('_Framework', fw), ('_Framework.ControlSurface', cs),
                   ('_Framework.ButtonElement', be), ('_Framework.InputControlElement', ice)):
     sys.modules[name] = mod
@@ -126,9 +138,11 @@ class T(unittest.TestCase):
         self.assertEqual(len([m for m in self.s.sent if m[0] == 0xBF and STATE_CC <= m[1] < STATE_CC + 16]), 16)
 
     def test_controls_claim_only_protocol_messages(self):
-        notes = sorted(b.identifier for b in registry if b.msg_type == 0)
+        notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
         self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
-        self.assertTrue(all(b.channel in (14, 15) for b in registry))
+        steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
+        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 77)))   # step pads, step functions
+        self.assertTrue(all(b.channel in (13, 14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
     def test_launch_stop_switch(self):
@@ -253,6 +267,189 @@ class T(unittest.TestCase):
     def test_mouse_changes_are_reflected(self):
         t = self.song._tracks[4]; t.clip_slots[1].clip = Clip(t.clip_slots[1]); t.clip_slots[1].clip.is_playing = True
         self.s.update_display(); self.assertEqual(self.state(12), 2)
+
+# --------------------------------------------------------- step sequencer
+class Listened(object):
+    """add_X_listener / remove_X_listener / X_has_listener, as in Live."""
+    def __init__(self): object.__setattr__(self, '_cbs', {})
+    def __getattr__(self, name):
+        if name.startswith('add_') and name.endswith('_listener'):
+            return lambda cb, n=name[4:-9]: self._cbs.setdefault(n, []).append(cb)
+        if name.startswith('remove_') and name.endswith('_listener'):
+            return lambda cb, n=name[7:-9]: self._cbs.get(n, []).remove(cb)
+        if name.endswith('_has_listener'):
+            return lambda cb, n=name[:-13]: cb in self._cbs.get(n, [])
+        raise AttributeError(name)
+    def fire(self, name):
+        for cb in list(self._cbs.get(name, [])): cb()
+
+class Note(object):
+    _ids = [0]
+    def __init__(self, spec):
+        Note._ids[0] += 1; self.note_id = Note._ids[0]
+        self.pitch, self.start_time, self.duration, self.velocity, self.mute = spec.pitch, spec.start_time, spec.duration, spec.velocity, spec.mute
+    def copy(self):
+        n = Note.__new__(Note); n.__dict__.update(self.__dict__); return n
+
+class MClip(Listened):
+    def __init__(self, length=4.0):
+        Listened.__init__(self)
+        self.is_midi_clip = True; self.name = ''; self.loop_start = 0.0; self.loop_end = length; self.end_marker = length
+        self.is_playing = False; self.playing_position = 0.0; self.notes = []
+        self.is_recording = False; self.is_triggered = False
+    def get_notes_extended(self, from_pitch, pitch_span, from_time, time_span):
+        return tuple(n.copy() for n in self.notes if from_pitch <= n.pitch < from_pitch + pitch_span
+                     and from_time <= n.start_time < from_time + time_span)
+    def add_new_notes(self, specs):
+        self.notes += [Note(x) for x in specs]; self.fire('notes')
+    def remove_notes_extended(self, from_pitch, pitch_span, from_time, time_span):
+        self.notes = [n for n in self.notes if not (from_pitch <= n.pitch < from_pitch + pitch_span
+                                                     and from_time <= n.start_time < from_time + time_span)]
+        self.fire('notes')
+    def apply_note_modifications(self, notes):
+        by_id = dict((n.note_id, n) for n in notes)
+        for n in self.notes:
+            if n.note_id in by_id: n.__dict__.update(by_id[n.note_id].__dict__)
+        self.fire('notes')
+    def duplicate_loop(self):
+        length = self.loop_end - self.loop_start
+        self.notes += [Note(MidiNoteSpecification(n.pitch, n.start_time + length, n.duration, n.velocity)) for n in self.notes]
+        self.loop_end += length; self.end_marker = self.loop_end; self.fire('notes')
+
+class MSlot(Listened):
+    def __init__(self): Listened.__init__(self); self.clip = None; self.is_triggered = False; self.will_record_on_start = False
+    @property
+    def has_clip(self): return self.clip is not None
+    def create_clip(self, length): self.clip = MClip(length); self.fire('has_clip')
+
+class DrumPad(object):
+    def __init__(self, note): self.note = note; self.chains = []; self.name = 'Pad %d' % note
+
+class DrumRack(object):
+    can_have_drum_pads = True
+    def __init__(self):
+        self.drum_pads = [DrumPad(n) for n in range(128)]
+        for n in (36, 38, 42, 46): self.drum_pads[n].chains = ['chain']
+        self.drum_pads[36].name, self.drum_pads[38].name = 'Kick', 'Snare'
+        self.visible_drum_pads = self.drum_pads[36:52]
+        self.view = types.SimpleNamespace(selected_drum_pad=self.drum_pads[36])
+        self.chains = []
+
+class MTrack(Listened):
+    def __init__(self, rack=True):
+        Listened.__init__(self); self.name = 'Drums'; self.has_midi_input = True; self.arm = False; self.can_be_armed = True
+        self.devices = [DrumRack()] if rack else []; self.clip_slots = [MSlot() for _ in range(4)]
+
+class StepSong(object):
+    signature_numerator = 4; signature_denominator = 4
+    def __init__(self, rack=True):
+        self.track = MTrack(rack)
+        self.view = Listened()
+        object.__setattr__(self.view, 'selected_track', self.track)
+        object.__setattr__(self.view, 'highlighted_clip_slot', self.track.clip_slots[0])
+        self.visible_tracks = [self.track]; self.scenes = []
+
+class StepTest(unittest.TestCase):
+    def setUp(self):
+        del registry[:]; del scheduled[:]
+        self.song = StepSong()
+        self.s = KamoteKeys(CInstance(self.song))
+        self.s.sent.clear()
+    def mode(self, on): deliver((0xBD, 127, 127 if on else 0))
+    def pad(self, i, down=True): deliver(((0x9D if down else 0x8D), 36 + i, 127 if down else 0))
+    def tap(self, i): self.pad(i); self.pad(i, False)
+    def fn(self, note, down=True): deliver(((0x9D if down else 0x8D), note, 127 if down else 0))
+    def press(self, note): self.fn(note); self.fn(note, False)
+    def codes(self):
+        out = {}
+        for st, cc, v in self.s.sent:
+            if st == 0xBD and 80 <= cc < 96: out[cc - 80] = v
+        return out
+    def info(self, cc): return [v for st, c, v in self.s.sent if st == 0xBD and c == cc][-1]
+    @property
+    def clip(self): return self.song.track.clip_slots[0].clip
+
+    def test_entering_creates_a_named_one_bar_clip(self):
+        self.mode(True)
+        self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
+        c = self.codes(); self.assertEqual(len(c), 16)
+        self.assertEqual(c[0], 2); self.assertEqual(c[1], 1)             # beat / plain empty step
+        self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
+
+    def test_steps_write_real_notes(self):
+        self.mode(True); self.tap(0); self.tap(4)
+        notes = sorted((n.pitch, n.start_time, n.duration) for n in self.clip.notes)
+        self.assertEqual(notes, [(36, 0.0, 0.25), (36, 1.0, 0.25)])
+        self.s.update_display()
+        self.assertTrue(3 <= self.codes()[0] <= 8)                       # note colour (sent on the press)
+        self.tap(0); self.assertEqual([n.start_time for n in self.clip.notes], [1.0])   # off again
+
+    def test_mouse_edits_show_on_pads(self):
+        self.mode(True)
+        self.clip.add_new_notes((MidiNoteSpecification(36, 0.5, 0.25, 127),))
+        self.s.sent.clear(); self.s.update_display()
+        self.assertEqual(self.codes().get(2), 8)                          # loudest = brightest
+
+    def test_existing_clip_is_read(self):
+        slot = self.song.track.clip_slots[0]; slot.clip = MClip(8.0)
+        slot.clip.notes = [Note(MidiNoteSpecification(36, 5.0, 0.25, 64))]
+        self.mode(True)
+        self.assertEqual(self.info(97), 2)                                # 2 bars = 2 pages
+        self.press(62); self.s.update_display()                           # page next
+        self.assertEqual(self.info(96), 1); self.assertTrue(3 <= self.codes()[4] <= 8)
+
+    def test_drum_view_selects_the_active_drum(self):
+        self.mode(True); self.fn(60)
+        c = self.codes()
+        self.assertEqual(c[8], 22); self.assertEqual(c[10], 21); self.assertEqual(c[9], 20)   # active, loaded, empty
+        self.tap(10); self.fn(60, False)                                  # pad 11 = note 38 (snare)
+        self.assertIs(self.song.track.devices[0].view.selected_drum_pad, self.song.track.devices[0].drum_pads[38])
+        self.tap(3); self.assertEqual([n.pitch for n in self.clip.notes], [38])
+
+    def test_length_double_resolution_and_follow(self):
+        self.mode(True)
+        self.fn(63); self.pad(7); self.pad(7, False); self.fn(63, False)  # LENGTH + step 8 = half a bar
+        self.assertEqual(self.clip.loop_end, 2.0)
+        self.tap(0); self.press(64)                                       # DOUBLE
+        self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 2.0])
+        self.fn(63); self.press(62); self.pad(15); self.pad(15, False); self.fn(63, False)   # extend to 2 bars
+        self.assertEqual(self.clip.loop_end, 8.0)
+        self.press(65); self.s.update_display(); self.assertEqual(self.info(98), 1)          # 1/8
+        self.press(65); self.press(65); self.press(65); self.press(65); self.assertEqual(self.info(98), 0)
+        self.press(66); self.clip.is_playing = True; self.clip.playing_position = 4.5
+        self.s.sent.clear(); self.s.update_display()
+        self.assertEqual(self.info(96), 1); self.assertEqual(self.codes().get(2), 10)        # followed, playhead
+
+    def test_playhead_only_on_shown_page_and_light(self):
+        self.mode(True); self.clip.is_playing = True; self.clip.playing_position = 1.0
+        self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.codes(), {4: 10})   # only the change
+        self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])           # nothing new
+
+    def test_velocity_tie_copy_clear(self):
+        self.mode(True); self.tap(0)
+        self.pad(0); self.press(69); self.pad(0, False)                   # hold step + velocity 1
+        self.assertEqual([n.velocity for n in self.clip.notes], [30])
+        self.pad(4); self.pad(7); self.pad(7, False); self.pad(4, False)  # tie steps 5-8
+        tie = [n for n in self.clip.notes if n.start_time == 1.0][0]; self.assertEqual(tie.duration, 1.0)
+        self.s.update_display(); self.assertEqual(self.codes().get(5), 9)   # inside the long note
+        self.fn(67); self.press(62); self.fn(67, False)                   # COPY + page next
+        self.assertEqual(self.clip.loop_end, 8.0); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 1.0, 4.0, 5.0])
+        self.press(68); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 1.0])   # CLEAR page 2
+
+    def test_no_drum_rack_and_deleted_clip(self):
+        self.song = StepSong(rack=False); del registry[:]
+        self.s = KamoteKeys(CInstance(self.song)); self.s.sent.clear()
+        self.mode(True); self.assertEqual(self.info(100), 1)
+        self.tap(0); self.assertEqual([n.pitch for n in self.clip.notes], [36])   # still sequences C1
+        slot = self.song.track.clip_slots[0]; slot.clip = None; slot.fire('has_clip')
+        self.assertEqual(len(scheduled), 1)                               # rebind deferred, not in the listener
+        run_scheduled(); self.assertIsNotNone(slot.clip)                   # a new clip
+        self.s.update_display()
+
+    def test_leaving_stops_listening(self):
+        self.mode(True); clip = self.clip; self.mode(False)
+        self.assertFalse(clip._cbs.get('notes')); self.s.sent.clear(); self.s.update_display()
+        self.assertFalse([m for m in self.s.sent if m[0] == 0xBD])
 
 if __name__ == '__main__':
     unittest.main(verbosity=1)

@@ -36,6 +36,26 @@ enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
  * keys (top D#, F#) = scene up, scene down. */
 enum { KK_CLIP_SELECT_KEY = 5, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 22, KK_SCENE_DOWN_KEY = 25 };
 
+/* Step Mode function keys (0.58): the eleven black keys; the white keys
+ * 01..16 are the steps. -1 = none. */
+static inline int kk_step_key_function(unsigned key)
+{
+    switch (key) {
+    case 1: return KK_STEP_DRUM;        /* F#  hold: keys = Drum Rack pads */
+    case 3: return KK_STEP_PAGE_PREV;   /* G# */
+    case 5: return KK_STEP_PAGE_NEXT;   /* A# */
+    case 8: return KK_STEP_LENGTH;      /* C#  hold + step = loop end */
+    case 10: return KK_STEP_DOUBLE;     /* D# */
+    case 13: return KK_STEP_RESOLUTION; /* F# */
+    case 15: return KK_STEP_FOLLOW;     /* G# */
+    case 17: return KK_STEP_COPY;       /* A#  hold + page = copy page */
+    case 20: return KK_STEP_CLEAR;      /* C# */
+    case 22: return KK_STEP_VEL_DOWN;   /* D#  (hold a step) */
+    case 25: return KK_STEP_VEL_UP;     /* F# */
+    default: return -1;
+    }
+}
+
 /* Knob labels as printed on the screen (K1-K4, SELECT, ALGORITHM, PRESETS). */
 #define KK_K1 "K1"
 #define KK_K2 "K2"

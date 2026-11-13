@@ -773,6 +773,38 @@ static void test_ripple(void)
     CHECK(!kk.ripple, "3 quick taps again -> off");
 }
 
+/* 0.58: Step Mode (hold CHORD): pads and function keys on channel 14,
+ * colours from the Remote Script. */
+static void test_step_mode(void)
+{
+    boot();
+    host_clear(); btn(KK_BTN_CHORD, 1); host_ms += 700; frames(2, 1);
+    CHECK(kk.mode == KK_MODE_STEP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SYNC_CC | 127 << 8),
+          "hold CHORD -> Step Mode, tells the script (ch 14 CC 127 = 127)");
+    btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_STEP && kk_led_button(KK_BTN_CHORD) == 2, "release keeps Step Mode, CHORD lit");
+    host_clear(); pad(3, 90); pad(3, 0);
+    CHECK(out_count(USB, 0x9D, 38) == 1 && out_count(USB, 0x8D, 38) == 1 && host_local_n == 0, "pad 3 -> ch 14 note 38, never the synth");
+    host_clear(); key(0, 100); key(2, 100); key(2, 0); key(0, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_DRUM) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_PREV) == 1 && out_count(USB, 0x8D, KK_STEP_DRUM) == 1,
+          "C = DRUM (hold), D = page prev");
+    host_clear(); key(24, 100); key(24, 0); key(1, 100); key(1, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x90, 49) == 1, "C4 = velocity 1, C# still plays");
+    host_clear(); host_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    host_in(0xBD, KK_STEP_CODE_CC + 0, KK_STEPC_NOTE_6); host_in(0xBD, KK_STEP_CODE_CC + 1, KK_STEPC_EMPTY);
+    host_in(0xBD, KK_STEP_CODE_CC + 2, KK_STEPC_PLAY_NOTE); host_in(0xBD, KK_STEP_CODE_CC + 15, KK_STEPC_OUTSIDE);
+    host_in(0xBD, KK_STEP_PAGE_CC, 1); host_in(0xBD, KK_STEP_PAGES_CC, 4);
+    CHECK(host_local_n == 0, "step feedback never reaches the synth");
+    settle();
+    CHECK(((host_rgb[0] >> 16) & 255) > ((host_rgb[0] >> 8) & 255) * 3 / 2 && ((host_rgb[0] >> 16) & 255) >= KK_RGB_PEAK * 9 / 10, "note = bright amber (%06x)", host_rgb[0]);
+    CHECK((host_rgb[1] & 255) > ((host_rgb[1] >> 16) & 255) && (host_rgb[1] & 255) < KK_RGB_PEAK / 3, "empty = dim blue (%06x)", host_rgb[1]);
+    CHECK(((host_rgb[2] >> 8) & 255) >= KK_RGB_PEAK * 9 / 10, "playhead on a note = green (%06x)", host_rgb[2]);
+    CHECK(host_rgb[15] && host_rgb[15] < host_rgb[1] + 0x100000, "outside the clip = very dim red (%06x)", host_rgb[15]);
+    frames(30, 5); shot("19_step_mode");
+    host_clear(); tap(KK_BTN_CHORD);
+    CHECK(kk.mode == KK_MODE_CLIP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == KK_STEP_SYNC_CC, "tap CHORD -> Clip Mode, Step Mode ends (CC 127 = 0)");
+    tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_NORMAL, "tap again -> Normal");
+}
+
 static void test_live_tempo(void)
 {
     boot();
@@ -807,6 +839,7 @@ int main(void)
     test_031();
     test_live_tempo();
     test_ripple();
+    test_step_mode();
     printf("%u checks, %u failures\n", checks, failures);
     return failures != 0;
 }

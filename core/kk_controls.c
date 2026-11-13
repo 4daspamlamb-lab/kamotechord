@@ -37,7 +37,7 @@ static uint32_t last_ms;
 static const uint8_t division_den[KK_DIVS] = {1, 2, 3, 4, 6, 8}; /* per quarter */
 static const char *const division_names[KK_DIVS] = {"1/4", "1/8", "1/8T", "1/16", "1/16T", "1/32"};
 static const char *const direction_names[KK_DIRS] = {"UP", "DOWN", "UP-DOWN", "RANDOM", "ORDER"};
-static const char *const mode_names[KK_MODES] = {"NORMAL", "KEY SCALE", "PAD SCALE", "DRUM", "CLIP"};
+static const char *const mode_names[KK_MODES] = {"NORMAL", "KEY SCALE", "PAD SCALE", "DRUM", "CLIP", "STEP"};
 const char *kk_division_name(unsigned d) { return division_names[d % KK_DIVS]; }
 const char *kk_direction_name(unsigned d) { return direction_names[d % KK_DIRS]; }
 const char *kk_mode_name(unsigned m) { return mode_names[m < KK_MODES ? m : 0]; }
@@ -99,13 +99,14 @@ unsigned kk_pad_scale_on_keys(void)
 #endif
 }
 /* Every mode in which the pads are not chord/spare pads. */
-static unsigned pads_reassigned(void) { return (in_pad_mode() && !kk_pad_scale_on_keys()) || kk.mode == KK_MODE_CLIP; }
+static unsigned pads_reassigned(void) { return (in_pad_mode() && !kk_pad_scale_on_keys()) || kk.mode == KK_MODE_CLIP || kk.mode == KK_MODE_STEP; }
 int kk_pad_note(unsigned pad, unsigned *channel)
 {
     *channel = KK_CH_MELODIC;
     if (kk.mode == KK_MODE_PAD_SCALE) return kk_pad_scale_note(pad, kk.pad_octave, &kk.scale);
     if (kk.mode == KK_MODE_DRUM) { *channel = KK_CH_DRUM; return kk_drum_note(pad, kk.pad_octave); }
     if (kk.mode == KK_MODE_CLIP) { *channel = KK_CH_CLIP; return pad < KK_PADS ? KK_CLIP_NOTE_BASE + (int)pad : -1; }
+    if (kk.mode == KK_MODE_STEP) { *channel = KK_CH_STEP; return pad < KK_PADS ? KK_STEP_PAD_NOTE + (int)pad : -1; }
     return kk_spare_pad_note(pad);
 }
 int kk_active_octave(void) { return in_pad_mode() ? kk.pad_octave : kk.octave; }
@@ -113,6 +114,11 @@ int kk_active_octave(void) { return in_pad_mode() ? kk.pad_octave : kk.octave; }
 static void intent(unsigned id, struct source *s)
 {
     s->count = 0; s->channel = KK_CH_MELODIC; s->modifier = 0;
+    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_key_function(id) >= 0) {
+        /* Step Mode function keys: logical notes on channel 14. */
+        s->channel = KK_CH_STEP; s->notes[0] = (uint8_t)kk_step_key_function(id); s->count = 1;
+        return;
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
         (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY || id == KK_CLIP_SELECT_KEY)) {
         /* Clip Mode: the first black key held = OVERDUB, the second = DELETE,
@@ -165,7 +171,7 @@ static unsigned route_for(unsigned id, const struct source *s)
     if (s->modifier == CLIPMOD_OVERDUB || s->modifier == CLIPMOD_DELETE || s->modifier == CLIPMOD_SELECT) return ROUTE_CLIPMOD;
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
-    if (s->channel == KK_CH_CLIP) return ROUTE_DIRECT;     /* clip launches: no ARP/Repeat */
+    if (s->channel == KK_CH_CLIP || s->channel == KK_CH_STEP) return ROUTE_DIRECT;   /* no ARP/Repeat */
     unsigned arp_domain = id < KK_KEYS ? !in_pad_mode() || kk_pad_scale_on_keys() : in_pad_mode() && !kk_pad_scale_on_keys();
     if (kk.arp_on && arp_domain) return ROUTE_ARP;
     if (kk.repeat_on) return ROUTE_REPEAT;
@@ -428,6 +434,8 @@ void kk_set_mode(unsigned mode)
 #ifdef KK_PAD_SCALE_ON_KEYS
     keys_change |= (mode == KK_MODE_PAD_SCALE) != (kk.mode == KK_MODE_PAD_SCALE);   /* keys change meaning */
 #endif
+    keys_change |= (mode == KK_MODE_STEP) != (kk.mode == KK_MODE_STEP);   /* Step Mode function keys */
+    unsigned step_was = kk.mode == KK_MODE_STEP;
     consume(PAD_SOURCE, SOURCES);                      /* pads change meaning */
     if (keys_change) consume(0, KK_KEYS);
     kk.mode = (uint8_t)mode;
@@ -436,6 +444,8 @@ void kk_set_mode(unsigned mode)
     reroute_all();
     kk.chord_root = -1;
     if (mode == KK_MODE_CLIP) kk_midi_clip_sync_request();   /* fresh clip LEDs */
+    if (mode == KK_MODE_STEP) kk_midi_step_mode(1);          /* the script binds the sequencer */
+    else if (step_was) kk_midi_step_mode(0);
     ++kk.edit_revision;
 }
 static void sustain_update(void);
@@ -550,7 +560,7 @@ static unsigned animation_speed(void)
 static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLETON, controller, value); }
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
-static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE;
+static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -576,7 +586,11 @@ static void button(unsigned id, unsigned down, uint32_t now)
             if (shift) { left_combo = 1; patch_combo = 1; }
         }
         ableton(para_cc, down ? 127 : 0); return;
-    case KK_BTN_CHORD: if (down) kk_set_mode(KK_MODE_CLIP); return;
+    /* CHORD: tap = Clip Mode; hold 0.6 s = Step Mode (0.58, long_presses). */
+    case KK_BTN_CHORD:
+        if (down) chord_long = 0;
+        else if (!chord_long && held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
+        return;
     case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
     case KK_BTN_FADER_BANK: ableton(KK_CC_CAPTURE, down ? 127 : 0); return;
@@ -650,6 +664,9 @@ static void long_presses(uint32_t now)
         unsigned id = ids[i];
         if ((kk.buttons & (1U << id)) && now - kk.pressed_at[id] >= limits[i] && kk.page != pages[i])
             open_page(pages[i]);
+    }
+    if ((kk.buttons & (1U << KK_BTN_CHORD)) && !chord_long && now - kk.pressed_at[KK_BTN_CHORD] >= 600U) {
+        chord_long = 1; kk_set_mode(KK_MODE_STEP);      /* again from Step Mode: back to Normal */
     }
 }
 
@@ -779,7 +796,7 @@ static void source_release(unsigned id)
     struct source *s = &sources[id];
     if (!s->held) return;
     unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK, was_clip = s->route == ROUTE_CLIPMOD;
-    if (kk.sustain_on && s->route == ROUTE_DIRECT && s->sounding && s->channel != KK_CH_CLIP) {
+    if (kk.sustain_on && s->route == ROUTE_DIRECT && s->sounding && s->channel != KK_CH_CLIP && s->channel != KK_CH_STEP) {
         hold_keep(s); s->sounding = 0;                   /* keep sounding until the next key */
     }
     disengage(s);
@@ -982,6 +999,11 @@ void kk_perform_tick(uint32_t now)
         if (!ready) kk_midi_remote_clear();
         kk.ports_seen = (uint8_t)ready;
     }
+    /* Step Mode: (re)announce it whenever the Remote Script (re)connects. */
+    static unsigned script_seen;
+    unsigned script = kk_midi_host_protocol() != 0;
+    if (script && !script_seen && kk.mode == KK_MODE_STEP) kk_midi_step_mode(1);
+    script_seen = script;
     arp_tick();
     repeat_tick();
     if (kk.anim_active) {

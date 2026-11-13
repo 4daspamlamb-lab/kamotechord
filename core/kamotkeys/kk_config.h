@@ -10,10 +10,9 @@
  * for that device's official workbench. */
 #ifndef KK_CONFIG_H
 #define KK_CONFIG_H
-#include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.57" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.58" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -21,6 +20,7 @@ enum {
     KK_CH_MELODIC = 0,   /* keyboard, Key Scale, Pad Scale, spare pads */
     KK_CH_DRUM = 9,      /* Drum Mode                                  */
     KK_CH_ABLETON = 14,  /* Ableton control CCs (channel 15)           */
+    KK_CH_STEP = 13,     /* Step Mode sequencer (ch. 14)               */
     KK_CH_CLIP = 15      /* Clip Mode launcher and feedback (ch. 16)   */
 };
 
@@ -51,6 +51,31 @@ enum {
     KK_CLIP_EMPTY = 0, KK_CLIP_STOPPED = 1, KK_CLIP_PLAYING = 2, KK_CLIP_QUEUED = 3,
     KK_CLIP_RECORDING = 4, KK_CLIP_QUEUED_RECORD = 5, KK_CLIP_EMPTY_ARMED = 6,
     KK_CLIP_UNKNOWN = 255
+};
+
+/* Step Mode protocol (channel 14, 0.58), shared with remote_script/KamoteKeys.
+ *  device -> host: Note 36+pad = step pad 1..16 (press / release)
+ *                  Note 60.. = function keys (KK_STEP_*; press / release)
+ *                  CC 127 = 127 entering Step Mode (send everything), 0 leaving
+ *  host -> device: CC 80+pad = pad colour code (KK_STEPC_*)
+ *                  CC 96 page, 97 page count, 98 resolution, 99 follow,
+ *                  100 status, 101 drum view, 102 active drum note */
+enum {
+    KK_STEP_PAD_NOTE = 36,
+    KK_STEP_DRUM = 60, KK_STEP_PAGE_PREV, KK_STEP_PAGE_NEXT, KK_STEP_LENGTH, KK_STEP_DOUBLE,
+    KK_STEP_RESOLUTION, KK_STEP_FOLLOW, KK_STEP_COPY, KK_STEP_CLEAR,
+    KK_STEP_VEL_1, KK_STEP_VEL_2, KK_STEP_VEL_3, KK_STEP_VEL_4, KK_STEP_VEL_5, KK_STEP_VEL_6,
+    KK_STEP_VEL_DOWN, KK_STEP_VEL_UP,
+    KK_STEP_CODE_CC = 80, KK_STEP_PAGE_CC = 96, KK_STEP_PAGES_CC = 97, KK_STEP_RES_CC = 98,
+    KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
+    KK_STEP_SYNC_CC = 127
+};
+/* Pad colour codes sent by the script (rendered by kk_led.c). */
+enum {
+    KK_STEPC_OUTSIDE = 0, KK_STEPC_EMPTY = 1, KK_STEPC_EMPTY_BEAT = 2,
+    KK_STEPC_NOTE_1 = 3, KK_STEPC_NOTE_6 = 8,      /* 6 velocity brightness levels */
+    KK_STEPC_TIE = 9, KK_STEPC_PLAY_EMPTY = 10, KK_STEPC_PLAY_NOTE = 11, KK_STEPC_HELD = 12,
+    KK_STEPC_DRUM_EMPTY = 20, KK_STEPC_DRUM_LOADED = 21, KK_STEPC_DRUM_ACTIVE = 22, KK_STEPC_DRUM_ACTIVE_EMPTY = 23
 };
 
 /* Ableton control change numbers (channel 15). */
@@ -94,5 +119,9 @@ enum { KK_OCTAVE_MIN = -4, KK_OCTAVE_MAX = 4, KK_PAD_OCTAVE_DEFAULT = 0 };
  * 160: at 64 the dim idle colours had too few steps and lost their hue.
  * Channel values are always rounded to multiples of 4 (see kk_led.c). */
 enum { KK_RGB_PEAK = 160 };
+
+/* Device sizes, labels and key maps (devices/<device>/app/kamotkeys/). Last,
+ * so the device header can use the enums above. */
+#include "kk_device.h"
 
 #endif

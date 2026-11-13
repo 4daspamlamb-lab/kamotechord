@@ -285,6 +285,17 @@ static void draw_pads(void)
         unsigned lit = kk_pad_lit(pad);
         pill(x, y, 28, 30, note < 0 ? PANEL : blend565(PANEL, base, lit ? 230 : 70));
         char label[6];
+        if (kk.mode == KK_MODE_STEP) {
+            /* Step number on the shown page (D1..D16 while picking a drum). */
+            unsigned code = kk_midi_step_code(pad), drum = kk_midi_step_info(KK_STEP_DRUMVIEW_CC);
+            unsigned n = drum ? pad + 1 : kk_midi_step_info(KK_STEP_PAGE_CC) * 16U + pad + 1;
+            char *q = label; if (drum) *q++ = 'D';
+            decimal(q, (int)(n > 999 ? 999 : n));
+            unsigned strong = lit || (code >= KK_STEPC_NOTE_1 && code <= KK_STEPC_PLAY_NOTE) || code == KK_STEPC_DRUM_ACTIVE;
+            pill(x, y, 28, 30, blend565(PANEL, base, strong ? 220 : code == KK_STEPC_OUTSIDE ? 20 : 70));
+            text_center(x + 14, y + 12, label, 1, strong ? BG : TEXT);
+            continue;
+        }
         if (kk.mode == KK_MODE_CLIP) {
             /* Track.scene, scene following the Remote Script's grid position. */
             unsigned scene = kk_midi_host_scene() + pad / 8 + 1;
@@ -347,7 +358,27 @@ static void draw_big(void)
 {
     const struct widget *w = &widgets[W_BIG];
     fill(0, w->y, 240, w->h, BG);
-    char buf[24];
+    char buf[40];
+    if (kk.mode == KK_MODE_STEP) {
+        /* Step Mode: page, resolution, follow, and what the script reports. */
+        static const char *const res[5] = {"1/16", "1/8", "1/32", "1/16T", "1/8T"};
+        unsigned status = kk_midi_step_info(KK_STEP_STATUS_CC), drum = kk_midi_step_info(KK_STEP_DRUMVIEW_CC);
+        const char *title = !kk_midi_host_protocol() ? "STEP" : drum ? "DRUM PADS" : status == 2 ? "NO MIDI TRACK" : "STEP";
+        text_center(120, w->y + 14, title, text_width(title, 3) <= 228 ? 3 : 2, drum ? TEAL : status == 2 ? RED : ORANGE);
+        char *p = buf;
+        if (!kk_midi_host_protocol()) p = append(p, "LOAD THE KAMOTEKEYS REMOTE SCRIPT");
+        else if (status == 1) p = append(p, "NO DRUM RACK - NOTE C1");
+        else if (status == 2) p = append(p, "SELECT A MIDI TRACK");
+        else if (status == 3) p = append(p, "PRESS A STEP TO START A CLIP");
+        else {
+            p = append(p, "PAGE "); p = decimal(p, (int)kk_midi_step_info(KK_STEP_PAGE_CC) + 1); p = append(p, "/");
+            p = decimal(p, (int)kk_midi_step_info(KK_STEP_PAGES_CC)); p = append(p, "  ");
+            p = append(p, res[kk_midi_step_info(KK_STEP_RES_CC) % 5]);
+            if (kk_midi_step_info(KK_STEP_FOLLOW_CC)) p = append(p, "  FOLLOW");
+        }
+        text_center(120, w->y + 50, buf, 1, DIM);
+        return;
+    }
     if (kk.mode == KK_MODE_CLIP && kk.clip_action) {
         /* 0.50: OVERDUB (first black key) / DELETE (second) held. */
         text_center(120, w->y + 14, kk.clip_action == 2 ? "DELETE" : kk.clip_action == 3 ? "SELECT" : "OVERDUB", 3,
@@ -702,6 +733,8 @@ static void signatures(void)
     wanted[W_INFO] = h;
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
     if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8 | kk_midi_host_scene() << 16), kk.clip_action);
+    if (kk.mode == KK_MODE_STEP)
+        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_ACTIVE_CC; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
@@ -709,6 +742,10 @@ static void signatures(void)
     for (unsigned i = 0; i < sounding_n; ++i) h = mixsig(h, sounding[i]);
     if (kk.mode >= KK_MODE_PAD_SCALE) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_pad_lit(p));
     if (kk.mode == KK_MODE_CLIP) { for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p)); h = mixsig(h, kk_midi_host_scene()); }
+    if (kk.mode == KK_MODE_STEP) {
+        for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_step_code(p) | (unsigned)kk_pad_lit(p) << 8);
+        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_ACTIVE_CC; ++c) h = mixsig(h, kk_midi_step_info(c));
+    }
     wanted[W_PIANO] = h;
     h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);
     h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U);

@@ -42,6 +42,30 @@ enum { KK_CLIP_SELECT_KEY = 6, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 32, KK
 /* Last BLE error code this SDK reports. */
 #define KK_BLE_LAST_ERROR FM1_BLE_BOND_SAVE_FAILED
 
+/* Step Mode function keys (0.58): lowest octave white keys and six white
+ * keys in the middle octave; every other key plays normally. -1 = none. */
+static inline int kk_step_key_function(unsigned key)
+{
+    switch (key) {
+    case 0: return KK_STEP_DRUM;        /* C  hold: pads = Drum Rack pads */
+    case 2: return KK_STEP_PAGE_PREV;   /* D */
+    case 4: return KK_STEP_PAGE_NEXT;   /* E */
+    case 5: return KK_STEP_LENGTH;      /* F  hold + step = loop end */
+    case 7: return KK_STEP_DOUBLE;      /* G */
+    case 9: return KK_STEP_RESOLUTION;  /* A */
+    case 11: return KK_STEP_FOLLOW;     /* B */
+    case 12: return KK_STEP_COPY;       /* C  hold + page = copy page */
+    case 14: return KK_STEP_CLEAR;      /* D */
+    case 24: return KK_STEP_VEL_1;      /* C  velocity levels (hold a step) */
+    case 26: return KK_STEP_VEL_2;
+    case 28: return KK_STEP_VEL_3;
+    case 29: return KK_STEP_VEL_4;
+    case 31: return KK_STEP_VEL_5;
+    case 33: return KK_STEP_VEL_6;
+    default: return -1;
+    }
+}
+
 /* 16 RGB pads (ripple lights, light shows). */
 #define KK_HAS_RGB_PADS 1
 

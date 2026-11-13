@@ -6,7 +6,7 @@
 #include <string.h>
 
 /* Owner counts for the note channels KamoteKeys plays: 1, 10 and 16 (Clip). */
-static uint8_t counts[3][128];
+static uint8_t counts[4][128];
 /* Written by the MIDI routing task, read by the control task: single bytes. */
 static volatile uint8_t remote_notes[2][128];          /* host note activity */
 static volatile uint8_t clip_states[16] = {
@@ -17,13 +17,14 @@ static volatile uint8_t clip_states[16] = {
 static volatile uint8_t host_protocol;
 static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
+static uint8_t step_codes[16], step_info[KK_STEP_ACTIVE_CC - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
 static uint32_t revision;
 
 static int slot(unsigned channel)
 {
-    return channel == KK_CH_MELODIC ? 0 : channel == KK_CH_DRUM ? 1 : channel == KK_CH_CLIP ? 2 : -1;
+    return channel == KK_CH_MELODIC ? 0 : channel == KK_CH_DRUM ? 1 : channel == KK_CH_CLIP ? 2 : channel == KK_CH_STEP ? 3 : -1;
 }
 void kk_midi_init(void) { memset(counts, 0, sizeof counts); ++revision; }
 
@@ -54,7 +55,7 @@ void kk_midi_note_on(unsigned channel, unsigned note, unsigned velocity)
     if (velocity > 127) velocity = 127;
     if (counts[s][note]++) return;          /* already sounding for another owner */
     const uint8_t m[3] = {(uint8_t)(0x90 | channel), (uint8_t)note, (uint8_t)velocity};
-    out(m, 3, kk_midi_port_mask(), channel != KK_CH_CLIP);
+    out(m, 3, kk_midi_port_mask(), channel != KK_CH_CLIP && channel != KK_CH_STEP);
     ++revision;
 }
 void kk_midi_note_off(unsigned channel, unsigned note)
@@ -65,19 +66,19 @@ void kk_midi_note_off(unsigned channel, unsigned note)
     const uint8_t m[3] = {(uint8_t)(0x80 | channel), (uint8_t)note, 0};
     /* Note Off goes to every port: the router drops it where the note was
      * never sent, and an AUTO port change between On and Off cannot hang. */
-    out(m, 3, fm1_midi_output_ports(), channel != KK_CH_CLIP);
+    out(m, 3, fm1_midi_output_ports(), channel != KK_CH_CLIP && channel != KK_CH_STEP);
     ++revision;
 }
 void kk_midi_cc(unsigned channel, unsigned controller, unsigned value)
 {
     const uint8_t m[3] = {(uint8_t)(0xb0 | (channel & 15)), (uint8_t)(controller & 127), (uint8_t)(value & 127)};
     /* Ableton commands are external only; they must never edit the synth. */
-    out(m, 3, kk_midi_port_mask(), channel != KK_CH_ABLETON && channel != KK_CH_CLIP);
+    out(m, 3, kk_midi_port_mask(), channel != KK_CH_ABLETON && channel != KK_CH_CLIP && channel != KK_CH_STEP);
 }
 void kk_midi_message(const uint8_t *m, size_t n) { out(m, n, kk_midi_port_mask(), 1); }
 void kk_midi_all_off(void)
 {
-    static const uint8_t channels[3] = {KK_CH_MELODIC, KK_CH_DRUM, KK_CH_CLIP};
+    static const uint8_t channels[4] = {KK_CH_MELODIC, KK_CH_DRUM, KK_CH_CLIP, KK_CH_STEP};
     for (unsigned s = 0; s < 3; ++s)
         for (unsigned note = 0; note < 128; ++note)
             if (counts[s][note]) { counts[s][note] = 1; kk_midi_note_off(channels[s], note); }
@@ -116,6 +117,13 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
     if (!m || !n || m[0] < 0x80 || m[0] >= 0xf0) return 0;
     unsigned type = m[0] & 0xf0U, ch = m[0] & 15U;
     unsigned d1 = n > 1 ? m[1] & 127U : 0, d2 = n > 2 ? m[2] & 127U : 0;
+    if (ch == KK_CH_STEP && type == 0xb0) {
+        /* Step Mode feedback from the Remote Script: pad colours and info. */
+        if (d1 >= KK_STEP_CODE_CC && d1 < KK_STEP_CODE_CC + 16U) step_codes[d1 - KK_STEP_CODE_CC] = (uint8_t)d2;
+        else if (d1 >= KK_STEP_PAGE_CC && d1 <= KK_STEP_ACTIVE_CC) step_info[d1 - KK_STEP_PAGE_CC] = (uint8_t)d2;
+        ++input_revision;
+        return 1;
+    }
     if (ch == KK_CH_CLIP) {
         /* Clip Mode feedback from the Remote Script: never a synth event. */
         if (type == 0xb0 && d1 >= KK_CLIP_STATE_CC && d1 < KK_CLIP_STATE_CC + 16U) {
@@ -159,6 +167,8 @@ void kk_midi_remote_clear(void)
     for (unsigned s = 0; s < 2; ++s) for (unsigned k = 0; k < 128; ++k) remote_notes[s][k] = 0;
     for (unsigned p = 0; p < 16; ++p) clip_states[p] = KK_CLIP_UNKNOWN;
     host_protocol = 0; host_tempo = 0; host_scene = 0; host_highlight = 127;
+    for (unsigned p = 0; p < 16; ++p) step_codes[p] = KK_STEPC_OUTSIDE;
+    for (unsigned i = 0; i < sizeof step_info; ++i) step_info[i] = 0;
     ++input_revision;
 }
 unsigned kk_midi_host_tempo_x10(void) { return host_protocol ? host_tempo : 0; }
@@ -168,3 +178,9 @@ unsigned kk_midi_clip_state(unsigned pad) { return pad < 16 ? clip_states[pad] :
 unsigned kk_midi_host_protocol(void) { return host_protocol; }
 uint32_t kk_midi_input_revision(void) { return input_revision; }
 void kk_midi_clip_sync_request(void) { kk_midi_cc(KK_CH_CLIP, KK_CLIP_SYNC_CC, 127); }
+void kk_midi_step_mode(unsigned on) { kk_midi_cc(KK_CH_STEP, KK_STEP_SYNC_CC, on ? 127 : 0); }
+unsigned kk_midi_step_code(unsigned pad) { return pad < 16 ? step_codes[pad] : KK_STEPC_OUTSIDE; }
+unsigned kk_midi_step_info(unsigned cc)
+{
+    return cc >= KK_STEP_PAGE_CC && cc <= KK_STEP_ACTIVE_CC ? step_info[cc - KK_STEP_PAGE_CC] : 0;
+}

@@ -46,6 +46,11 @@ unsigned kk_midi_host_tempo_x10(void);
 unsigned kk_midi_host_scene(void);
 /* Pad of Live's highlighted (selected) clip slot on the grid, or -1. */
 int kk_midi_host_highlight(void);
+/* Step Mode (0.58): tell the script Step Mode starts (1) or ends (0); pad
+ * colour codes (KK_STEPC_*) and info (KK_STEP_*_CC) from the script. */
+void kk_midi_step_mode(unsigned on);
+unsigned kk_midi_step_code(unsigned pad);
+unsigned kk_midi_step_info(unsigned cc);
 uint32_t kk_midi_input_revision(void);
 void kk_midi_clip_sync_request(void);
 

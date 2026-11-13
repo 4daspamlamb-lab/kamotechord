@@ -26,6 +26,10 @@ The FM-1 has no pads and no faders, so **everything the SMK-37 pads did is on th
   - The chord keys work in all three.
 - Every note uses the fixed **velocity** (SAVE + K1; FM-1 keys have no velocity).
 
+### Step Mode (hold LFO)
+
+Drum step sequencer into the selected Live clip: white keys 01–16 are the 16 steps, the black keys are DRUM (hold), page ◀ ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW, COPY, CLEAR and velocity down / up. Key lights: note = on, playhead = fast blink. Guide: [ABLETON_REMOTE_SCRIPT.md](ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
+
 ### Drum and Clip Mode: white keys = pads 1–16
 
 White keys 01–08 are pads 1–8 and 09–16 are pads 9–16.
@@ -108,7 +112,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.57-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.58-source.zip'
 .\build.bat fm1 --package
 ```
 

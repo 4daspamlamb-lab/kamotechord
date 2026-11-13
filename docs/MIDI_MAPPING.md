@@ -116,6 +116,18 @@ Tempo from the Remote Script: CC 102 / 103 = Live's tempo × 10 (MSB, LSB). Whil
 
 Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamoteKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
 
+## Step Mode (channel 14, 0.58)
+
+| Direction | Message | Meaning |
+|---|---|---|
+| keyboard → Live | Note 36–51 | step pads 1–16 (press / release) |
+| keyboard → Live | Note 60–76 | DRUM, page ◀, page ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW, COPY, CLEAR, velocity 1–6, velocity down, velocity up |
+| keyboard → Live | CC 127 | 127 = Step Mode started, 0 = ended |
+| Live → keyboard | CC 80–95 | pad colour code |
+| Live → keyboard | CC 96–102 | page, page count, resolution, follow, status, drum view, active drum note |
+
+Channel 14 never reaches the internal synth.
+
 ## Notes received from the host
 
 Note On/Off on channels 1 and 10 coming from the computer light the matching Pad Scale/Drum pads (Move-style). They also play the internal synth unless *Internal synth* is off.

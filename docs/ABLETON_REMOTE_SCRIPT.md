@@ -93,6 +93,45 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 
 All buttons send 127 on press and 0 on release (KNOB BANK is now momentary; its LED lights only while pressed).
 
+## Step Mode: drum step sequencer (0.58)
+
+**Hold CHORD for 0.6 s** (FM-1: hold **LFO**) to enter Step Mode; tap CHORD to go to Clip Mode, hold again to leave. It works on Live's **selected track** (ideally with a Drum Rack) and its **selected clip slot**:
+
+- Every step is written straight into that **session clip** (Live 12 note API), so the result is an ordinary MIDI clip you can edit in the piano roll. Notes you add or remove with the mouse show up on the pads.
+- An **empty slot gets a new 1-bar clip** named after the track.
+- One Drum Rack sound is **active** at a time; steps edit that sound.
+
+**Pads:** the 16 pads are 16 steps of the shown page (1 bar at 1/16). Tap = note on/off.
+
+| Pad colour | Meaning |
+|---|---|
+| amber (brighter = louder) | step with a note |
+| dim amber | inside a longer (tied) note |
+| dim blue (a little brighter on each beat) | empty step |
+| white / green | playhead on an empty step / on a note (only on the shown page) |
+| cyan | step held |
+| very dim red | past the end of the clip |
+| while DRUM is held: white / teal / grey | active drum / Drum Rack pad with a sound / empty pad |
+
+**Function keys**
+
+| Function | SMK-37 key | FM-1 key |
+|---|---|---|
+| **DRUM** (hold): pads show the Drum Rack (bottom row = lowest notes); tap one to make it active; page keys change the bank of 16 | C (lowest) | F# (1st black) |
+| **Page ◀ / ▶** | D / E | G# / A# |
+| **LENGTH** (hold + a step = loop end at that step; hold + page ▶ goes one page past the end to make the clip longer) | F | C# |
+| **DOUBLE** (twice as long, contents copied, like Push's Double Loop) | G | D# |
+| **RESOLUTION** (1/16 → 1/8 → 1/32 → 1/16T → 1/8T, same for every page) | A | F# (2nd) |
+| **FOLLOW** on/off (page follows the playhead; off by default) | B | G# (2nd) |
+| **COPY** (hold + page ◀/▶ = copy the shown page, all drums, onto that page) | C (2nd) | A# (2nd) |
+| **CLEAR** (the active drum on the shown page) | D (2nd) | C# (2nd) |
+| **Velocity**: hold a step + a velocity key; without a held step it sets the velocity for new steps | white keys C–A of the 3rd octave: 30 / 50 / 70 / 90 / 110 / 127 | D# / F# (top): down / up |
+| **Tie / long note**: hold a step and press a later one | pads | white keys |
+
+On the SMK-37 every other key still plays notes (handy for auditioning the selected track). The screen shows the page (e.g. PAGE 2/4), the resolution, FOLLOW, and NO DRUM RACK (steps then use C1) or SELECT A MIDI TRACK.
+
+**Edge cases:** no Drum Rack → steps still work on C1; the clip or track deleted, the selection or the clip length changed with the mouse → the mode rebinds itself (deferred, never inside a Live notification). Messages go to Live's `Log.txt` as `KamoteKeys step: ...` and to the status bar.
+
 ## Move-style note feedback from Ableton
 
 In Pad Scale and Drum Mode, pads light whenever their note sounds: your own pads, ARP steps, the keyboard, **and notes played back by Live**. To see a clip's notes on the pads, set that MIDI track's *MIDI To* to the KamoteKeys port, channel 1 (melodic) or 10 (drums). Turn **Internal synth** off (Patch page) if you do not want KamoteKeys to sound those notes too.

@@ -13,6 +13,8 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
                    ch 15  CC 20/21/22/24/25/27  Start, Stop, Capture MIDI, Undo,
                                              Session Record, Redo (127 press, 0 release)
                    ch 15  CC 23 / 26         Play/Pause, Metronome on/off
+                   ch 14                     Step Mode (drum step sequencer): see
+                                             StepSequencer.py
   Live -> device   ch 16  CC 80..95 = state  clip state of pads 1..16
                    ch 16  CC 126 = 1         protocol hello (script connected)
                    ch 16  CC 102 / 103       Live tempo x 10, MSB then LSB (ARP follows Live)
@@ -32,6 +34,9 @@ from __future__ import absolute_import, print_function, unicode_literals
 from _Framework.ControlSurface import ControlSurface
 from _Framework.ButtonElement import ButtonElement
 from _Framework.InputControlElement import MIDI_NOTE_TYPE, MIDI_CC_TYPE
+
+from .StepSequencer import StepSequencer, STEP_CHANNEL, PAD_NOTE as STEP_PAD_NOTE, PADS as STEP_PADS, \
+    FUNCTION_NOTES as STEP_FUNCTION_NOTES, MODE_CC as STEP_MODE_CC
 
 PROTOCOL = 1
 CLIP_CHANNEL = 15            # MIDI channel 16 (zero based)
@@ -68,6 +73,7 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._ticks = 0
         self._received = False
+        self._step = StepSequencer(self)
         # Standard _Framework controls (as in Ableton's own controller
         # scripts): Live registers them and delivers their messages here.
         with self.component_guard():
@@ -79,6 +85,14 @@ class KamoteKeys(ControlSurface):
                     self._pads.append(button)
             self._sync = ButtonElement(True, MIDI_CC_TYPE, CLIP_CHANNEL, SYNC_CC)
             self._sync.add_value_listener(self._sync_value)
+            # Step Mode (channel 14): step pads, function keys, mode on/off.
+            self._step_buttons = []
+            for note in [STEP_PAD_NOTE + i for i in range(STEP_PADS)] + list(STEP_FUNCTION_NOTES):
+                button = ButtonElement(True, MIDI_NOTE_TYPE, STEP_CHANNEL, note)
+                button.add_value_listener(self._step_value, identify_sender=True)
+                self._step_buttons.append(button)
+            self._step_mode = ButtonElement(True, MIDI_CC_TYPE, STEP_CHANNEL, STEP_MODE_CC)
+            self._step_mode.add_value_listener(self._step_mode_value)
             self._transport_buttons = []
             for cc in TRANSPORT_CCS:
                 button = ButtonElement(True, MIDI_CC_TYPE, TRANSPORT_CHANNEL, cc)
@@ -107,6 +121,18 @@ class KamoteKeys(ControlSurface):
             self._overdub(note - OVERDUB_BASE)
         else:
             self._launch(note - NOTE_BASE)
+
+    def _step_value(self, value, sender):
+        self._first_message()
+        note = sender.message_identifier()
+        if note < STEP_PAD_NOTE + STEP_PADS:
+            self._step.pad(note - STEP_PAD_NOTE, bool(value))
+        else:
+            self._step.function(note, bool(value))
+
+    def _step_mode_value(self, value):
+        self._first_message()
+        self._step.set_active(bool(value))
 
     def _sync_value(self, value):
         self._first_message()
@@ -347,6 +373,7 @@ class KamoteKeys(ControlSurface):
         self._send_highlight(force=True)
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
+        self._step.send_all()
 
     def update_display(self):
         ControlSurface.update_display(self)
@@ -361,6 +388,7 @@ class KamoteKeys(ControlSurface):
             self._send_state(pad)
         self._send_tempo()
         self._send_highlight()
+        self._step.update()              # playhead and changes only
 
     def refresh_state(self):
         ControlSurface.refresh_state(self)
@@ -404,6 +432,7 @@ class KamoteKeys(ControlSurface):
             song.session_record = not song.session_record
 
     def disconnect(self):
+        self._step.disconnect()
         for pad in range(TRACKS * SCENES):
             self._send_midi((0xB0 | CLIP_CHANNEL, STATE_CC + pad, EMPTY))
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, 0))

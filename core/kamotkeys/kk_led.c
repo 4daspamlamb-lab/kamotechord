@@ -48,6 +48,29 @@ enum { ROOT_CYAN = 0x60f0ff, GREEN = 0x00ff3c };
 enum { IDLE_CHORD = 250, IDLE_SPARE = 125,   /* spare = half of chord (0.48) */ IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
 
 /* Clip Mode: the colour follows Ableton's real slot state. */
+/* Step Mode (0.58): the Remote Script sends a code per pad (KK_STEPC_*). */
+static uint32_t step_colour(unsigned pad, unsigned *level)
+{
+    unsigned code = kk_midi_step_code(pad);
+    if (!kk_midi_host_protocol()) { *level = 40; return 0x8090a0; }         /* no script */
+    if (kk_pad_lit(pad) && code < KK_STEPC_DRUM_EMPTY) { *level = LIT; return 0x40e0ff; }   /* pressed */
+    if (code >= KK_STEPC_NOTE_1 && code <= KK_STEPC_NOTE_6) {                /* note: amber, velocity = brightness */
+        *level = 280 + (code - KK_STEPC_NOTE_1) * 144; return 0xff7a00;
+    }
+    switch (code) {
+    case KK_STEPC_EMPTY: *level = 90; return 0x5070b0;                       /* empty step: dim blue */
+    case KK_STEPC_EMPTY_BEAT: *level = 170; return 0x5070b0;                 /* first step of a beat */
+    case KK_STEPC_TIE: *level = 200; return 0xff7a00;                        /* inside a long note */
+    case KK_STEPC_PLAY_EMPTY: *level = 600; return 0xffffff;                 /* playhead */
+    case KK_STEPC_PLAY_NOTE: *level = LIT; return 0x30ff50;                  /* playhead on a note */
+    case KK_STEPC_HELD: *level = LIT; return 0x40e0ff;
+    case KK_STEPC_DRUM_EMPTY: *level = 40; return 0x808080;                  /* Drum Rack pad, no sample */
+    case KK_STEPC_DRUM_LOADED: *level = 330; return 0x00d0b0;                /* Drum Rack pad with a sound */
+    case KK_STEPC_DRUM_ACTIVE: *level = LIT; return 0xffffff;                /* active drum */
+    case KK_STEPC_DRUM_ACTIVE_EMPTY: *level = 500; return 0xa040ff;
+    default: *level = 25; return 0xff2010;                                   /* outside the clip */
+    }
+}
 static uint32_t clip_colour(unsigned pad, unsigned *level)
 {
     unsigned state = kk_midi_clip_state(pad), held = kk_pad_lit(pad);
@@ -82,6 +105,7 @@ uint32_t kk_led_logical(unsigned pad, unsigned *level)
 {
     unsigned lit = kk_pad_lit(pad);
     if (kk.mode == KK_MODE_CLIP) return clip_colour(pad, level);
+    if (kk.mode == KK_MODE_STEP) return step_colour(pad, level);
     if (kk.mode == KK_MODE_PAD_SCALE) {
         unsigned channel;
         int note = kk_pad_note(pad, &channel);
@@ -109,7 +133,7 @@ unsigned kk_led_button(unsigned id)
 {
     unsigned pressed = (kk.buttons >> id) & 1U;
     switch (id) {
-    case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP ? 2 : 1;        /* Clip Mode */
+    case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP || kk.mode == KK_MODE_STEP ? 2 : 1;   /* Clip / Step */
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
     case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */
