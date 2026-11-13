@@ -1,4 +1,4 @@
-# KamotKeys 0.40 for M-VAVE SMK-37 Pro / Elite
+# KamotKeys 0.41 for M-VAVE SMK-37 Pro / Elite
 
 KamotKeys is a performance firmware for the M-VAVE SMK-37 Pro and SMK-37 Elite, built on **SMK37 OPEN V01**. It keeps SMK37 OPEN's hardware drivers, native USB MIDI, Bluetooth LE MIDI, Bluetooth audio, flash storage and the official browser updater. It replaces the sequencer/editor application with KamotKeys: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, ARP and Note Repeat, four dedicated faders, Ableton Live transport buttons, an animated piano display, RGB pad lighting and an Aurora boot.
 
@@ -183,7 +183,8 @@ More: [ARP page](docs/screenshots/11_arp_page.png), [Patch page](docs/screenshot
 A single renderer ([`kk_led.c`](app/kamotkeys/kk_led.c)) decides every pad's colour and level (mode colour, then idle/pressed level, then the Fader 4 multiplier) and hands it to the board driver. Levels: chord pads 12 % idle, spare pads 4 %, scale/drum pads 10 %, 100 % when pressed or sounding. The peak is 160/255, scaled by Fader 4, and every channel value is rounded to a multiple of 4 (see below).
 
 **How the pads are driven (lessons from hardware testing on an SMK-37 Pro):**
-- Channel values with bit 0 or 1 set made the pads flash on key presses; values that are multiples of 4 are always steady. KamotKeys therefore rounds every channel to a multiple of 4 (a lit channel is at least 4).
+- Root cause (0.41): the gap in front of each pad frame (SMK37 OPEN: 36 zero bytes, about 45 us) was shorter than the LEDs' reset time (about 280 us), so a stray pulse when the shared SPI line switched from the LCD to the pads shifted the whole frame by a bit. Pad 1 blinked green, and colour bits spilled between pads at the start and end of the chain. KamotKeys drives the line low before switching and sends 320 zero bytes (about 400 us) before every frame.
+- Channel values are still rounded to multiples of 4 (a lit channel is at least 4), which made the remaining errors harmless before the root cause was found.
 - A low peak brightness (64) left the dim idle colours too few steps to keep their hue, so the peak is 160.
 - Changed colours go out at once and the whole frame is resent every 25 ms (at most 50 frames per second).
 - The LED bit timing can be chosen on the Diagnostics page (E2, 8 presets, saved; 0 = SMK37 OPEN original, and all presets worked on the test unit).

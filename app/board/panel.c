@@ -6,7 +6,14 @@
 #include "lcd.inc"
 
 static uint16_t button_leds;
-static uint8_t rgb_buffer[420] __attribute__((aligned(4)));
+/* KamotKeys 0.41: 320 leading zero bytes (~400 us low at the default timing)
+ * form a valid WS2812 reset (>= 280 us) in front of every frame, so a stray
+ * pulse when SPI1 is switched over can no longer prepend a bit and shift the
+ * whole chain (pad 1 blinking green, colour bits spilling between pads).
+ * SMK37 OPEN's 36 bytes (~45 us) were shorter than the reset time. Four
+ * trailing zero bytes leave the line low. */
+enum { RGB_LEAD = 320, RGB_TAIL = 4 };
+static uint8_t rgb_buffer[RGB_LEAD + 16 * 24 + RGB_TAIL] __attribute__((aligned(4)));
 static uint32_t rgb_colors[16];
 static unsigned rgb_dirty=0xffff;
 static const uint8_t rgb_map[16]={0,15,14,13,12,11,10,9,1,2,3,4,5,6,7,8};
@@ -61,10 +68,8 @@ void smk37_rgb_timing(unsigned timing)
 volatile uint32_t smk37_rgb_frames;   /* pad frames sent (diagnostics) */
 void smk37_rgb_service(void)
 {
-    /* KamotKeys: WS2812-type pads latch a frame only after the data line has
-     * been idle for ~280 us; the 36 leading zero bytes give ~45 us. Frames
-     * sent back to back (animations, fades) were read as one long stream:
-     * random colours and strobing. Keep >= 8 ms between frames (<= 125 fps). */
+    /* KamotKeys: keep >= 20 ms between frames (<= 50 fps); every frame starts
+     * with a full-length reset (RGB_LEAD). */
     static uint32_t rgb_sent;
     if(!rgb_dirty || fm1_screen_pending())return;
     if((uint32_t)(fm1_millis()-rgb_sent)<20U)return;   /* <= 50 frames/s (0.36) */
@@ -74,7 +79,7 @@ void smk37_rgb_service(void)
     for(unsigned i=0;i<16;++i) {
         if(!(rgb_dirty&(1U<<i)))continue;
         unsigned rgb=rgb_colors[i],grb=((rgb&0xff00)<<8)|((rgb>>8)&0xff00)|(rgb&255);
-        uint8_t *bits=rgb_buffer+36+24*rgb_map[i];
+        uint8_t *bits=rgb_buffer+RGB_LEAD+24*rgb_map[i];
         for(unsigned b=0;b<24;++b)bits[b]=(uint8_t)((grb>>(23-b))&1U?one:zero);
     }
     /* One task owns SPI1: finish LCD, keep CS high during RGB DMA, restore.
@@ -83,6 +88,9 @@ void smk37_rgb_service(void)
      * LEDs, and let the last LED bits drain before routing it back, so no
      * stray pulses reach the LED chain (which garbles every pad). */
     fm1_lcd_deselect();spi_settle(20);
+    /* With the LCD deselected, clock out one zero byte so the SPI data line
+     * idles low before it is routed to the LED chain (no high glitch). */
+    LCD_REGISTER(0)|=LCD_ACK;LCD_REGISTER(8)=0;fm1_lcd_wait();
     JL_IOMAP->CON1|=BIT(4);JL_SPI1->BAUD=rgb_timings[rgb_timing].baud;
     JL_SPI1->CON|=BIT(14);fm1_device_fence();
     JL_SPI1->ADR=(uint32_t)(uintptr_t)rgb_buffer;JL_SPI1->CNT=sizeof rgb_buffer;
