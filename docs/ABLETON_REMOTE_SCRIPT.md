@@ -23,6 +23,7 @@ Remove any manual MIDI mappings of the KamotKeys transport buttons; the script n
 - When Live starts, its status bar (bottom of the window) briefly shows **KamotKeys Remote Script loaded**.
 - In Clip Mode, every pad press shows what happened, e.g. `KamotKeys pad 3: Bass 3 / clip 1 - launch`, `... - stop`, `... empty slot, track not armed: nothing to do` or `... track 7 does not exist`.
 - On the keyboard, the header shows **LIVE** and the pads show clip colours (grey only = no script answering).
+- **Most common problem:** the Control Surface row shows Input/Output **None**. That happens when the keyboard's port name changed (for example from "Felucca" under older firmware to "SMK37 Open"). Select **SMK37 Open** for both, and tick **Remote** on the SMK37 Open output port. Live's `Log.txt` shows the current setting as `MidiRemoteScript N [Control Surface="KamotKeys" Input=... Output=...]`.
 - Nothing in the status bar when you press a pad: the script is not receiving the pads (since 0.38 the script uses Live's standard control objects; Log.txt shows `KamotKeys: first message received from the keyboard` once input arrives). Check that the Control Surface's Input is the port the keyboard sends on (with MIDI OUT = AUTO, that is **USB** whenever USB is connected), and look for `KamotKeys` in Live's `Log.txt` (macOS: `~/Library/Preferences/Ableton/Live <version>/Log.txt`).
 - A launched clip blinks until Live's global launch quantization point (e.g. the next bar), then plays.
 

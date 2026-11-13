@@ -127,6 +127,14 @@ class KamotKeys(ControlSurface):
         self._status('KamotKeys pad %d: %s %d / clip %d - %s' % (
             pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1, action))
 
+    # Lets Live preselect the keyboard's port when the script is chosen. The
+    # SMK37 OPEN / KamotKeys firmware names its USB MIDI port "SMK37 Open".
+    def suggest_input_port(self):
+        return 'SMK37 Open'
+
+    def suggest_output_port(self):
+        return 'SMK37 Open'
+
     def _status(self, text):
         """Live's status bar (bottom of the window)."""
         try:
