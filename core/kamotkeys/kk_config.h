@@ -13,7 +13,7 @@
 #include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.56" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.57" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -43,7 +43,9 @@ enum {
      * applied when the LSB arrives. While received, ARP follows Live. */
     KK_HOST_TEMPO_MSB_CC = 102, KK_HOST_TEMPO_LSB_CC = 103,
     /* host -> device (0.55): first scene shown on the 8 x 2 grid (0 based). */
-    KK_HOST_SCENE_CC = 104
+    KK_HOST_SCENE_CC = 104,
+    /* host -> device (0.57): pad of Live's highlighted slot (0..15), 127 = none. */
+    KK_HOST_HIGHLIGHT_CC = 105
 };
 enum {
     KK_CLIP_EMPTY = 0, KK_CLIP_STOPPED = 1, KK_CLIP_PLAYING = 2, KK_CLIP_QUEUED = 3,

@@ -42,6 +42,9 @@ enum { KK_CLIP_SELECT_KEY = 6, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 32, KK
 /* Last BLE error code this SDK reports. */
 #define KK_BLE_LAST_ERROR FM1_BLE_BOND_SAVE_FAILED
 
+/* 16 RGB pads (ripple lights, light shows). */
+#define KK_HAS_RGB_PADS 1
+
 /* Board event interface (scan.c) and SMK-37 hooks. */
 #include "smk37_controls.h"
 #endif

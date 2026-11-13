@@ -1,5 +1,12 @@
 # Changelog
 
+## KamoteKeys 0.57 (development snapshot)
+
+- **Highlighted clip in violet:** the pad of Live's selected (highlighted) slot turns violet; if it is playing, queued or recording it pulses between its state colour and violet. FM-1: the key blinks slowly. Needs the updated Remote Script (CC 105).
+- **Ripple lights (SMK-37):** three quick taps on SEQ REC toggle them. Pads and keys keep working; every press sends a coloured ring across the pads from where you pressed (keys map left to right). Holding SEQ REC still runs the light shows.
+- **Pad sensitivity 1-7, much stronger:** new velocity curves; 3 is unchanged (linear), 5 is far more sensitive than before, 7 makes a light tap a strong note (Patch page, E4).
+- **Understated boot:** a thin teal-to-violet line drawn out on a dark screen, the name fading in, one dim wave across the pads.
+
 ## KamoteKeys 0.56 (development snapshot)
 
 - **Launch selected scene moves to the fourth black key** (SMK-37 G#, FM-1 C#); scene up / down stay on the last two black keys; the top F# (FM-1 top C#) plays its note again.

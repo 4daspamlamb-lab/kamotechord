@@ -161,7 +161,7 @@ static unsigned pad_led(unsigned pad)
         case KK_CLIP_PLAYING: return 1;
         case KK_CLIP_RECORDING: return blink(100);
         case KK_CLIP_QUEUED: case KK_CLIP_QUEUED_RECORD: return blink(250);
-        default: return 0;
+        default: return (int)pad == kk_midi_host_highlight() ? blink(600) : 0;   /* highlighted: slow blink */
         }
     }
     return kk_pad_lit(pad);   /* chord keys: held / latched; drum pads: sounding */

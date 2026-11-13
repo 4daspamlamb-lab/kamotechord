@@ -62,15 +62,17 @@ static uint32_t show(unsigned pattern, unsigned pad, unsigned t)
     }
     }
 }
-/* Aurora Flow: deep blue, teal, cyan, purple and a hint of pink. */
+/* Boot (0.57, understated): one dim teal-to-violet wave crosses the pads
+ * from left to right, then the normal colours fade in. */
 static uint32_t aurora(unsigned pad, unsigned ms)
 {
-    static const uint32_t palette[6] = {0x0a1450, 0x00a08c, 0x00dcff, 0x6a28d8, 0xd04aa0, 0x0a1450};
     unsigned row = pad / 8, col = pad % 8;
-    unsigned position = (col * 72 + row * 110 + ms * 255 / 700 + kk_sin8(ms / 5 + col * 20) / 4) % 1280;
-    unsigned index = position / 256, t = position % 256;
-    uint32_t c = mix(palette[index], palette[index + 1], t);
-    unsigned b = 110 + kk_sin8(ms / 3 + row * 90 + col * 25) * 145 / 255;
+    /* Wave head in 1/256 pad units: from column -2 to 10 over the boot. */
+    int head = -512 + (int)(ms * 3072U / KK_BOOT_MS) - (int)row * 64;
+    int d = (int)col * 256 - head; if (d < 0) d = -d;
+    unsigned b = d < 512 ? (unsigned)(512 - d) * 255U / 512U : 0;
+    b = b * b / 255U * 120U / 255U;                          /* soft, at most ~47 % */
+    uint32_t c = mix(0x00c8b4, 0x8a4cff, col * 255U / 7U);
     return scale(c, b);
 }
 
@@ -104,6 +106,57 @@ static uint32_t round_rgb(uint32_t c)
 {
     return rgb(led_level((c >> 16) & 255), led_level((c >> 8) & 255), led_level(c & 255));
 }
+/* ------------------------------------------------------------- ripples */
+/* Ripple lights (0.57, toggled with three quick SEQ REC presses): each key
+ * or pad press starts a ring that spreads across the 8 x 2 pads from where
+ * it was pressed (keys map left to right onto the 8 columns) and fades out.
+ * Drawn over the normal colours; the pads keep working. */
+enum { RIPPLES = 8, RIPPLE_MS = 900, RIPPLE_SPEED = 11 /* pads per second */ };
+static struct { uint32_t start; int16_t x, y; uint16_t hue; uint8_t strength; } ripples[RIPPLES];
+static unsigned ripple_next;
+void kk_led_ripple(unsigned kind, unsigned id, unsigned velocity)
+{
+    int x, y;
+    if (kind) { x = (int)(id % 8) * 1000; y = (int)(id / 8) * 1000; }
+    else { x = (int)(id * 7000U / (KK_KEYS - 1)); y = 500; }
+    unsigned i = ripple_next++ % RIPPLES;
+    ripples[i].start = fm1_millis(); ripples[i].x = (int16_t)x; ripples[i].y = (int16_t)y;
+    ripples[i].hue = (uint16_t)(x * 65535 / 7000 + 20000);
+    ripples[i].strength = (uint8_t)(110 + (velocity > 127 ? 127 : velocity) * 145 / 127);
+}
+static unsigned isqrt(unsigned v)
+{
+    unsigned r = 0, bit = 1U << 30;
+    while (bit > v) bit >>= 2;
+    while (bit) { if (v >= r + bit) { v -= r + bit; r = (r >> 1) + bit; } else r >>= 1; bit >>= 2; }
+    return r;
+}
+/* Strongest ripple colour on a pad now (0 = none), at full scale. */
+static uint32_t ripple_colour(unsigned pad)
+{
+    uint32_t now = fm1_millis(), best = 0; unsigned best_b = 0;
+    int px = (int)(pad % 8) * 1000, py = (int)(pad / 8) * 1000;
+    for (unsigned i = 0; i < RIPPLES; ++i) {
+        uint32_t age = now - ripples[i].start;
+        if (!ripples[i].strength || age >= RIPPLE_MS) continue;
+        int dx = px - ripples[i].x, dy = py - ripples[i].y;
+        int d = (int)isqrt((unsigned)(dx * dx + dy * dy));          /* milli-pads */
+        int radius = (int)(age * RIPPLE_SPEED), off = d - radius; if (off < 0) off = -off;
+        if (off >= 900) continue;
+        unsigned ring = (unsigned)(900 - off) * 255U / 900U;          /* ring profile */
+        unsigned fade = (RIPPLE_MS - age) * 255U / RIPPLE_MS;
+        unsigned b = ring * ring / 255U * fade / 255U * ripples[i].strength / 255U;
+        if (b > best_b) { best_b = b; best = scale(hue16(ripples[i].hue + age * 20U), b); }
+    }
+    return best;
+}
+static uint32_t brighter(uint32_t a, uint32_t b)
+{
+    unsigned r = (a >> 16) > (b >> 16) ? (a >> 16) & 255 : (b >> 16) & 255;
+    unsigned g = ((a >> 8) & 255) > ((b >> 8) & 255) ? (a >> 8) & 255 : (b >> 8) & 255;
+    unsigned l = (a & 255) > (b & 255) ? a & 255 : b & 255;
+    return rgb(r, g, l);
+}
 uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
 {
     if (pad >= KK_PADS || kk_led_test == 3) return 0;
@@ -118,6 +171,10 @@ uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
         /* Blend the last aurora frame into the normal pad colours. */
         unsigned t = (boot_ms - KK_BOOT_MS) * 255U / KK_BOOT_FADE_MS;
         return output(mix(aurora(pad, boot_ms), scale(c, level * 255U / 1000U), t), 1000);
+    }
+    if (kk.ripple) {
+        uint32_t r = ripple_colour(pad);
+        if (r) return brighter(output(c, level), output(r, 1000));
     }
     return output(c, level);
 }

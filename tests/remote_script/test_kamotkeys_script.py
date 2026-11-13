@@ -77,7 +77,7 @@ class Slot(object):
     def delete_clip(self): self.clip = None; self.track.log.append('delete')
 
 class Track(object):
-    def __init__(self): self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
+    def __init__(self): self._live_ptr = id(self); self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
 
 class Scene(object):
     def __init__(self, song): self.song = song
@@ -228,6 +228,15 @@ class T(unittest.TestCase):
         for _ in range(5): deliver((0xBE, 29, 127)); deliver((0xBE, 29, 0))      # up, clamped at scene 1
         self.assertIs(self.song.view.selected_scene, self.song.scenes[0]); self.assertEqual(self.s._scene, 0)
 
+    def test_highlight_follows_selection(self):
+        self.s.update_display(); self.s.sent.clear()
+        self.tap(84 + 8 + 2); self.s.update_display()      # select track 3, scene 2 -> pad 11
+        self.assertIn((0xBF, 105, 10), self.s.sent)
+        self.s.sent.clear(); deliver((0xBE, 28, 127)); deliver((0xBE, 28, 0))   # scene down: grid 2-3
+        self.assertIn((0xBF, 105, 2), self.s.sent)          # scene 2 is now the top row
+        self.s.sent.clear(); self.song.view.selected_track = None; self.s.update_display()
+        self.assertIn((0xBF, 105, 127), self.s.sent)        # nothing highlighted
+
     def test_tempo_follows_live(self):
         self.assertIn((0xBF, 102, 1200 >> 7), self.s.sent); self.assertIn((0xBF, 103, 1200 & 127), self.s.sent)
         self.s.sent.clear(); self.song.tempo = 98.5; self.s.update_display()
@@ -236,7 +245,7 @@ class T(unittest.TestCase):
 
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 20)   # hello, scene, tempo x2, 16 states
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 21)   # hello, scene, tempo x2, highlight, 16 states
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])

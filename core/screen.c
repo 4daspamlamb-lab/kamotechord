@@ -462,7 +462,7 @@ static void draw_patch(void)
     char vel[8]; decimal(vel, kk.velocity);
     row(5, KK_K4 " VELOCITY", vel, 0);
 #else
-    static const char *const curves[5] = {"1 HARD", "2", "3 NORMAL", "4", "5 SOFT"};
+    static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7 LIGHTEST"};
     row(5, KK_K4 " PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1], 0);
 #endif
     text(12, 198, KK_K1 " PATCH   MIDI OUT AUTO = USB WHEN", 1, DIM);
@@ -611,39 +611,44 @@ static void draw_diag(void)
  * the KamoteKeys wordmark and version fading in, then a short status line. */
 static void draw_boot(void)
 {
+    /* Understated boot (0.57): near-black, one hairline drawn out from the
+     * centre in a teal-to-violet gradient with a soft glow, the wordmark
+     * fading in above it, the version below; everything eases out. */
     const struct widget *w = &widgets[W_BOOT];
     uint32_t t = now_ms - boot_started;
-    unsigned fade = t < 150 ? t * 255 / 150 : t > KK_BOOT_MS - 200 ? (KK_BOOT_MS - t) * 255 / 200 : 255;
-    if (t >= KK_BOOT_MS) fade = 0;
-    /* Teal, cyan and purple ribbons with a thin pink accent ribbon. */
-    static const uint32_t colours[4] = {0x00b4a0, 0x00d8ff, 0x8a3cdc, 0xd04aa0};
-    static const uint8_t widths[4] = {12, 12, 12, 5};
-    int centre = w->y + w->h / 2;
-    for (int x = clip_x0; x < clip_x1; ++x) {
-        int ys[4];
-        for (unsigned k = 0; k < 4; ++k) {
-            unsigned phase = (unsigned)(x * (2 + (int)k) / 3 + (int)(t * (3 + k) / 16) + k * 85);
-            ys[k] = centre + ((int)kk_sin8(phase) - 128) * (24 + 6 * (int)k) / 128 +
-                    ((int)kk_sin8((unsigned)x / 2 + t / 9 + k * 40) - 128) / 16 - 10 + (int)k * 10;
-        }
-        for (int y = clip_y0; y < clip_y1; ++y) {
-            unsigned r = 4, g = 6, b = 14;   /* deep night background */
-            for (unsigned k = 0; k < 4; ++k) {
-                int d = y - ys[k], width = widths[k]; if (d < 0) d = -d;
-                if (d >= width) continue;
-                unsigned i = (unsigned)(width - d) * (unsigned)(width - d) * fade / (unsigned)(width * width) / (k == 3 ? 2 : 1);
-                r += ((colours[k] >> 16) & 255) * i / 400; g += ((colours[k] >> 8) & 255) * i / 400;
-                b += (colours[k] & 255) * i / 400;
-            }
-            dot(x, y, C565(r > 255 ? 255 : r, g > 255 ? 255 : g, b > 255 ? 255 : b));
+    unsigned out = t > KK_BOOT_MS - 220 ? (t >= KK_BOOT_MS ? 0 : (KK_BOOT_MS - t) * 255 / 220) : 255;
+    int centre = w->y + w->h / 2, line_y = centre + 14;
+    fill(0, w->y, 240, w->h, BG);
+    /* Hairline: half-length eases out over 520 ms, then holds. */
+    unsigned p = t < 520 ? t * 1000 / 520 : 1000;
+    unsigned ease = 1000 - (1000 - p) * (1000 - p) / 1000;          /* ease-out quad */
+    int half = (int)(ease * 104 / 1000);
+    for (int x = 120 - half; x < 120 + half; ++x) {
+        unsigned k = (unsigned)(x - 16) * 255 / 208;                 /* 0 teal .. 255 violet */
+        unsigned r = (0x00 * (255 - k) + 0x8a * k) / 255, g = (0xc8 * (255 - k) + 0x4c * k) / 255,
+                 b = (0xb4 * (255 - k) + 0xff * k) / 255;
+        int d = x - 120; if (d < 0) d = -d;
+        unsigned edge = half ? 255 - (unsigned)d * 200 / (unsigned)half : 255;   /* brighter centre */
+        unsigned a = edge * out / 255;
+        dot(x, line_y, C565(r * a / 255, g * a / 255, b * a / 255));
+        dot(x, line_y - 1, C565(r * a / 1530, g * a / 1530, b * a / 1530));     /* faint glow */
+        dot(x, line_y + 1, C565(r * a / 1530, g * a / 1530, b * a / 1530));
+    }
+    /* A small travelling highlight on the line, once. */
+    if (t > 200 && t < 900) {
+        int hx = 120 - 104 + (int)((t - 200) * 208 / 700);
+        for (int dx = -6; dx <= 6; ++dx) {
+            int x = hx + dx; if (x < 120 - half || x >= 120 + half) continue;
+            unsigned a = (unsigned)(6 - (dx < 0 ? -dx : dx)) * 40 * out / 255;
+            dot(x, line_y, blend565(C565(30, 40, 60), TEXT, a > 255 ? 255 : a));
         }
     }
-    unsigned logo = t < 250 ? 0 : t < 600 ? (t - 250) * 255 / 350 : 255;
-    if (t > KK_BOOT_MS - 200) logo = logo * fade / 255;
-    if (logo) text_center(120, centre - 18, KAMOTKEYS_NAME, 4, blend565(C565(4, 6, 14), TEXT, logo));
-    unsigned ver = t < 550 ? 0 : t < 800 ? (t - 550) * 255 / 250 : 255;
-    if (t > KK_BOOT_MS - 200) ver = ver * fade / 255;
-    if (ver) text_center(120, centre + 18, KAMOTKEYS_VERSION, 2, blend565(C565(4, 6, 14), CYAN, ver));
+    unsigned logo = t < 300 ? 0 : t < 750 ? (t - 300) * 255 / 450 : 255;
+    logo = logo * out / 255;
+    if (logo) text_center(120, centre - 16, KAMOTKEYS_NAME, 3, blend565(BG, TEXT, logo));
+    unsigned ver = t < 600 ? 0 : t < 900 ? (t - 600) * 255 / 300 : 255;
+    ver = ver * out / 255;
+    if (ver) text_center(120, line_y + 10, KAMOTKEYS_VERSION, 1, blend565(BG, DIM, ver));
 }
 static void draw_boot_text(void)
 {
@@ -877,7 +882,7 @@ static void page_input(void)
 #ifdef KK_FIXED_VELOCITY
         if ((d = take(3))) kk_edit_velocity(d);
 #else
-        if ((d = take(3))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, 5); kk_settings_touch(); }
+        if ((d = take(3))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
 #endif
         for (unsigned i = 4; i < 7; ++i) (void)take(i);
         break;
@@ -1006,6 +1011,8 @@ void groove_screen_control(void)
         for (unsigned i = 0; i < ble_status.count && i < FM1_BLE_MAX_DEVICES; ++i) (void)fm1_ble_get_device(i, &ble_devices[i]);
 
     page_input();
+    static uint8_t ripple_shown;
+    if (kk.ripple != ripple_shown) { ripple_shown = kk.ripple; if (!booting) say(kk.ripple ? "RIPPLE LIGHTS ON" : "RIPPLE LIGHTS OFF", 1500); }
     follow_notes();
     if (kk.page == KK_PAGE_PATCH) refresh_patch_name();
     if (!booting && (kk.page != shown_page || kk.screen_dim != shown_dim)) {

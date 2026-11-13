@@ -25,6 +25,9 @@ void kk_led_service(uint32_t boot_ms);
 enum { KK_LED_TESTS = 5 };
 extern uint8_t kk_led_test;
 const char *kk_led_test_name(unsigned test);
+/* Ripple lights (devices with RGB pads): a key (kind 0) or pad (kind 1)
+ * press starts a ring of light spreading across the pads. */
+void kk_led_ripple(unsigned kind, unsigned id, unsigned velocity);
 /* Sine 0..255 over phase 0..255 (128 = zero), shared with the LCD aurora. */
 unsigned kk_sin8(unsigned phase);
 #endif

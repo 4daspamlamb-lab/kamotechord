@@ -506,10 +506,12 @@ static void test_arp_keys_and_persistence(void)
     CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
     {
         unsigned mono = 1;
-        for (unsigned lvl = 1; lvl <= 5; ++lvl) {
+        for (unsigned lvl = 1; lvl <= KK_PAD_SENSITIVITY_MAX; ++lvl) {
             kk.pad_sensitivity = (uint8_t)lvl;
             for (unsigned v = 2; v <= 127; ++v) mono &= kk_pad_curve(v) >= kk_pad_curve(v - 1);
         }
+        kk.pad_sensitivity = 7;
+        CHECK(kk_pad_curve(20) >= 65 && kk_pad_curve(10) >= 50 && kk_pad_curve(127) == 127, "0.57 level 7: tap 20 -> %u", kk_pad_curve(20));
         kk.pad_sensitivity = 5;
         CHECK(mono, "every curve is monotonic");
     }
@@ -594,7 +596,7 @@ static void test_display(void)
     fader(3, 8); frames(120, 2); shot("14_main_dimmed"); fader(3, 127); frames(120, 2);
     btn(KK_BTN_REC, 1); fader(0, 70);
     for (unsigned p = 0; p < 8; ++p) {
-        frames(40, 5); char name[32]; snprintf(name, sizeof name, "15_lightshow_%u", kk.anim_pattern + 1); shot(name);
+        frames(60, 5); char name[32]; snprintf(name, sizeof name, "15_lightshow_%u", kk.anim_pattern + 1); shot(name);
         btn(KK_BTN_REC, 0); btn(KK_BTN_REC, 1);
     }
     btn(KK_BTN_REC, 0);
@@ -700,6 +702,13 @@ static void test_031(void)
           out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top A# / G# and low G# -> scene down / up / launch, no notes");
     host_clear(); key(30, 100); key(30, 0);
     CHECK(out_count(USB, 0x90, 48 + 30) == 1, "top F# plays its note again in Clip Mode");
+    /* 0.57: Live's highlighted slot shows violet (not amber/yellow). */
+    host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 5, KK_CLIP_STOPPED); host_in(0xBF, KK_HOST_HIGHLIGHT_CC, 5);
+    settle();
+    { unsigned r = (host_rgb[5] >> 16) & 255, g = (host_rgb[5] >> 8) & 255, b = host_rgb[5] & 255;
+      CHECK(kk_midi_host_highlight() == 5 && b > r && r > g * 2 && b >= KK_RGB_PEAK / 3, "highlighted pad violet (%06x)", host_rgb[5]); }
+    host_in(0xBF, KK_HOST_HIGHLIGHT_CC, 127); settle();
+    CHECK(kk_midi_host_highlight() < 0 && (host_rgb[5] >> 16) < 8, "no highlight: stopped = dim blue again (%06x)", host_rgb[5]);
     host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_HOST_SCENE_CC, 4);
     CHECK(kk_midi_host_scene() == 4, "grid follows the script's scene offset");
     frames(20, 5); shot("18_clip_scene5");
@@ -741,6 +750,29 @@ static void test_031(void)
 }
 
 /* 0.54: ARP follows Ableton's tempo (Remote Script CC 102/103 on ch 16). */
+/* 0.57: three quick SEQ REC taps toggle ripple lights; pads keep working. */
+static void test_ripple(void)
+{
+    boot(); settle();
+    unsigned pattern = kk.anim_pattern;
+    tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC);
+    CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "3 quick taps -> ripple on, pattern unchanged");
+    frames(5, 5); uint32_t idle = host_rgb[6];
+    host_clear(); pad(1, 100);
+    CHECK(!kk.anim_active, "pad still plays (no light show)");
+    frames(16, 5);                                  /* ~80 ms: ring around pad 1 */
+    CHECK(host_rgb[1] != 0 && host_rgb[1] != idle, "ripple reaches the neighbouring pad (%06x)", host_rgb[1]);
+    pad(1, 0); frames(60, 25);
+    CHECK(host_rgb[6] == idle, "ripple fades away (%06x vs %06x)", host_rgb[6], idle);
+    host_clear(); key(36, 100); key(36, 0);
+    CHECK(out_count(USB, ON1, -1) == 1, "keys still play with ripples on");
+    btn(KK_BTN_REC, 1); frames(30, 10); btn(KK_BTN_REC, 0);
+    CHECK(kk.ripple, "holding SEQ REC (light show) does not count as a tap");
+    frames(60, 10);
+    tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC);
+    CHECK(!kk.ripple, "3 quick taps again -> off");
+}
+
 static void test_live_tempo(void)
 {
     boot();
@@ -774,6 +806,7 @@ int main(void)
     test_display();
     test_031();
     test_live_tempo();
+    test_ripple();
     printf("%u checks, %u failures\n", checks, failures);
     return failures != 0;
 }

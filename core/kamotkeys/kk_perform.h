@@ -24,6 +24,7 @@ struct kk_state {
     uint16_t latched_mods;                   /* chord modifiers held by LOCK     */
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
+    uint8_t ripple;                          /* SMK-37 ripple lights (3 x SEQ REC), not saved */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
     uint8_t rgb_timing;                      /* pad LED timing preset (saved)  */
@@ -65,8 +66,9 @@ const char *kk_mode_name(unsigned mode);
 /* Velocity after the Fader 1 override (natural = physical velocity). */
 unsigned kk_velocity(unsigned natural);
 unsigned kk_velocity_override(void);   /* 0 = natural, else 1..127 */
-/* Pad velocity curve: 1 = harder (needs more force) .. 3 = linear .. 5 =
+/* Pad velocity curve: 1 = harder (needs more force) .. 3 = linear .. 7 =
  * most sensitive (light hits give high velocity). Endpoints are kept. */
+enum { KK_PAD_SENSITIVITY_MAX = 7 };
 unsigned kk_pad_curve(unsigned velocity);
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);

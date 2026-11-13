@@ -63,6 +63,17 @@ static uint32_t clip_colour(unsigned pad, unsigned *level)
     case KK_CLIP_EMPTY: c = 0xb0b0b0; *level = 70; break;
     default: c = 0x8090a0; *level = 40; break;                 /* no Remote Script yet */
     }
+    /* Live's highlighted (selected) slot (0.57): violet. A playing, queued or
+     * recording slot keeps its state colour and pulses towards violet. */
+    if ((int)pad == kk_midi_host_highlight()) {
+        enum { VIOLET = 0xa040ff };
+        unsigned active = state == KK_CLIP_PLAYING || state == KK_CLIP_RECORDING ||
+                          state == KK_CLIP_QUEUED || state == KK_CLIP_QUEUED_RECORD;
+        if (active) {
+            unsigned t = fm1_millis() % 1200U, k = t < 600U ? t * 255U / 600U : (1200U - t) * 255U / 600U;
+            c = mix(c, VIOLET, k * 3U / 4U);
+        } else { c = VIOLET; if (*level < 450) *level = 450; }
+    }
     if (held && *level < 600) { *level = 600; if (state == KK_CLIP_EMPTY || state >= KK_CLIP_UNKNOWN) c = 0xffffff; }
     return c;
 }

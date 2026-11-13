@@ -17,6 +17,7 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
                    ch 16  CC 126 = 1         protocol hello (script connected)
                    ch 16  CC 102 / 103       Live tempo x 10, MSB then LSB (ARP follows Live)
                    ch 16  CC 104             first scene shown on the grid (0 based)
+                   ch 16  CC 105             pad of Live's highlighted slot (0..15), 127 = none
 
 Clip states: 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording,
 5 queued to record, 6 empty slot on an armed track.
@@ -40,6 +41,7 @@ OVERDUB_BASE = NOTE_BASE + 16
 DELETE_BASE = NOTE_BASE + 32
 SELECT_BASE = NOTE_BASE + 48
 SCENE_CC = 104
+HIGHLIGHT_CC = 105
 STATE_CC = 80
 HELLO_CC = 126
 TEMPO_MSB_CC, TEMPO_LSB_CC = 102, 103
@@ -63,6 +65,7 @@ class KamoteKeys(ControlSurface):
         self._sent = [None] * (TRACKS * SCENES)
         self._tempo_sent = None
         self._scene = 0                  # first Live scene shown on the 8 x 2 grid
+        self._highlight_sent = None
         self._ticks = 0
         self._received = False
         # Standard _Framework controls (as in Ableton's own controller
@@ -308,10 +311,40 @@ class KamoteKeys(ControlSurface):
             self._send_midi((0xB0 | CLIP_CHANNEL, TEMPO_MSB_CC, tempo >> 7))
             self._send_midi((0xB0 | CLIP_CHANNEL, TEMPO_LSB_CC, tempo & 127))
 
+    @staticmethod
+    def _same(a, b):
+        """Live hands out a new Python object for a track or scene on every
+        access, so compare the underlying Live objects, not identity."""
+        if a is None or b is None:
+            return False
+        return getattr(a, '_live_ptr', a) == getattr(b, '_live_ptr', b)
+
+    def _highlight_pad(self):
+        """Pad (0..15) showing Live's highlighted slot, or 127."""
+        try:
+            song = self.song()
+            view = song.view
+            tracks = list(song.visible_tracks)[:TRACKS]
+            scenes = list(song.scenes)
+            t = next((i for i, x in enumerate(tracks) if self._same(x, view.selected_track)), None)
+            s = next((i for i, x in enumerate(scenes) if self._same(x, view.selected_scene)), None)
+        except Exception:
+            return 127
+        if t is None or s is None or not (self._scene <= s < self._scene + SCENES):
+            return 127
+        return (s - self._scene) * TRACKS + t
+
+    def _send_highlight(self, force=False):
+        pad = self._highlight_pad()
+        if force or pad != self._highlight_sent:
+            self._highlight_sent = pad
+            self._send_midi((0xB0 | CLIP_CHANNEL, HIGHLIGHT_CC, pad))
+
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
         self._send_midi((0xB0 | CLIP_CHANNEL, SCENE_CC, min(self._scene, 127)))
         self._send_tempo(force=True)
+        self._send_highlight(force=True)
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
 
@@ -327,6 +360,7 @@ class KamoteKeys(ControlSurface):
         for pad in range(TRACKS * SCENES):
             self._send_state(pad)
         self._send_tempo()
+        self._send_highlight()
 
     def refresh_state(self):
         ControlSurface.refresh_state(self)

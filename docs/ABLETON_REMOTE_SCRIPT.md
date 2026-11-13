@@ -62,6 +62,8 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 
 The screen shows OVERDUB or DELETE while the key is held; in Clip Mode these two keys play no note. A plain press on a clip that is being overdubbed turns overdub off (the clip keeps playing); the next press stops it as usual.
 
+**Highlighted slot (0.57).** The pad of Live's highlighted (selected) slot turns violet; a playing, queued or recording clip pulses between its colour and violet. On the FM-1 its key blinks slowly.
+
 **Tempo (0.54).** The script sends Live's tempo to the keyboard. While Live is connected, ARP follows Live (Ableton has priority): the BPM on the screen turns green and the tempo knob shows TEMPO FOLLOWS ABLETON. Without Live, the keyboard uses its own tempo again. Update the Remote Script folder to the 0.50 version: older scripts ignore these presses.
 
 | Clip state | Pad |
