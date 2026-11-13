@@ -9,6 +9,7 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
                    ch 16  CC 127 = 127       "send the full state" (sync request)
                    ch 15  CC 20/21/22/24/25/27  Start, Stop, Capture MIDI, Undo,
                                              Session Record, Redo (127 press, 0 release)
+                   ch 15  CC 23 / 26         Play/Pause, Metronome on/off
   Live -> device   ch 16  CC 80..95 = state  clip state of pads 1..16
                    ch 16  CC 126 = 1         protocol hello (script connected)
 
@@ -37,7 +38,8 @@ SYNC_CC = 127
 TRACKS = 8
 SCENES = 2
 CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO = 20, 21, 22, 24, 25, 27
-TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO)
+CC_PLAY_PAUSE, CC_METRONOME = 23, 26
+TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -259,6 +261,16 @@ class KamoteKeys(ControlSurface):
         elif cc == CC_REDO:
             if song.can_redo:
                 song.redo()
+        elif cc == CC_PLAY_PAUSE:
+            # Pause keeps the position: stop when playing, continue when stopped.
+            if song.is_playing:
+                song.stop_playing()
+            else:
+                song.continue_playing()
+            self._status('KamoteKeys: %s' % ('pause' if not song.is_playing else 'play'))
+        elif cc == CC_METRONOME:
+            song.metronome = not song.metronome
+            self._status('KamoteKeys: metronome %s' % ('on' if song.metronome else 'off'))
         elif cc == CC_RECORD:
             # Session Record: records new clips in armed tracks at the selected
             # scene, or overdubs the playing clips; a second press stops it.

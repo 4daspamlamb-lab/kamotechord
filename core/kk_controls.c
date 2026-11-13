@@ -484,6 +484,7 @@ static unsigned animation_speed(void)
 static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLETON, controller, value); }
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
+static uint8_t left_combo, para_cc = KK_CC_PLAY_PAUSE;
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -500,14 +501,21 @@ static void button(unsigned id, unsigned down, uint32_t now)
     static uint32_t menu_owned;
     if (!down && (menu_owned & bit)) { menu_owned &= ~bit; return; }
     switch (id) {
-    case KK_BTN_PARA: return;                                    /* disabled */
+    /* 0.51: PARA = Ableton Play/Pause; with HOME (LEFT) held = metronome. */
+    case KK_BTN_PARA:
+        if (down) { para_cc = (kk.buttons & (1U << KK_BTN_LEFT)) ? KK_CC_METRONOME : KK_CC_PLAY_PAUSE; left_combo |= para_cc == KK_CC_METRONOME; }
+        ableton(para_cc, down ? 127 : 0); return;
     case KK_BTN_CHORD: if (down) kk_set_mode(KK_MODE_CLIP); return;
     case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
     case KK_BTN_FADER_BANK: ableton(KK_CC_CAPTURE, down ? 127 : 0); return;
+    /* HOME (LEFT): Undo, sent on release unless PARA was pressed while it was
+     * held (HOME + PARA = metronome). */
     case KK_BTN_LEFT:
         if (menu || kk.page == KK_PAGE_DIAG) { if (down) { menu_owned |= bit; kk_ui_bt_key(0); } return; }
-        ableton(KK_CC_UNDO, down ? 127 : 0); return;
+        if (down) left_combo = 0;
+        else if (!left_combo) { ableton(KK_CC_UNDO, 127); ableton(KK_CC_UNDO, 0); }
+        return;
     case KK_BTN_RIGHT:
         if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
         ableton(KK_CC_REDO, down ? 127 : 0); return;

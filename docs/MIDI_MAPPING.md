@@ -23,7 +23,9 @@ All values are identical on USB and Bluetooth. Which port(s) carry them depends 
 | Start | 20 | SEQ PLAY | 127 press / 0 release |
 | Stop | 21 | GLOBE | 127 press / 0 release |
 | Capture MIDI | 22 | FADER BANK | 127 press / 0 release |
-| Undo | 24 | ◀ LEFT | 127 press / 0 release (not while the BT menu is open) |
+| Play/Pause | 23 | PARA (FM-1: SAVE tap) | 127 press / 0 release; the script stops, or continues from the stop position |
+| Undo | 24 | ◀ LEFT (FM-1: HOME + OCT −) | 127 then 0 on release (not after ◀ + PARA, not in the BT menu) |
+| Metronome | 26 | ◀ + PARA (FM-1: HOME + SAVE) | 127 press / 0 release; the script toggles the metronome |
 | Session Record | 25 | KNOB BANK | 127 press / 0 release (the Remote Script toggles Session Record on press) |
 | Redo | 27 | RIGHT ▶ | 127 press / 0 release (not while the BT menu is open) |
 

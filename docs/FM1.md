@@ -45,8 +45,8 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
            ARP     Sustain   Pad Scale  Clip   Stop    Bluetooth
 
  FM-1:     HOME    SAVE      ARP        SEQ        PLAY    REC
- SMK-37:   PATCH   (shift)   FX         SEQ        PLAY    REC
-           Settings shift    Drum       Key Scale  Start   Record / overdub
+ SMK-37:   PATCH   PARA      FX         SEQ        PLAY    REC
+           Settings Play/Pause Drum     Key Scale  Start   Record / overdub
 ```
 
 | FM-1 button | KamoteKeys | Light |
@@ -59,7 +59,7 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 | EDIT | Ableton **Stop** (CC 21) | while pressed |
 | GLO | **Bluetooth menu**; hold 1.5 s: diagnostics | while a menu is open |
 | HOME | tap: **settings** page (patch, synth, MIDI out, velocity); on any other page: back to the main screen | while pressed / on the settings page |
-| SAVE | hold: **K1 velocity, K2 scale, K3 root** (the SMK-37 faders) | while held |
+| SAVE | tap: Ableton **Play/Pause** (CC 23; it sits where the SMK-37 has PARA); hold: **K1 velocity, K2 scale, K3 root** (the SMK-37 faders); turning a knob cancels the Play/Pause | while held |
 | ARP | **Drum** Mode on/off | in Drum Mode |
 | SEQ | **Key Scale** Mode on/off | in Key Scale |
 | PLAY | Ableton **Start** (CC 20) | while pressed |
@@ -67,6 +67,7 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 | HOME + REC | Ableton **Capture MIDI** (CC 22) | |
 | HOME + OCT − | Ableton **Undo** (CC 24) | |
 | HOME + OCT + | Ableton **Redo** (CC 27) | |
+| HOME + SAVE | Ableton **metronome** on/off (CC 26) | |
 
 In the Bluetooth menu, HOME and SAVE are its back / confirm keys (as in FM1 OPEN). HOME used in a combination does not open the settings page.
 
@@ -88,7 +89,7 @@ Saved automatically (about 1.5 s after a change): tempo, ARP settings, scale, ro
 ## MIDI
 
 - **USB and Bluetooth LE MIDI**, used interchangeably: MIDI OUT **AUTO** sends to USB when it is connected, otherwise to BLE, and Note Offs always go everywhere so nothing sticks.
-- Channel 1 keys/chords/Pad Scale, channel 10 Drum, channel 15 Ableton CCs (20 Start, 21 Stop, 22 Capture, 24 Undo, 25 Record, 27 Redo), channel 16 Clip Mode (36–51 launch, 52–67 overdub, 68–83 delete), CC 64 channel 1 Sustain. (The SMK-37's mappable CC pads 102–108 have no key on the FM-1.)
+- Channel 1 keys/chords/Pad Scale, channel 10 Drum, channel 15 Ableton CCs (20 Start, 21 Stop, 22 Capture, 23 Play/Pause, 24 Undo, 25 Record, 26 Metronome, 27 Redo), channel 16 Clip Mode (36–51 launch, 52–67 overdub, 68–83 delete), CC 64 channel 1 Sustain. (The SMK-37's mappable CC pads 102–108 have no key on the FM-1.)
 - The internal synth (DX7 on track 1, drums on track 8) plays everything unless switched off in settings.
 
 ## Ableton Live
@@ -101,7 +102,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.50-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.51-source.zip'
 .\build.bat fm1 --package
 ```
 

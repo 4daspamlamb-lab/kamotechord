@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.51 (development snapshot)
+
+- **PARA = Ableton Play/Pause** (CC 23: stops, or continues from where it stopped). FM-1: tap SAVE (same position).
+- **HOME + PARA = metronome on/off** (CC 26). SMK-37: ◀ (HOME) + PARA; ◀ alone still Undo, now sent on release. FM-1: HOME + SAVE.
+- Remote Script handles both (update its folder).
+
 ## KamoteKeys 0.50 (development snapshot)
 
 ### Both devices

@@ -10,7 +10,7 @@
  │ CC25 mom.    │ CC22         │    │       │ SUSTAIN     │ PadScl │ Clip   │ Stop   │ menu   │
  ├──────────────┼──────────────┤    ├───────┼─────────────┼────────┼────────┼────────┼────────┤
  │ [2] ◀ LEFT   │ [3] RIGHT ▶  │    │ [12]  │ [13]        │ [14]   │ [15]   │ [16]   │ [17]   │
- │ Undo CC24    │ Redo CC27    │    │ PATCH │ PARA (off)  │ FX     │ SEQ    │ PLAY   │ REC    │
+ │ Undo CC24    │ Redo CC27    │    │ PATCH │ PARA Play/Ps│ FX     │ SEQ    │ PLAY   │ REC    │
  ├──────────────┼──────────────┤    │       │             │ Drum   │ KeyScl │ CC20   │ lights │
  │ [4] OCT −    │ [5] OCT +    │    └───────┴─────────────┴────────┴────────┴────────┴────────┘
  └──────────────┴──────────────┘
@@ -32,14 +32,14 @@ The scanner lists its 18 buttons "left to right" (`btnmap`, 左到右), in pairs
 | GLOBE | Ableton Stop (CC 21) | dim; bright while pressed |
 | BT | Bluetooth menu on/off; hold 1.5 s: diagnostics | bright while a menu is open |
 | PATCH | Patch page on/off | bright while open |
-| PARA | disabled | off |
+| PARA | Ableton Play/Pause (CC 23); with ◀ held: metronome (CC 26) | dim; bright while pressed |
 | FX | Drum Mode on/off | bright in Drum Mode |
 | SEQ | Key Scale Mode on/off | bright **only** in Key Scale Mode |
 | SEQ PLAY | Ableton Start (CC 20) | dim; bright while pressed |
 | SEQ REC | light show (next pattern per press, runs while held) | bright while running |
 | KNOB BANK | Ableton Session Record (CC 25, momentary) | dim; bright **only while pressed** |
 | FADER BANK | Ableton Capture MIDI (CC 22) | dim; bright while pressed |
-| ◀ / ▶ | Undo (CC 24) / Redo (CC 27); HOME/SAVE inside the BT menu | dim; bright while pressed |
+| ◀ / ▶ | Undo (CC 24, on release; not when used with PARA) / Redo (CC 27); HOME/SAVE inside the BT menu | dim; bright while pressed |
 | OCT − / OCT + | keyboard octave (starts −2); pad octave in Pad Scale/Drum (starts 0); −4 … +4 | dim; bright while pressed |
 
 Mode buttons are mutually exclusive. Pressing the active mode's button returns to Normal Mode.

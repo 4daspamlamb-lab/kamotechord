@@ -840,6 +840,7 @@ static void main_input(void)
         if (shift_shown) say("K1 VEL  K2 SCALE  K3 ROOT", 1500);
     }
     if (kk.knob_shift) {
+        for (unsigned i = 0; i < 7; ++i) if (kk.encoder[i]) kk.knob_shift = 2;   /* any knob turned: no Play/Pause on release */
         if ((d = take(0))) { kk_edit_velocity(d); decimal(v, kk.velocity); popup_value("VELOCITY", v); }
         if ((d = take(1))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
         if ((d = take(2))) { kk_edit_root(d); popup_value("ROOT", kk_note_name(kk.scale.root)); }

@@ -163,7 +163,12 @@ static void test_buttons(void)
 {
     boot();
     static const struct { unsigned id, cc; } momentary[] = {
-        {KK_BTN_PLAY, 20}, {KK_BTN_GLOBE, 21}, {KK_BTN_FADER_BANK, 22}, {KK_BTN_LEFT, 24}, {KK_BTN_RIGHT, 27}};
+        {KK_BTN_PLAY, 20}, {KK_BTN_GLOBE, 21}, {KK_BTN_FADER_BANK, 22}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
+    /* HOME (LEFT) = Undo on release (0.51: it doubles as a shift for PARA). */
+    host_clear(); btn(KK_BTN_LEFT, 1);
+    CHECK(out_count(USB, CC15, 24) == 0 && kk_led_button(KK_BTN_LEFT) == 2, "HOME press: lit, Undo waits for release");
+    btn(KK_BTN_LEFT, 0);
+    CHECK(out_count(USB, CC15, 24) == 2 && last_out(USB, CC15, 0) == 24 && last_out(USB, CC15, 1) == (24 | 127 << 8), "HOME release -> Undo 127/0");
     for (unsigned i = 0; i < 5; ++i) {
         host_clear(); btn(momentary[i].id, 1);
         CHECK(out_count(USB, CC15, momentary[i].cc) == 1 && last_out(USB, CC15, 0) == (int)(momentary[i].cc | 127 << 8), "press cc %u", momentary[i].cc);
@@ -178,12 +183,16 @@ static void test_buttons(void)
     CHECK(last_out(USB, CC15, 0) == (25 | 127 << 8) && kk_led_button(KK_BTN_KNOB_BANK) == 2, "session record press");
     btn(KK_BTN_KNOB_BANK, 0);
     CHECK(out_count(USB, CC15, 25) == 2 && last_out(USB, CC15, 0) == 25 && kk_led_button(KK_BTN_KNOB_BANK) == 1, "session record release");
-    /* Disabled button (PARA): no MIDI, no LED, no page. */
+    /* 0.51: PARA = Play/Pause (CC 23); HOME (LEFT) + PARA = metronome (CC 26),
+     * and HOME then sends no Undo. */
     host_clear(); unsigned page = kk.page, mode = kk.mode;
     tap(KK_BTN_PARA);
-    btn(KK_BTN_PARA, 1); host_ms += 2000; frames(3, 1); btn(KK_BTN_PARA, 0);
-    CHECK(host_out_n == 0 && host_local_n == 0 && kk.page == page && kk.mode == mode, "PARA silent");
-    CHECK(kk_led_button(KK_BTN_PARA) == 0 && kk_led_button(KK_BTN_CHORD) == 1, "PARA dark, CHORD (Clip Mode) dim");
+    CHECK(out_count(USB, CC15, 23) == 2 && last_out(USB, CC15, 1) == (23 | 127 << 8) && kk.page == page && kk.mode == mode, "PARA -> Play/Pause");
+    CHECK(kk_led_button(KK_BTN_PARA) == 1 && kk_led_button(KK_BTN_CHORD) == 1, "PARA dim at rest, CHORD (Clip Mode) dim");
+    host_clear(); btn(KK_BTN_LEFT, 1); tap(KK_BTN_PARA); btn(KK_BTN_LEFT, 0);
+    CHECK(out_count(USB, CC15, 26) == 2 && out_count(USB, CC15, 24) == 0 && out_count(USB, CC15, 23) == 0, "HOME + PARA -> metronome, no Undo");
+    host_clear(); tap(KK_BTN_LEFT);
+    CHECK(out_count(USB, CC15, 24) == 2, "HOME alone still Undo");
     /* 0.45: SEQ = Key Scale, SCALE = Pad Scale, independent. */
     tap(KK_BTN_SEQ);
     CHECK(kk.mode == KK_MODE_KEY_SCALE && kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "SEQ -> Key Scale only");

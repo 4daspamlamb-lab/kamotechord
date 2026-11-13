@@ -98,6 +98,14 @@ const cc = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
 check(cc === '20:127 20:0 21:127 21:0 25:127 25:0 22:127 22:0 24:127 24:0 27:127 27:0', 'PLAY, EDIT=STOP, REC, HOME+REC/OCT-/OCT+: ' + cc);
 check(leds()[B.HOME] === 0 && octave() === before, 'HOME combos open no page and leave the octave alone');
 
+// SAVE (where the SMK-37 has PARA): tap = Play/Pause; HOME + SAVE = metronome;
+// SAVE held while turning a knob sends nothing.
+midi = []; tap(B.SAVE); btn(B.HOME, 1); tap(B.SAVE); btn(B.HOME, 0); ms(30);
+btn(B.SAVE, 1); knob(E.K4, 1); btn(B.SAVE, 0); ms(30);
+const pp = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
+check(pp === '23:127 23:0 26:127 26:0', 'SAVE tap = Play/Pause, HOME+SAVE = metronome, SAVE+knob = nothing: ' + pp);
+check(leds()[B.HOME] === 0, 'HOME + SAVE opens no page');
+
 // Sustain (SEL, where the SMK-37 has SUSTAIN).
 midi = [];
 tap(B.SEL); check(out(USB, 0xb0, 64).length === 1 && out(USB, 0xb0, 64)[0].d[2] === 127 && leds()[B.SEL] === 1, 'SEL -> sustain on, LED on');

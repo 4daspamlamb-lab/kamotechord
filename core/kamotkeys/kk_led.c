@@ -98,7 +98,6 @@ unsigned kk_led_button(unsigned id)
 {
     unsigned pressed = (kk.buttons >> id) & 1U;
     switch (id) {
-    case KK_BTN_PARA: return 0;                                       /* disabled */
     case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP ? 2 : 1;        /* Clip Mode */
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */

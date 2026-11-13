@@ -81,6 +81,8 @@ class Track(object):
 
 class Song(object):
     def __init__(self, n): self.visible_tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
+    is_playing = False; metronome = False
+    def continue_playing(self): self.calls.append('continue'); self.is_playing = True
     def start_playing(self): self.calls.append('start')
     def stop_playing(self): self.calls.append('stop')
     def capture_midi(self): self.calls.append('capture')
@@ -172,6 +174,15 @@ class T(unittest.TestCase):
         self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete']); self.assertIsNone(slot.clip)
         self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete'])       # nothing left: no action
         self.assertIn('no clip', self.s.shown[-1])
+
+    def test_play_pause_and_metronome(self):
+        deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
+        self.assertEqual(self.song.calls[-1], 'continue')
+        self.song.is_playing = True
+        deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
+        self.assertEqual(self.song.calls[-1], 'stop')
+        deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertTrue(self.song.metronome)
+        deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))

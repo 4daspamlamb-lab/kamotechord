@@ -1,4 +1,4 @@
-# KamoteKeys 0.50 for M-VAVE SMK-37 Pro / Elite and FM-1
+# KamoteKeys 0.51 for M-VAVE SMK-37 Pro / Elite and FM-1
 
 KamoteKeys is a performance firmware for M-VAVE keyboards: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, Ableton clip launching, ARP, a SUSTAIN button, Ableton Live transport buttons, an animated piano display and BLE/USB MIDI. **One codebase builds all three firmwares:**
 
@@ -8,7 +8,7 @@ KamoteKeys is a performance firmware for M-VAVE keyboards: chord pads, a scale-r
 | SMK-37 Elite | SMK37 OPEN V01 | `build.bat smk37-elite --package` | this README |
 | FM-1 | FM1 OPEN V14 | `build.bat fm1 --package` | [docs/FM1.md](docs/FM1.md) (chord keys, white keys as pads, SMK-37 button layout) |
 
-> **Status: development snapshot.** SMK-37: built and used on an SMK-37 Pro (pad LEDs and Clip Mode confirmed). FM-1: flashed and running (0.49). Elite: built from the same code but not yet run on hardware. PC tests: 6768 SMK-37 unit/fuzz checks, 15 SMK-37 and 45 FM-1 integration checks against each device's real engine in its browser simulator, Remote Script tests. See [Hardware validation](#hardware-validation).
+> **Status: development snapshot.** SMK-37: built and used on an SMK-37 Pro (pad LEDs and Clip Mode confirmed). FM-1: flashed and running (0.49). Elite: built from the same code but not yet run on hardware. PC tests: 6772 SMK-37 unit/fuzz checks, 15 SMK-37 and 47 FM-1 integration checks against each device's real engine in its browser simulator, Remote Script tests. See [Hardware validation](#hardware-validation).
 
 ## One codebase
 
@@ -62,7 +62,7 @@ Detailed references: [MIDI mapping](docs/MIDI_MAPPING.md) · [Button and pad dia
 | SMK-37 Elite | `build.bat smk37-elite`. Same SMK37 OPEN board driver; not yet run on hardware. |
 | FM-1 | `build.bat fm1`. See [docs/FM1.md](docs/FM1.md); not yet run on hardware. |
 
-Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`core/kamotkeys/kk_config.h`](core/kamotkeys/kk_config.h) (one version for all devices; the FM-1 build shows it as `0.50-FM1`).
+Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`core/kamotkeys/kk_config.h`](core/kamotkeys/kk_config.h) (one version for all devices; the FM-1 build shows it as `0.51-FM1`).
 
 ## Controls at a glance
 
@@ -73,7 +73,7 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
  │ Sess.Rec   │ Capture    │        │ arp  │ sustain    │ PadScl│ Clip  │ Stop  │ menu │
  ├────────────┼────────────┤        ├──────┼────────────┼───────┼───────┼───────┼──────┤
  │   ◀ LEFT   │  RIGHT ▶   │        │PATCH │   PARA     │  FX   │  SEQ  │ PLAY  │ REC  │
- │   Undo     │  Redo      │        │patch │    ––      │ Drum  │KeyScl │ Start │ show │
+ │ HOME/Undo  │  Redo      │        │patch │ Play/Pause │ Drum  │KeyScl │ Start │ show │
  ├────────────┼────────────┤        └──────┴────────────┴───────┴───────┴───────┴──────┘
  │   OCT −    │   OCT +    │        –– = disabled (dark, no action, no MIDI)
  └────────────┴────────────┘
@@ -88,14 +88,15 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 | GLOBE | Ableton **Stop** (CC 21) | |
 | BT | Open/close the Bluetooth menu | 1.5 s: diagnostics |
 | PATCH | Open/close the patch page | |
-| PARA | **Disabled** | |
+| PARA | Ableton **Play/Pause** (CC 23: continues from where it stopped) | |
+| ◀ + PARA | Ableton **metronome** on/off (CC 26) | |
 | FX | Drum Mode on/off | |
 | SEQ | Key Scale Mode on/off | |
 | SEQ PLAY | Ableton **Start** (CC 20) | |
 | SEQ REC | Light show: each press selects the next pattern; it runs while held | |
 | KNOB BANK | Ableton **Session Record** (CC 25, 127 press / 0 release) | |
 | FADER BANK | Ableton **Capture MIDI** (CC 22) | |
-| ◀ LEFT | Ableton **Undo** (CC 24). In the BT menu: HOME (back) | |
+| ◀ LEFT (HOME) | Ableton **Undo** (CC 24, sent on release so ◀ + PARA can toggle the metronome). In the BT menu: HOME (back) | |
 | RIGHT ▶ | Ableton **Redo** (CC 27). In the BT menu: SAVE (OK) | |
 | OCT − / OCT + | Octave −4 … +4. Keyboard starts at **−2**; in Pad Scale/Drum Mode they move the pad octave (starts at 0) | |
 
@@ -228,7 +229,6 @@ Button LEDs are single-colour on/off LEDs. KamoteKeys adds a **dim** level (1/8 
 - enabled buttons are dim when idle and bright while pressed;
 - ARP, NOTE REPEAT (Sustain), SCALE, SEQ, FX and CHORD stay bright while their function or mode is active, and **SCALE shows only Pad Scale, SEQ shows only Key Scale**;
 - KNOB BANK lights only while pressed; SEQ REC while the light show runs; BT while its menu is open;
-- PARA is completely dark.
 
 **Light show** (hold SEQ REC; each new press selects the next pattern): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While SEQ REC is held the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second) and Fader 4 the brightness. Changing the speed never restarts the pattern.
 
@@ -267,7 +267,9 @@ Note Offs always go to every port, so a port change between Note On and Note Off
    | Play | SEQ PLAY | 20 |
    | Stop | GLOBE | 21 |
    | Capture MIDI | FADER BANK | 22 |
-   | Undo | ◀ | 24 |
+   | Play/Pause | PARA | 23 |
+   | Undo | ◀ (on release) | 24 |
+   | Metronome | ◀ + PARA | 26 |
    | Session Record | KNOB BANK | 25 |
    | Redo | ▶ | 27 |
 
@@ -285,9 +287,9 @@ Saved automatically, about 1.5 s after the last change and only while nothing is
 Windows x64 with PowerShell and the [JieLi 2.5.3 Windows toolchain](https://jl-update.oss-cn-shenzhen.aliyuncs.com/2.5.3.exe) (PI32v2 clang 4.0.1, `r3`), exactly as SMK37 OPEN / FM1 OPEN. Each SDK manifest verifies the toolchain and SDK hashes; do not modify `devices/*/sdk/`.
 
 ```powershell
-cd C:\path\to\kamotekeys-0.50                     # a local C: folder, not \\Mac\... (cmd cannot run there)
+cd C:\path\to\kamotekeys-0.51                     # a local C: folder, not \\Mac\... (cmd cannot run there)
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.50-source.zip'  # any https URL; publish the real source if you share builds
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.51-source.zip'  # any https URL; publish the real source if you share builds
 .\build.bat smk37-pro --package                     # or smk37-elite, or fm1
 ```
 

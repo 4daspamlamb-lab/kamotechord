@@ -18,8 +18,9 @@
  *   FX=ARP  SEL=SUSTAIN  ENV=PAD SCALE  LFO=CLIP  EDIT=STOP  GLO=BT menu
  *   HOME    SAVE         ARP=DRUM       SEQ=KEY SCALE  PLAY=START  REC=RECORD
  * HOME tap = settings page (or back to the main screen); HOME + OCT- / OCT+
- * = Undo / Redo; HOME + REC = Capture MIDI. SAVE held: K1-K3 set velocity,
- * scale and root (the SMK-37 faders). In the Bluetooth menu HOME and SAVE
+ * = Undo / Redo; HOME + REC = Capture MIDI; HOME + SAVE = metronome. SAVE
+ * (where the SMK-37 has PARA) tapped = Play/Pause; held: K1-K3 set
+ * velocity, scale and root (the SMK-37 faders). In the Bluetooth menu HOME and SAVE
  * are its back / confirm keys. */
 #include "kk_perform.h"
 #include "kk_midi.h"
@@ -97,8 +98,12 @@ static void button_change(unsigned b, unsigned down)
             }
             home_down = 0;
         }
-        if (b == FM1_SAVE && sent[b] == NONE) { kk.knob_shift = 0; ++kk.edit_revision; }
-        if (sent[b] != NONE) kk_control_event(KK_EV_BUTTON, sent[b], 0);
+        if (b == FM1_SAVE && sent[b] == NONE) {
+            /* SAVE tapped without turning a knob = PARA: Play/Pause. */
+            if (kk.knob_shift == 1) tap(KK_BTN_PARA);
+            kk.knob_shift = 0; ++kk.edit_revision;
+        }
+        if (sent[b] != NONE && sent[b] != 254) kk_control_event(KK_EV_BUTTON, sent[b], 0);
         sent[b] = NONE;
         return;
     }
@@ -108,6 +113,11 @@ static void button_change(unsigned b, unsigned down)
         else { home_down = 1; home_used = 0; id = NONE; }
     } else if (b == FM1_SAVE) {
         if (kk.page == KK_PAGE_BT) id = KK_BTN_RIGHT;                    /* menu confirm key */
+        else if (home_down) {                                            /* HOME + SAVE = metronome */
+            kk_control_event(KK_EV_BUTTON, KK_BTN_LEFT, 1); tap(KK_BTN_PARA); kk_control_event(KK_EV_BUTTON, KK_BTN_LEFT, 0);
+            home_used = 1; id = NONE; sent[b] = 254;                     /* swallow the release */
+            return;
+        }
         else { kk.knob_shift = 1; ++kk.edit_revision; id = NONE; }
     } else if (home_down && (b == FM1_OCT_DOWN || b == FM1_OCT_UP || b == FM1_REC)) {
         id = b == FM1_OCT_DOWN ? KK_BTN_LEFT : b == FM1_OCT_UP ? KK_BTN_RIGHT : KK_BTN_FADER_BANK;   /* Undo / Redo / Capture */

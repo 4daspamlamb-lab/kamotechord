@@ -78,7 +78,9 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 | SEQ PLAY | 20 | Play |
 | GLOBE | 21 | Stop |
 | FADER BANK | 22 | Capture MIDI |
+| PARA (FM-1: SAVE tap) | 23 | **Play/Pause**: stops, or continues from where it stopped |
 | ◀ | 24 | Undo |
+| ◀ + PARA (FM-1: HOME + SAVE) | 26 | **Metronome** on/off |
 | KNOB BANK | 25 | **Session Record** on/off: records new clips on armed tracks at the selected scene, or overdubs playing clips |
 | ▶ | 27 | Redo |
 
