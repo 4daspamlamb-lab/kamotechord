@@ -18,7 +18,7 @@ struct kk_state kk;
  * octave, scale, root or mode has changed while it was held. */
 enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC, ROUTE_CLIPMOD };
 /* Clip Mode action keys (0.50): source modifiers of the OVERDUB / DELETE keys. */
-enum { CLIPMOD_OVERDUB = 0x2000U, CLIPMOD_DELETE = 0x1000U };
+enum { CLIPMOD_OVERDUB = 0x2000U, CLIPMOD_DELETE = 0x1000U, CLIPMOD_SELECT = 0x0800U };
 enum { SOURCES = KK_KEYS + KK_PADS, PAD_SOURCE = KK_KEYS };
 struct source {
     uint8_t held, route, channel, velocity, count, sounding;
@@ -112,10 +112,18 @@ int kk_active_octave(void) { return in_pad_mode() ? kk.pad_octave : kk.octave; }
 static void intent(unsigned id, struct source *s)
 {
     s->count = 0; s->channel = KK_CH_MELODIC; s->modifier = 0;
-    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY)) {
-        /* Clip Mode: the first black key held = OVERDUB, the second = DELETE
-         * for the clips pressed meanwhile; they play no note. */
-        s->modifier = (uint16_t)(id == KK_CLIP_OVERDUB_KEY ? CLIPMOD_OVERDUB : CLIPMOD_DELETE);
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
+        (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY || id == KK_CLIP_SELECT_KEY)) {
+        /* Clip Mode: the first black key held = OVERDUB, the second = DELETE,
+         * the third = SELECT for the clips pressed meanwhile; no note. */
+        s->modifier = (uint16_t)(id == KK_CLIP_OVERDUB_KEY ? CLIPMOD_OVERDUB : id == KK_CLIP_DELETE_KEY ? CLIPMOD_DELETE : CLIPMOD_SELECT);
+        return;
+    }
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
+        (id == KK_SCENE_LAUNCH_KEY || id == KK_SCENE_UP_KEY || id == KK_SCENE_DOWN_KEY)) {
+        /* Clip Mode: the last three black keys are scene buttons (ch 15 CC). */
+        s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;
+        s->notes[0] = (uint8_t)(id == KK_SCENE_LAUNCH_KEY ? KK_CC_SCENE_LAUNCH : id == KK_SCENE_UP_KEY ? KK_CC_SCENE_UP : KK_CC_SCENE_DOWN);
         return;
     }
     if (id < KK_KEYS) {
@@ -145,6 +153,7 @@ static void intent(unsigned id, struct source *s)
     /* A clip pressed while DELETE / OVERDUB is held sends its action note. */
     if (channel == KK_CH_CLIP && note >= 0)
         note += kk.clip_action == 2 ? KK_CLIP_DELETE_BASE - KK_CLIP_NOTE_BASE
+              : kk.clip_action == 3 ? KK_CLIP_SELECT_BASE - KK_CLIP_NOTE_BASE
               : kk.clip_action == 1 ? KK_CLIP_OVERDUB_BASE - KK_CLIP_NOTE_BASE : 0;
     if (note >= 0) { s->notes[0] = (uint8_t)note; s->count = 1; }
 }
@@ -152,7 +161,7 @@ static unsigned route_for(unsigned id, const struct source *s)
 {
     if (s->modifier == 0x8000U) return ROUTE_LOCK;
     if (s->modifier == 0x4000U) return ROUTE_CC;
-    if (s->modifier == CLIPMOD_OVERDUB || s->modifier == CLIPMOD_DELETE) return ROUTE_CLIPMOD;
+    if (s->modifier == CLIPMOD_OVERDUB || s->modifier == CLIPMOD_DELETE || s->modifier == CLIPMOD_SELECT) return ROUTE_CLIPMOD;
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
     if (s->channel == KK_CH_CLIP) return ROUTE_DIRECT;     /* clip launches: no ARP/Repeat */
@@ -652,7 +661,8 @@ unsigned kk_pad_curve(unsigned v)
     int out = (int)v + k[s - 1] * (int)v * (127 - (int)v) / (127 * 100);
     return out < 1 ? 1 : out > 127 ? 127 : (unsigned)out;
 }
-/* Clip Mode action from the held OVERDUB / DELETE keys (DELETE wins). */
+/* Clip Mode action from the held OVERDUB / DELETE / SELECT keys
+ * (DELETE wins, then SELECT). */
 static void clip_action_refresh(void)
 {
     unsigned action = 0;
@@ -660,6 +670,7 @@ static void clip_action_refresh(void)
         const struct source *k = &sources[id];
         if (!k->held || k->route != ROUTE_CLIPMOD) continue;
         if (k->modifier == CLIPMOD_DELETE) action = 2;
+        else if (k->modifier == CLIPMOD_SELECT && action != 2) action = 3;
         else if (!action) action = 1;
     }
     if (action != kk.clip_action) { kk.clip_action = (uint8_t)action; ++kk.edit_revision; }

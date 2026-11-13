@@ -691,6 +691,17 @@ static void test_031(void)
     host_clear(); key(3, 100); pad(10, 100); key(1, 0); pad(10, 0);
     CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "DELETE wins + pad 10 -> note 77, its own off");
     key(3, 0); CHECK(kk.clip_action == 0, "keys released: launch again");
+    /* 0.55: third black key (F#) held = SELECT (note 84+); top F# / G# / A# =
+     * launch scene / scene up / scene down (ch 15 CC 30 / 29 / 28). */
+    host_clear(); key(6, 100); pad(5, 100); pad(5, 0); key(6, 0);
+    CHECK(out_count(USB, 0x9F, 84 + 4) == 1 && out_count(USB, 0x90, -1) == 0, "F# + pad 5 -> select note 88, F# silent");
+    host_clear(); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(30, 100); key(30, 0);
+    CHECK(out_count(USB, CC15, KK_CC_SCENE_DOWN) == 2 && out_count(USB, CC15, KK_CC_SCENE_UP) == 2 &&
+          out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top black keys -> scene down / up / launch, no notes");
+    host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_HOST_SCENE_CC, 4);
+    CHECK(kk_midi_host_scene() == 4, "grid follows the script's scene offset");
+    frames(20, 5); shot("18_clip_scene5");
+    host_in(0xBF, KK_HOST_SCENE_CC, 0);
     host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 38) == 1, "plain launch after release");
     host_clear(); key(1, 100); tap(KK_BTN_CHORD); key(1, 0);
     CHECK(host_out_n == 0 || out_count(USB, 0x90, -1) == 0, "OVERDUB key held across leaving Clip Mode stays silent");

@@ -286,7 +286,12 @@ static void draw_pads(void)
         pill(x, y, 28, 30, note < 0 ? PANEL : blend565(PANEL, base, lit ? 230 : 70));
         char label[6];
         if (kk.mode == KK_MODE_CLIP) {
-            label[0] = 'T'; label[1] = (char)('1' + pad % 8); label[2] = '.'; label[3] = (char)('1' + pad / 8); label[4] = 0;
+            /* Track.scene, scene following the Remote Script's grid position. */
+            unsigned scene = kk_midi_host_scene() + pad / 8 + 1;
+            char *q = label;
+            if (scene < 10) *q++ = 'T';
+            *q++ = (char)('1' + pad % 8); *q++ = '.';
+            decimal(q, (int)(scene > 99 ? 99 : scene));
             unsigned level, st = kk_midi_clip_state(pad);
             uint16_t c = c565(kk_led_pad_base(pad));
             (void)level;
@@ -345,7 +350,8 @@ static void draw_big(void)
     char buf[24];
     if (kk.mode == KK_MODE_CLIP && kk.clip_action) {
         /* 0.50: OVERDUB (first black key) / DELETE (second) held. */
-        text_center(120, w->y + 14, kk.clip_action == 2 ? "DELETE" : "OVERDUB", 3, kk.clip_action == 2 ? RED : AMBER);
+        text_center(120, w->y + 14, kk.clip_action == 2 ? "DELETE" : kk.clip_action == 3 ? "SELECT" : "OVERDUB", 3,
+                    kk.clip_action == 2 ? RED : kk.clip_action == 3 ? CYAN : AMBER);
         text_center(120, w->y + 50, "PRESS A CLIP", 1, TEXT);
         return;
     }
@@ -357,7 +363,7 @@ static void draw_big(void)
         text_center(120, w->y + 14, name, text_width(name, 3) <= 228 ? 3 : 2,
                     kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
         char *p = append(buf, "TRACK "); p = decimal(p, kk.clip_pad % 8 + 1);
-        p = append(p, "  CLIP "); decimal(p, kk.clip_pad / 8 + 1);
+        p = append(p, "  SCENE "); decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
         text_center(120, w->y + 50, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
         return;
     }
@@ -690,14 +696,14 @@ static void signatures(void)
     h = mixsig(h, kk_midi_host_protocol());
     wanted[W_INFO] = h;
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
-    if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8), kk.clip_action);
+    if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8 | kk_midi_host_scene() << 16), kk.clip_action);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
     h = mixsig(h, kk.scale.scale * 16U + kk.scale.root); h = mixsig(h, (uint32_t)kk_active_octave());
     for (unsigned i = 0; i < sounding_n; ++i) h = mixsig(h, sounding[i]);
     if (kk.mode >= KK_MODE_PAD_SCALE) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_pad_lit(p));
-    if (kk.mode == KK_MODE_CLIP) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p));
+    if (kk.mode == KK_MODE_CLIP) { for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p)); h = mixsig(h, kk_midi_host_scene()); }
     wanted[W_PIANO] = h;
     h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);
     h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U);

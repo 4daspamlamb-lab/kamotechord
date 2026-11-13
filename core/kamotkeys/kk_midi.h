@@ -42,6 +42,8 @@ unsigned kk_midi_host_protocol(void);                      /* 0 = no script */
 /* Live's tempo in tenths of BPM from the Remote Script, 0 = none (no script,
  * or disconnected). Ableton has priority over the KamoteKeys tempo. */
 unsigned kk_midi_host_tempo_x10(void);
+/* First Live scene shown on the clip grid (0 based), from the Remote Script. */
+unsigned kk_midi_host_scene(void);
 uint32_t kk_midi_input_revision(void);
 void kk_midi_clip_sync_request(void);
 

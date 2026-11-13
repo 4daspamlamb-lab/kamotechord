@@ -79,8 +79,17 @@ class Slot(object):
 class Track(object):
     def __init__(self): self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
 
+class Scene(object):
+    def __init__(self, song): self.song = song
+    def fire(self): self.song.calls.append('scene %d' % self.song.scenes.index(self))
+
+class View(object):
+    selected_track = None; selected_scene = None; highlighted_clip_slot = None
+
 class Song(object):
-    def __init__(self, n): self.visible_tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
+    def __init__(self, n):
+        self.visible_tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
+        self.scenes = [Scene(self) for _ in range(4)]; self.view = View(); self.view.selected_scene = self.scenes[0]
     is_playing = False; metronome = False; tempo = 120.0
     def continue_playing(self): self.calls.append('continue'); self.is_playing = True
     def start_playing(self): self.calls.append('start')
@@ -110,7 +119,7 @@ class T(unittest.TestCase):
 
     def test_controls_claim_only_protocol_messages(self):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0)
-        self.assertEqual(notes, list(range(36, 84)))      # launch, overdub, delete
+        self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
         self.assertTrue(all(b.channel in (14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
@@ -193,6 +202,24 @@ class T(unittest.TestCase):
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertTrue(self.song.metronome)
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 
+    def test_select_arms_only_that_track(self):
+        a, b = self.song.visible_tracks[0], self.song.visible_tracks[2]; a.arm = True
+        self.tap(84 + 8 + 2)                               # select: track 3, scene 2
+        v = self.song.view
+        self.assertIs(v.selected_track, b); self.assertIs(v.selected_scene, self.song.scenes[1])
+        self.assertIs(v.highlighted_clip_slot, b.clip_slots[1]); self.assertTrue(b.arm); self.assertFalse(a.arm)
+        self.assertIn('armed', self.s.shown[-1])
+
+    def test_scene_scroll_and_launch(self):
+        t = self.song.visible_tracks[0]; t.clip_slots[2].clip = Clip(t.clip_slots[2])
+        self.s.sent.clear(); deliver((0xBE, 28, 127)); deliver((0xBE, 28, 0))   # scene down
+        self.assertIn((0xBF, 104, 1), self.s.sent); self.assertIs(self.song.view.selected_scene, self.song.scenes[1])
+        self.press(8)                                       # pad 9 = track 1, scene 3 now
+        self.assertEqual(t.log, ['fire'])
+        deliver((0xBE, 30, 127)); deliver((0xBE, 30, 0)); self.assertEqual(self.song.calls[-1], 'scene 1')
+        for _ in range(5): deliver((0xBE, 29, 127)); deliver((0xBE, 29, 0))      # up, clamped at scene 1
+        self.assertIs(self.song.view.selected_scene, self.song.scenes[0]); self.assertEqual(self.s._scene, 0)
+
     def test_tempo_follows_live(self):
         self.assertIn((0xBF, 102, 1200 >> 7), self.s.sent); self.assertIn((0xBF, 103, 1200 & 127), self.s.sent)
         self.s.sent.clear(); self.song.tempo = 98.5; self.s.update_display()
@@ -201,7 +228,7 @@ class T(unittest.TestCase):
 
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 19)   # hello, tempo x2, 16 states
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 20)   # hello, scene, tempo x2, 16 states
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])

@@ -174,6 +174,10 @@ midi = []; key(1, 1); ms(30); shot('fm1_07_overdub'); key(WHITE[3], 1); key(WHIT
 check(out(USB, 0x9f, 55).length === 1 && out(USB, 0x9f, 39).length === 0 && out(USB, 0x90).length === 0, 'F# + white 04 -> overdub note 55, F# plays nothing');
 midi = []; key(3, 1); key(WHITE[9], 1); key(WHITE[9], 0); key(3, 0);
 check(out(USB, 0x9f, 68 + 9).length === 1, 'G# + white 10 -> delete note 77');
+midi = []; key(5, 1); key(WHITE[4], 1); key(WHITE[4], 0); key(5, 0);
+check(out(USB, 0x9f, 84 + 4).length === 1 && out(USB, 0x90).length === 0, 'A# + white 05 -> select note 88');
+midi = []; key(25, 1); key(25, 0); key(22, 1); key(22, 0); key(20, 1); key(20, 0);
+check(out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ') === '28:127 28:0 29:127 29:0 30:127 30:0', 'top F# / D# / C# -> scene down / up / launch');
 const hostIn = (bytes) => { mem().set(bytes, c.sim_file()); return c.sim_midi_from(1, bytes.length); };
 hostIn([0xbf, 126, 1]); hostIn([0xbf, 80 + 3, 2]); ms(100);
 check(keyLed(WHITE[3]) === 1, 'playing clip lights its key');

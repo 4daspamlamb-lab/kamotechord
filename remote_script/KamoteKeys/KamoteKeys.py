@@ -6,6 +6,9 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
   device -> Live   ch 16  Note 36..51        Clip Mode pads 1..16 (press / release)
                    ch 16  Note 52..67        pads 1..16 with OVERDUB held (1st black key)
                    ch 16  Note 68..83        pads 1..16 with DELETE held (2nd black key)
+                   ch 16  Note 84..99        pads 1..16 with SELECT held (3rd black key):
+                                             select the slot, arm its track (only it)
+                   ch 15  CC 28 / 29 / 30    scene down / scene up / launch selected scene
                    ch 16  CC 127 = 127       "send the full state" (sync request)
                    ch 15  CC 20/21/22/24/25/27  Start, Stop, Capture MIDI, Undo,
                                              Session Record, Redo (127 press, 0 release)
@@ -13,11 +16,13 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
   Live -> device   ch 16  CC 80..95 = state  clip state of pads 1..16
                    ch 16  CC 126 = 1         protocol hello (script connected)
                    ch 16  CC 102 / 103       Live tempo x 10, MSB then LSB (ARP follows Live)
+                   ch 16  CC 104             first scene shown on the grid (0 based)
 
 Clip states: 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording,
 5 queued to record, 6 empty slot on an armed track.
 
-Pads 1-8 are Clip 1 (first scene) of tracks 1-8, pads 9-16 are Clip 2.
+Pads 1-8 are the first shown scene of tracks 1-8, pads 9-16 the next one;
+scene up / down scroll the grid (and Live's selected scene) one scene.
 Only these messages are claimed by the script; keys and pads on channels
 1 and 10 still reach the tracks normally.
 """
@@ -33,6 +38,8 @@ TRANSPORT_CHANNEL = 14       # MIDI channel 15
 NOTE_BASE = 36
 OVERDUB_BASE = NOTE_BASE + 16
 DELETE_BASE = NOTE_BASE + 32
+SELECT_BASE = NOTE_BASE + 48
+SCENE_CC = 104
 STATE_CC = 80
 HELLO_CC = 126
 TEMPO_MSB_CC, TEMPO_LSB_CC = 102, 103
@@ -41,7 +48,9 @@ TRACKS = 8
 SCENES = 2
 CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO = 20, 21, 22, 24, 25, 27
 CC_PLAY_PAUSE, CC_METRONOME = 23, 26
-TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME)
+CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
+TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
+                 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -53,13 +62,14 @@ class KamoteKeys(ControlSurface):
         ControlSurface.__init__(self, c_instance)
         self._sent = [None] * (TRACKS * SCENES)
         self._tempo_sent = None
+        self._scene = 0                  # first Live scene shown on the 8 x 2 grid
         self._ticks = 0
         self._received = False
         # Standard _Framework controls (as in Ableton's own controller
         # scripts): Live registers them and delivers their messages here.
         with self.component_guard():
             self._pads = []
-            for base in (NOTE_BASE, OVERDUB_BASE, DELETE_BASE):
+            for base in (NOTE_BASE, OVERDUB_BASE, DELETE_BASE, SELECT_BASE):
                 for pad in range(TRACKS * SCENES):
                     button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, base + pad)
                     button.add_value_listener(self._pad_value, identify_sender=True)
@@ -86,7 +96,9 @@ class KamoteKeys(ControlSurface):
         if not value:                    # note on: one action per physical press
             return
         note = sender.message_identifier()
-        if note >= DELETE_BASE:
+        if note >= SELECT_BASE:
+            self._select(note - SELECT_BASE)
+        elif note >= DELETE_BASE:
             self._delete(note - DELETE_BASE)
         elif note >= OVERDUB_BASE:
             self._overdub(note - OVERDUB_BASE)
@@ -107,7 +119,7 @@ class KamoteKeys(ControlSurface):
     # -------------------------------------------------------------- clips
     def _slot(self, pad):
         tracks = list(self.song().visible_tracks)
-        index, scene = pad % TRACKS, pad // TRACKS
+        index, scene = pad % TRACKS, self._scene + pad // TRACKS
         if index >= len(tracks):
             return None, None
         track = tracks[index]
@@ -176,6 +188,53 @@ class KamoteKeys(ControlSurface):
             action = 'track cannot record'
         self._status('KamoteKeys pad %d: %s %d / clip %d - %s' % (
             pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1, action))
+
+    def _select(self, pad):
+        """SELECT key + pad: select that slot (Live's selected track, scene and
+        highlighted slot) and arm its track, disarming the others, so the next
+        Session Record (KNOB BANK / FM-1 REC) records exactly there."""
+        track, slot = self._slot(pad)
+        if slot is None:
+            self._status('KamoteKeys pad %d: no such slot' % (pad + 1))
+            return
+        song = self.song()
+        view = song.view
+        try:
+            view.selected_track = track
+            view.selected_scene = list(song.scenes)[self._scene + pad // TRACKS]
+            view.highlighted_clip_slot = slot
+        except Exception:
+            pass
+        armed = False
+        for other in song.visible_tracks:
+            if getattr(other, 'can_be_armed', False):
+                other.arm = other is track
+                armed = armed or other is track
+        self._status('KamoteKeys: selected %s %d / scene %d%s' % (
+            track.name, pad % TRACKS + 1, self._scene + pad // TRACKS + 1,
+            ' (armed: press Session Record to record)' if armed else ' (track cannot record)'))
+
+    def _scroll(self, delta):
+        scenes = list(self.song().scenes)
+        last = max(0, len(scenes) - 1)
+        new = max(0, min(last, self._scene + delta))
+        if new != self._scene:
+            self._scene = new
+            self._send_all()
+        try:
+            self.song().view.selected_scene = scenes[self._scene]
+        except Exception:
+            pass
+        self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
+
+    def _launch_scene(self):
+        scene = self.song().view.selected_scene
+        try:
+            scene.fire()
+            index = list(self.song().scenes).index(scene) + 1
+        except Exception:
+            index = '?'
+        self._status('KamoteKeys: launch scene %s' % index)
 
     def _delete(self, pad):
         """DELETE key + pad: delete that clip."""
@@ -246,6 +305,7 @@ class KamoteKeys(ControlSurface):
 
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
+        self._send_midi((0xB0 | CLIP_CHANNEL, SCENE_CC, min(self._scene, 127)))
         self._send_tempo(force=True)
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
@@ -293,6 +353,12 @@ class KamoteKeys(ControlSurface):
         elif cc == CC_METRONOME:
             song.metronome = not song.metronome
             self._status('KamoteKeys: metronome %s' % ('on' if song.metronome else 'off'))
+        elif cc == CC_SCENE_DOWN:
+            self._scroll(1)
+        elif cc == CC_SCENE_UP:
+            self._scroll(-1)
+        elif cc == CC_SCENE_LAUNCH:
+            self._launch_scene()
         elif cc == CC_RECORD:
             # Session Record: records new clips in armed tracks at the selected
             # scene, or overdubs the playing clips; a second press stops it.

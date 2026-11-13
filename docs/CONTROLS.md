@@ -73,7 +73,8 @@ Mode buttons are mutually exclusive. Pressing the active mode's button returns t
  Pad Scale Mode: pads 1→16 = scale degrees 0→15 from the root (root pads cyan)
 
  Clip Mode: pads 1–8 = Clip 1 of tracks 1–8, pads 9–16 = Clip 2 (channel 16 notes 36–51)
-            hold C# + pad = overdub (notes 52–67), hold D# + pad = delete (notes 68–83)
+            hold C# + pad = overdub (notes 52–67), hold D# + pad = delete (notes 68–83),
+            hold F# + pad = select + arm (notes 84–99); top F# / G# / A# = launch scene / scene up / scene down
 ```
 
 The pad numbers follow SMK37 OPEN's convention (pad *n* = scanner pad id *n* − 1, as in its workbench and README: "SHIFT + Pads 1–8 …"). The RGB chain order (`rgb_map` in `app/board/panel.c`) is handled by the board driver, so every mode addresses logical pad numbers only. The assumption that pads 1–8 are the **top** row comes from the LED chain's serpentine order and the SMK37 OPEN workbench grid; confirm it on hardware (pad 1 should light red in Drum Mode).

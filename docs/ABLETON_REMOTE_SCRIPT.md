@@ -56,6 +56,9 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 | the **first black key** (SMK-37: C#, FM-1: F#) | a clip | **overdub**: launches it if stopped and turns on Session Record, so you record into it; the same again turns overdub off |
 | | an empty slot | arms the track and records a new clip |
 | the **second black key** (SMK-37: D#, FM-1: G#) | a clip | **deletes** it |
+| the **third black key** (SMK-37: F#, FM-1: A#) | a clip | **selects** the slot and **arms its track** (disarms the others): the next Session Record (KNOB BANK / FM-1 REC) records there |
+
+**Scenes (0.55).** The last three black keys (SMK-37: top F#, G#, A#; FM-1: top C#, D#, F#) are **launch selected scene**, **scene up** and **scene down**. Scene up/down moves Live's selected scene and scrolls the 8 × 2 grid with it (pads 1–8 = that scene, 9–16 = the next); the pads show track.scene, e.g. T3.5.
 
 The screen shows OVERDUB or DELETE while the key is held; in Clip Mode these two keys play no note. A plain press on a clip that is being overdubbed turns overdub off (the clip keeps playing); the next press stops it as usual.
 

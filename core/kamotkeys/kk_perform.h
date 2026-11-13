@@ -23,7 +23,7 @@ struct kk_state {
     uint8_t chord_lock;                      /* pad 13 LOCK active               */
     uint16_t latched_mods;                   /* chord modifiers held by LOCK     */
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
-    uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete */
+    uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
     uint8_t rgb_timing;                      /* pad LED timing preset (saved)  */

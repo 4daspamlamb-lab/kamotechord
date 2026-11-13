@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.55 (development snapshot)
+
+- **Clip Mode SELECT:** hold the third black key (SMK-37 F#, FM-1 A#) and press a clip: select that slot and arm its track (others disarmed); the next Session Record (KNOB BANK / FM-1 REC) records there.
+- **Scene keys:** the last three black keys (SMK-37 top F# G# A#, FM-1 top C# D# F#) launch the selected scene, scene up, scene down. The grid scrolls with the selected scene and the pads are labelled track.scene.
+- Update the Remote Script folder.
+
 ## KamoteKeys 0.54 (development snapshot)
 
 - **Sustain holds until the next key:** released notes keep sounding until the next key or pad is pressed; keys pressed together (or added while others are held) are held together. No CC 64 from the button (a pedal still sends it). With ARP on the same rule latches the arpeggio.

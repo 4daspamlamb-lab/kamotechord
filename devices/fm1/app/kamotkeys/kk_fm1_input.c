@@ -10,8 +10,9 @@
  *  - Pad Scale Mode (0.52): the chord keys stay; keys 9..26, white and
  *    black, play consecutive scale notes (with chords). Root keys stay lit.
  *  - Drum Mode: white keys 01..16 are pads 1..16, black keys are silent.
- *  - Clip Mode: white keys 01..16 are clips; the first black key (F#) held
- *    = OVERDUB, the second (G#) = DELETE (handled by the core as keys).
+ *  - Clip Mode: white keys 01..16 are clips; black keys held: F# = OVERDUB,
+ *    G# = DELETE, A# = SELECT (+ a clip); top C# / D# / F# = launch scene,
+ *    scene up, scene down (all handled by the core as keys).
  * A key's release always goes to whatever its press went to, even if the
  * mode changed while it was held.
  *
@@ -60,7 +61,10 @@ static unsigned classify(unsigned key, unsigned *id)
     int white = white_of(key);
     if (kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP) {
         if (white >= 0) { *id = (unsigned)white; return AS_PAD; }
-        if (kk.mode == KK_MODE_CLIP && (key == KK_CLIP_OVERDUB_KEY || key == KK_CLIP_DELETE_KEY)) { *id = key; return AS_KEY; }
+        if (kk.mode == KK_MODE_CLIP && (key == KK_CLIP_OVERDUB_KEY || key == KK_CLIP_DELETE_KEY || key == KK_CLIP_SELECT_KEY ||
+                                        key == KK_SCENE_LAUNCH_KEY || key == KK_SCENE_UP_KEY || key == KK_SCENE_DOWN_KEY)) {
+            *id = key; return AS_KEY;                    /* Clip Mode action / scene keys */
+        }
         return AS_NONE;
     }
     if (key < KK_SPLIT_KEY) { *id = chord_pad_of_key[key]; return AS_PAD; }
