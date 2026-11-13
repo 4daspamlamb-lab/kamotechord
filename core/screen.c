@@ -427,7 +427,7 @@ static void draw_status(void)
     const struct widget *w = &widgets[W_STATUS];
     fill(0, w->y, 240, w->h, BG);
     fill(0, w->y, 240, 1, PANEL);
-    char buf[32], *p;
+    char buf[48], *p;   /* "LOCK " + every chord type fits */
     if (kk.arp_on) {
         pill(6, w->y + 5, 26, 12, C565(0, 70, 80)); text(10, w->y + 8, "ARP", 1, CYAN);
         p = append(buf, kk_division_name(kk.arp.division)); p = append(p, " ");

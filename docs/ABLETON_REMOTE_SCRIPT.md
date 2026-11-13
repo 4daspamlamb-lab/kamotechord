@@ -91,11 +91,11 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 | KNOB BANK | 25 | **Session Record** on/off: records new clips on armed tracks at the selected scene, or overdubs playing clips |
 | ▶ | 27 | Redo |
 
-All buttons send 127 on press and 0 on release (KNOB BANK is now momentary; its LED lights only while pressed).
+All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK send on release since 0.59, because holding both runs the light show).
 
 ## Step Mode: drum step sequencer (0.58)
 
-**Hold CHORD for 0.6 s** (FM-1: hold **LFO**) to enter Step Mode; tap CHORD to go to Clip Mode, hold again to leave. It works on Live's **selected track** (ideally with a Drum Rack) and its **selected clip slot**:
+**Press SEQ REC** (or hold CHORD for 0.6 s; FM-1: hold **LFO**) to enter Step Mode; press SEQ REC again (or hold CHORD) to leave, tap CHORD to go to Clip Mode. It works on Live's **selected track** (ideally with a Drum Rack) and its **selected clip slot**:
 
 - Every step is written straight into that **session clip** (Live 12 note API), so the result is an ordinary MIDI clip you can edit in the piano roll. Notes you add or remove with the mouse show up on the pads.
 - An **empty slot gets a new 1-bar clip** named after the track.

@@ -133,13 +133,14 @@ unsigned kk_led_button(unsigned id)
 {
     unsigned pressed = (kk.buttons >> id) & 1U;
     switch (id) {
-    case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP || kk.mode == KK_MODE_STEP ? 2 : 1;   /* Clip / Step */
+    case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP ? 2 : 1;        /* Clip Mode */
+    case KK_BTN_REC: return kk.mode == KK_MODE_STEP || pressed ? 2 : 1;   /* Step Mode (0.59) */
+    case KK_BTN_KNOB_BANK: case KK_BTN_FADER_BANK: return pressed || kk.anim_active ? 2 : 1;
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
     case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */
     case KK_BTN_SEQ: return kk.mode == KK_MODE_KEY_SCALE ? 2 : 1;     /* Key Scale only */
     case KK_BTN_FX: return kk.mode == KK_MODE_DRUM ? 2 : 1;
-    case KK_BTN_REC: return kk.anim_active ? 2 : 1;
     case KK_BTN_BT: return kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG || pressed ? 2 : 1;
     case KK_BTN_PATCH: return kk.page == KK_PAGE_PATCH || pressed ? 2 : 1;
     default: return pressed ? 2 : 1;   /* momentary, incl. KNOB BANK (state not shown) */

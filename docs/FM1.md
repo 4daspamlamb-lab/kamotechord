@@ -18,7 +18,7 @@ The FM-1 has no pads and no faders, so **everything the SMK-37 pads did is on th
 
 - **Chord keys** (the lowest nine keys, white and black):
   - Hold **MAJ / MIN / DIM / SUS4** and/or **7 / MAJ7 / 6 / 9** while playing in the playing zone: every note becomes that chord. Combine a type and an extension (e.g. MIN + 7 = m7).
-  - **LOCK** (C#): latches the chord keys, so you don't have to hold them. While locked, tapping a key switches within its group; tap LOCK again to release.
+  - **LOCK** (C#): latches the chord keys, so you don't have to hold them. While locked, tapping a key switches within its group; tap LOCK again to release. The lock stays on when you switch Key Scale (SEQ) or Pad Scale (SEL) on and off, so you can lock a chord and play it on scale keys.
 - **Playing zone** (the 18 keys from D to G, an octave and a half): plays notes on **channel 1**.
   - **Normal Mode:** every key plays its own note.
   - **Key Scale Mode (SEQ):** the white keys play the scale (the C key = scale root); black keys are silent.
@@ -112,7 +112,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.58-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.59-source.zip'
 .\build.bat fm1 --package
 ```
 

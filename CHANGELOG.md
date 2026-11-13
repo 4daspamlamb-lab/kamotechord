@@ -1,5 +1,12 @@
 # Changelog
 
+## KamoteKeys 0.59 (development snapshot)
+
+- **SEQ REC = Step Mode** on/off (holding CHORD still works too).
+- **Light show moved to KNOB BANK + FADER BANK held together**: each new press = next pattern, Fader 1 = speed. **Hold the pair 3 s = ripple lights on/off** (replaces the SEQ REC triple tap).
+- KNOB BANK (Session Record) and FADER BANK (Capture MIDI) now send on release, so pressing them together never records.
+- **Chord LOCK survives Key Scale:** lock a chord, switch SEQ (Key Scale) on and off and the lock stays, so scale keys play the locked chord. FM-1: also Pad Scale on keys. Other modes still release the lock.
+
 ## KamoteKeys 0.58 (development snapshot)
 
 - **Step Mode: drum step sequencer** (hold CHORD; FM-1: hold LFO). Writes straight into the selected session clip with the Live 12 note API (creates a named 1-bar clip in an empty slot), follows mouse edits, multi-page clips of any length, LENGTH (hold + step), DOUBLE, resolution 1/16, 1/8, 1/32, 1/16T, 1/8T, optional page follow, DRUM (hold) to pick the Drum Rack sound (loaded / empty / active colours), velocity per step as brightness, ties, copy page, clear page. New channel 14 protocol; new `StepSequencer.py` in the Remote Script folder.

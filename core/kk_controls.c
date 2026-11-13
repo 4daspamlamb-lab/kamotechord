@@ -429,7 +429,15 @@ void kk_set_mode(unsigned mode)
 {
     if (mode == kk.mode) mode = KK_MODE_NORMAL;     /* same button again: normal */
     hold_release();                                   /* sustained notes belong to the old mode */
-    kk.chord_lock = 0; kk.latched_mods = 0;
+    /* 0.59: a chord LOCK survives switching between the chord modes (Normal,
+     * Key Scale; Pad Scale on keys), so a locked chord and a scale combine. */
+    unsigned old_chords = kk.mode == KK_MODE_NORMAL || kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys();
+    unsigned new_chords = mode == KK_MODE_NORMAL || mode == KK_MODE_KEY_SCALE;
+#ifdef KK_PAD_SCALE_ON_KEYS
+    new_chords |= mode == KK_MODE_PAD_SCALE;
+#endif
+    unsigned keep_lock = old_chords && new_chords && kk.chord_lock;
+    if (!keep_lock) { kk.chord_lock = 0; kk.latched_mods = 0; }
     unsigned keys_change = (mode == KK_MODE_KEY_SCALE) != (kk.mode == KK_MODE_KEY_SCALE);
 #ifdef KK_PAD_SCALE_ON_KEYS
     keys_change |= (mode == KK_MODE_PAD_SCALE) != (kk.mode == KK_MODE_PAD_SCALE);   /* keys change meaning */
@@ -439,7 +447,7 @@ void kk_set_mode(unsigned mode)
     consume(PAD_SOURCE, SOURCES);                      /* pads change meaning */
     if (keys_change) consume(0, KK_KEYS);
     kk.mode = (uint8_t)mode;
-    kk.chord_mods = 0;
+    kk.chord_mods = keep_lock ? kk.latched_mods : 0;
     arp_stop();
     reroute_all();
     kk.chord_root = -1;
@@ -561,6 +569,8 @@ static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLE
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
 static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
+static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
+static uint32_t show_since;
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -593,7 +603,32 @@ static void button(unsigned id, unsigned down, uint32_t now)
         return;
     case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
-    case KK_BTN_FADER_BANK: ableton(KK_CC_CAPTURE, down ? 127 : 0); return;
+    /* 0.59: KNOB BANK + FADER BANK held together = the light show (each new
+     * combo press: next pattern; held 3 s: ripple lights on/off). Alone they
+     * send Capture MIDI / Session Record on release, so a combo never
+     * records. */
+    case KK_BTN_FADER_BANK:
+    case KK_BTN_KNOB_BANK: {
+        unsigned other = id == KK_BTN_KNOB_BANK ? KK_BTN_FADER_BANK : KK_BTN_KNOB_BANK;
+        if (down) {
+            if (kk.buttons & (1U << other)) {          /* second of the two: light show */
+                show_combo = 1; show_since = now; show_ripple_done = 0;
+                kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);
+                consume(PAD_SOURCE, SOURCES);          /* pads stop making sound */
+                kk.anim_active = 1; kk.anim_phase = 0;
+                mods_refresh();
+            }
+            return;
+        }
+        if (show_combo) {                              /* part of the combo: no Ableton message */
+            kk.anim_active = 0;
+            if (!(kk.buttons & (1U << other))) show_combo = 0;
+            return;
+        }
+        unsigned cc = id == KK_BTN_KNOB_BANK ? KK_CC_RECORD : KK_CC_CAPTURE;
+        ableton(cc, 127); ableton(cc, 0);
+        return;
+    }
     /* HOME (LEFT): Undo, sent on release unless PARA was pressed while it was
      * held (HOME + PARA = metronome). */
     case KK_BTN_LEFT:
@@ -604,8 +639,6 @@ static void button(unsigned id, unsigned down, uint32_t now)
     case KK_BTN_RIGHT:
         if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
         ableton(KK_CC_REDO, down ? 127 : 0); return;
-    case KK_BTN_KNOB_BANK:   /* Session Record: momentary; the Remote Script acts on press */
-        ableton(KK_CC_RECORD, down ? 127 : 0); return;
     case KK_BTN_OCT_DOWN: if (down) kk_set_octave(kk_active_octave() - 1); return;
     case KK_BTN_OCT_UP: if (down) kk_set_octave(kk_active_octave() + 1); return;
     /* 0.45: SCALE = Pad Scale Mode, SEQ = Key Scale Mode (swapped on request). */
@@ -630,27 +663,8 @@ static void button(unsigned id, unsigned down, uint32_t now)
         if (down) patch_combo = 0;
         else if (!patch_combo) open_page(kk.page == KK_PAGE_PATCH ? KK_PAGE_MAIN : KK_PAGE_PATCH);
         return;
-    case KK_BTN_REC:
-        if (down) {
-            kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);
-            consume(PAD_SOURCE, SOURCES);              /* pads stop making sound */
-            kk.anim_active = 1; kk.anim_phase = 0;
-            mods_refresh();
-        } else {
-            kk.anim_active = 0;
-            /* 0.57: three quick taps (each released within 250 ms, less than
-             * 400 ms apart) toggle ripple lights; holding to watch a light
-             * show never counts. The taps' pattern steps are undone. */
-            static uint32_t last_tap; static uint8_t taps;
-            if (held_ms < 250U) {
-                taps = (uint8_t)(now - last_tap < 400U + 250U ? taps + 1 : 1); last_tap = now;
-                if (taps >= 3) {
-                    taps = 0; kk.ripple = !kk.ripple;
-                    kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 3) % KK_ANIMATIONS);
-                    ++kk.edit_revision;
-                }
-            } else taps = 0;
-        }
+    case KK_BTN_REC:   /* 0.59: SEQ REC = Step Mode on / off (the light show is KNOB + FADER BANK) */
+        if (down) kk_set_mode(KK_MODE_STEP);
         return;
     }
 }
@@ -664,6 +678,12 @@ static void long_presses(uint32_t now)
         unsigned id = ids[i];
         if ((kk.buttons & (1U << id)) && now - kk.pressed_at[id] >= limits[i] && kk.page != pages[i])
             open_page(pages[i]);
+    }
+    if (show_combo && kk.anim_active && !show_ripple_done && now - show_since >= 3000U) {
+        show_ripple_done = 1; kk.ripple = !kk.ripple;  /* combo held 3 s: ripple lights on / off */
+        kk.anim_active = 0;
+        kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 1) % KK_ANIMATIONS);
+        ++kk.edit_revision;
     }
     if ((kk.buttons & (1U << KK_BTN_CHORD)) && !chord_long && now - kk.pressed_at[KK_BTN_CHORD] >= 600U) {
         chord_long = 1; kk_set_mode(KK_MODE_STEP);      /* again from Step Mode: back to Normal */

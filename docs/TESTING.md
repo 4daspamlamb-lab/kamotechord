@@ -109,7 +109,7 @@ Do these once after flashing; each takes seconds.
 4. Play the second C: the screen shows C4 (or the tonic in Key Scale Mode). Hold pad 2 + pad 9 and play a key → a minor 7th chord name.
 5. FX → pad 1 must be **red** and send note 36 on channel 10 (MIDI Monitor or Ableton). If pad 9 is red instead, the pad rows are swapped: report it.
 6. SCALE → pads green with cyan roots; move Fader 3 and watch the cyan pads move.
-7. Fader 1 up → note velocity follows; hold SEQ REC → light show, Fader 1 changes speed.
+7. Fader 1 up → note velocity follows; hold KNOB BANK + FADER BANK → light show, Fader 1 changes speed.
 8. BT → Bluetooth menu; pair with the Mac; confirm notes arrive over BLE with USB unplugged (AUTO).
 9. Change BPM (E1) and ARP gate (E4), wait 3 s, power-cycle → both restored, octave 0.
 10. Check button-LED dim level and flicker. If the dim level is too faint or flickers, report it: it is a single constant in `led_scan()` (`app/board/scan.c`).

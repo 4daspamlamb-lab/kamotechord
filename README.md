@@ -84,7 +84,7 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 | ARP | ARP on/off | 0.6 s: ARP settings page |
 | NOTE REPEAT | **SUSTAIN** on/off: notes hold until the next key; with ARP on it latches the arpeggio | |
 | SCALE | Pad Scale Mode on/off | |
-| CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | 0.6 s: **Step Mode** (drum step sequencer) |
+| CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | 0.6 s: **Step Mode** (same as SEQ REC) |
 | GLOBE | Ableton **Stop** (CC 21) | |
 | BT | Open/close the Bluetooth menu | 1.5 s: diagnostics |
 | PATCH | Open/close the patch page | |
@@ -93,9 +93,10 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 | FX | Drum Mode on/off | |
 | SEQ | Key Scale Mode on/off | |
 | SEQ PLAY | Ableton **Start** (CC 20) | |
-| SEQ REC | Light show: each press selects the next pattern; it runs while held | |
-| KNOB BANK | Ableton **Session Record** (CC 25, 127 press / 0 release) | |
-| FADER BANK | Ableton **Capture MIDI** (CC 22) | |
+| SEQ REC | **Step Mode** on/off (drum step sequencer) | |
+| KNOB BANK | Ableton **Session Record** (CC 25, sent on release) | |
+| FADER BANK | Ableton **Capture MIDI** (CC 22, sent on release) | |
+| KNOB BANK + FADER BANK | **Light show** while held; each new press = next pattern | 3 s: **ripple lights** on/off |
 | ◀ LEFT (HOME) | Ableton **Undo** (CC 24, sent on release so ◀ + PARA can toggle the metronome). In the BT menu: HOME (back) | |
 | RIGHT ▶ | Ableton **Redo** (CC 27). In the BT menu: SAVE (OK) | |
 | OCT − / OCT + | Octave −4 … +4. Keyboard starts at **−2**; in Pad Scale/Drum Mode they move the pad octave (starts at 0) | |
@@ -106,7 +107,7 @@ All Ableton commands are on **MIDI channel 15**. The full table, with the pad ma
 
 | Fader | Function |
 |---|---|
-| 1 | **Velocity.** 0–10 %: natural key/pad velocity. Above 10 %: fixed velocity proportional to position, 100 % = 127. Applies to keys, Key Scale, Pad Scale, Drum pads and ARP. It is read at Note On only and never changes sounding notes or Note Off. **While SEQ REC is held:** light-show speed. |
+| 1 | **Velocity.** 0–10 %: natural key/pad velocity. Above 10 %: fixed velocity proportional to position, 100 % = 127. Applies to keys, Key Scale, Pad Scale, Drum pads and ARP. It is read at Note On only and never changes sounding notes or Note Off. **During the light show:** its speed. |
 | 2 | **Scale** (23 scales, bottom = Major, top = Minor 6-Diminished), with 2-count hysteresis against ADC noise. |
 | 3 | **Root key** C … B, with hysteresis. |
 | 4 | **Pad brightness** multiplier: 0 % = pads fully off, 50 % = half, 100 % = full. At ≤ 10 % the LCD also drops to half apparent brightness (software dimming). |
@@ -130,7 +131,7 @@ The modes are mutually exclusive. Pressing a mode button switches to that mode; 
   | 4 | SUS4 | 12 | 9 (adds 9th; with 7/MAJ7 gives 9 chords) |
   |   |   | 13 | **LOCK**: latch the held modifiers (see below) |
 
-  **LOCK (pad 13):** hold your modifiers and tap 13 → they stay on after you let go, so one hand plays chords from the keys. While locked, tapping a pad **switches** within its row: MIN replaces MAJ (pads 1–4), 9 replaces 7 (pads 9–12). Pads of the same row combine only when pressed while another of that row is held; tapping the active pad clears its row. Tap 13 again to unlock. Pad 13 and the latched modifiers stay lit.
+  **LOCK (pad 13):** hold your modifiers and tap 13 → they stay on after you let go, so one hand plays chords from the keys. While locked, tapping a pad **switches** within its row: MIN replaces MAJ (pads 1–4), 9 replaces 7 (pads 9–12). Pads of the same row combine only when pressed while another of that row is held; tapping the active pad clears its row. Tap 13 again to unlock. Pad 13 and the latched modifiers stay lit. **The lock stays on when you switch between Normal and Key Scale Mode (SEQ)**, so you can lock a chord, pick a scale and play locked chords on the scale keys; Pad Scale, Drum, Clip and Step Mode release it.
 
   **Colours:** top row by chord mood (MAJ warm amber, MIN blue, DIM purple, SUS4 teal); bottom row extensions in one magenta→pink family (7, MAJ7, 6, 9 getting lighter); LOCK white.
 
@@ -167,7 +168,7 @@ Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel
 
 The pad of Live's highlighted slot is **violet** (pulsing if it is playing or recording). The screen shows OVERDUB / DELETE / SELECT while the key is held, and the pads are labelled track.scene (e.g. T3.5). A plain press on a clip that is being overdubbed turns overdub off.
 
-### Step Mode (hold CHORD)
+### Step Mode (SEQ REC, or hold CHORD)
 
 A drum step sequencer that writes straight into the selected session clip in Live: 16 pads = 16 steps per page, hold the lowest C to pick a Drum Rack sound, page / length / double / resolution / follow / copy / clear on the lowest octave's white keys and velocity on the third octave's. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
 
@@ -240,11 +241,11 @@ Button LEDs are single-colour on/off LEDs. KamoteKeys adds a **dim** level (1/8 
 
 - enabled buttons are dim when idle and bright while pressed;
 - ARP, NOTE REPEAT (Sustain), SCALE, SEQ, FX and CHORD stay bright while their function or mode is active, and **SCALE shows only Pad Scale, SEQ shows only Key Scale**;
-- KNOB BANK lights only while pressed; SEQ REC while the light show runs; BT while its menu is open;
+- KNOB BANK and FADER BANK light while pressed or while the light show runs; SEQ REC in Step Mode; BT while its menu is open;
 
-**Ripple lights** (0.57): **three quick taps on SEQ REC** toggle them. The pads and keys keep working normally, and every press sends a coloured ring across the pads from where you pressed (keys map left to right onto the pad columns). Not saved.
+**Ripple lights**: **hold KNOB BANK + FADER BANK for 3 s** to toggle them (0.57–0.58: three taps on SEQ REC). The pads and keys keep working normally, and every press sends a coloured ring across the pads from where you pressed (keys map left to right onto the pad columns). Not saved.
 
-**Light show** (hold SEQ REC; each new press selects the next pattern): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While SEQ REC is held the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second) and Fader 4 the brightness. Changing the speed never restarts the pattern.
+**Light show** (hold KNOB BANK + FADER BANK together; each new press of the second one selects the next pattern; nothing is sent to Ableton): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While it runs the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second) and Fader 4 the brightness. Changing the speed never restarts the pattern.
 
 ## Bluetooth and USB MIDI
 
@@ -301,9 +302,9 @@ Saved automatically, about 1.5 s after the last change and only while nothing is
 Windows x64 with PowerShell and the [JieLi 2.5.3 Windows toolchain](https://jl-update.oss-cn-shenzhen.aliyuncs.com/2.5.3.exe) (PI32v2 clang 4.0.1, `r3`), exactly as SMK37 OPEN / FM1 OPEN. Each SDK manifest verifies the toolchain and SDK hashes; do not modify `devices/*/sdk/`.
 
 ```powershell
-cd C:\path\to\kamotekeys-0.58                     # a local C: folder, not \\Mac\... (cmd cannot run there)
+cd C:\path\to\kamotekeys-0.59                     # a local C: folder, not \\Mac\... (cmd cannot run there)
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.58-source.zip'  # any https URL; publish the real source if you share builds
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.59-source.zip'  # any https URL; publish the real source if you share builds
 .\build.bat smk37-pro --package                     # or smk37-elite, or fm1
 ```
 

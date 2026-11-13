@@ -28,6 +28,9 @@ static void key(unsigned id, unsigned vel) { smk37_control_event(SMK37_KEY, id, 
 static void pad(unsigned n, unsigned vel) { smk37_control_event(SMK37_PAD, n - 1, (int)vel); groove_midi_poll(); }
 static void btn(unsigned id, unsigned down) { host_ms += 1; smk37_control_event(SMK37_BUTTON, id, (int)down); groove_midi_poll(); }
 static void tap(unsigned id) { btn(id, 1); btn(id, 0); }
+/* 0.59: KNOB BANK + FADER BANK held together = light show. */
+static void show_on(void) { btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); }
+static void show_off(void) { btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_KNOB_BANK, 0); }
 static void fader(unsigned id, unsigned v) { smk37_control_event(SMK37_FADER, id, (int)v); }
 static void pedal(unsigned v) { smk37_control_event(SMK37_PEDAL, 0, (int)v); groove_midi_poll(); }
 static void boot(void)
@@ -163,13 +166,13 @@ static void test_buttons(void)
 {
     boot();
     static const struct { unsigned id, cc; } momentary[] = {
-        {KK_BTN_PLAY, 20}, {KK_BTN_GLOBE, 21}, {KK_BTN_FADER_BANK, 22}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
+        {KK_BTN_PLAY, 20}, {KK_BTN_GLOBE, 21}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
     /* HOME (LEFT) = Undo on release (0.51: it doubles as a shift for PARA). */
     host_clear(); btn(KK_BTN_LEFT, 1);
     CHECK(out_count(USB, CC15, 24) == 0 && kk_led_button(KK_BTN_LEFT) == 2, "HOME press: lit, Undo waits for release");
     btn(KK_BTN_LEFT, 0);
     CHECK(out_count(USB, CC15, 24) == 2 && last_out(USB, CC15, 0) == 24 && last_out(USB, CC15, 1) == (24 | 127 << 8), "HOME release -> Undo 127/0");
-    for (unsigned i = 0; i < 5; ++i) {
+    for (unsigned i = 0; i < 4; ++i) {
         host_clear(); btn(momentary[i].id, 1);
         CHECK(out_count(USB, CC15, momentary[i].cc) == 1 && last_out(USB, CC15, 0) == (int)(momentary[i].cc | 127 << 8), "press cc %u", momentary[i].cc);
         CHECK(kk_led_button(momentary[i].id) == 2, "momentary bright %u", momentary[i].id);
@@ -178,11 +181,18 @@ static void test_buttons(void)
         CHECK(kk_led_button(momentary[i].id) == 1, "momentary dim %u", momentary[i].id);
         CHECK(out_count(BLE, CC15, -1) == 0, "AUTO: no duplicate on BLE while USB is ready");
     }
-    /* KNOB BANK (0.31): Session Record, momentary CC25 127/0, LED momentary. */
+    /* 0.59: KNOB BANK = Session Record, FADER BANK = Capture, sent on release
+     * (so they can be held together for the light show). */
     host_clear(); btn(KK_BTN_KNOB_BANK, 1);
-    CHECK(last_out(USB, CC15, 0) == (25 | 127 << 8) && kk_led_button(KK_BTN_KNOB_BANK) == 2, "session record press");
+    CHECK(out_count(USB, CC15, 25) == 0 && kk_led_button(KK_BTN_KNOB_BANK) == 2, "session record press: lit, waits for release");
     btn(KK_BTN_KNOB_BANK, 0);
-    CHECK(out_count(USB, CC15, 25) == 2 && last_out(USB, CC15, 0) == 25 && kk_led_button(KK_BTN_KNOB_BANK) == 1, "session record release");
+    CHECK(out_count(USB, CC15, 25) == 2 && last_out(USB, CC15, 0) == 25 && kk_led_button(KK_BTN_KNOB_BANK) == 1, "session record release -> 127/0");
+    host_clear(); btn(KK_BTN_FADER_BANK, 1);
+    CHECK(out_count(USB, CC15, 22) == 0 && kk_led_button(KK_BTN_FADER_BANK) == 2, "capture press: lit, waits for release");
+    btn(KK_BTN_FADER_BANK, 0);
+    CHECK(out_count(USB, CC15, 22) == 2 && last_out(USB, CC15, 0) == 22, "capture release -> 127/0");
+    host_clear(); show_on(); show_off();
+    CHECK(out_count(USB, CC15, 22) == 0 && out_count(USB, CC15, 25) == 0, "KNOB + FADER BANK together send neither");
     /* 0.51: PARA = Play/Pause (CC 23); HOME (LEFT) + PARA = metronome (CC 26),
      * and HOME then sends no Undo. */
     host_clear(); unsigned page = kk.page, mode = kk.mode;
@@ -209,7 +219,8 @@ static void test_buttons(void)
     CHECK(kk_led_button(KK_BTN_SCALE) == kk_led_button(KK_BTN_SEQ) && kk_led_button(KK_BTN_SCALE) == kk_led_button(KK_BTN_NOTE_REPEAT),
           "idle SEQ LED matches SCALE and SUSTAIN");
     /* BT opens the Bluetooth menu; REC never does. */
-    tap(KK_BTN_REC); CHECK(kk.page == KK_PAGE_MAIN, "REC does not open BT");
+    tap(KK_BTN_REC); CHECK(kk.page == KK_PAGE_MAIN && kk.mode == KK_MODE_STEP, "SEQ REC -> Step Mode, not BT");
+    tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_NORMAL, "SEQ REC again -> back to Normal");
     tap(KK_BTN_BT); CHECK(kk.page == KK_PAGE_BT && kk_led_button(KK_BTN_BT) == 2, "BT opens menu");
     host_clear(); tap(KK_BTN_LEFT);
     CHECK(kk.page == KK_PAGE_MAIN && out_count(USB, CC15, 24) == 0, "LEFT acts as HOME in the BT menu, no Undo sent");
@@ -325,13 +336,13 @@ static void test_velocity_faders(void)
     settle();
     CHECK((host_rgb[1] & 255) > 2 * ((host_rgb[1] >> 16) & 255) && (host_rgb[1] & 255) >= 15, "MIN pad idle is blue (%06x)", host_rgb[1]);
     /* Fader 1 is animation speed while SEQ REC is held. */
-    fader(0, 127); btn(KK_BTN_REC, 1); frames(3, 5);
-    CHECK(kk_velocity_override() == 0 && kk.anim_speed == 2000, "REC: fader 1 = speed (%u)", kk.anim_speed);
+    fader(0, 127); show_on(); frames(3, 5);
+    CHECK(kk_velocity_override() == 0 && kk.anim_speed == 2000, "light show: fader 1 = speed (%u)", kk.anim_speed);
     fader(0, 0); frames(2, 5); CHECK(kk.anim_speed == 1000, "0%% = half max");
     fader(0, 14); frames(2, 5); CHECK(kk.anim_speed < 80, "1-10%% very slow (%u)", kk.anim_speed);
     host_clear(); pad(5, 100); pad(5, 0); CHECK(host_out_n == 0, "pads silent during light show");
-    btn(KK_BTN_REC, 0); fader(0, 127);
-    CHECK(kk_velocity_override() == 127, "velocity restored after REC release");
+    show_off(); fader(0, 127);
+    CHECK(kk_velocity_override() == 127, "velocity restored after the light show");
     fader(0, 0);
 }
 
@@ -594,12 +605,12 @@ static void test_display(void)
     tap(KK_BTN_BT); frames(120, 2); shot("12_bluetooth_menu"); tap(KK_BTN_BT);
     btn(KK_BTN_BT, 1); host_ms += 1600; frames(2, 1); btn(KK_BTN_BT, 0); frames(120, 2); shot("13_diagnostics"); tap(KK_BTN_BT);
     fader(3, 8); frames(120, 2); shot("14_main_dimmed"); fader(3, 127); frames(120, 2);
-    btn(KK_BTN_REC, 1); fader(0, 70);
+    show_on(); fader(0, 70);
     for (unsigned p = 0; p < 8; ++p) {
         frames(60, 5); char name[32]; snprintf(name, sizeof name, "15_lightshow_%u", kk.anim_pattern + 1); shot(name);
-        btn(KK_BTN_REC, 0); btn(KK_BTN_REC, 1);
+        btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_FADER_BANK, 1);
     }
-    btn(KK_BTN_REC, 0);
+    show_off();
 }
 
 /* ------------------------------------------------------------ 0.31 */
@@ -631,6 +642,13 @@ static void test_031(void)
     CHECK(kk.chord_mods == (KK_MOD_SUS4 | KK_MOD_7 | KK_MOD_9), "7 and 9 pressed together combine (%x)", kk.chord_mods);
     pad(2, 100); pad(2, 0); pad(10, 100); pad(10, 0);
     CHECK(kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "back to MIN + MAJ7");
+    /* 0.59: the lock carries into Key Scale and back; other modes drop it. */
+    tap(KK_BTN_SEQ);
+    CHECK(kk.mode == KK_MODE_KEY_SCALE && kk.chord_lock && kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "LOCK survives Key Scale (%x)", kk.chord_mods);
+    host_clear(); key(12, 100); notes_on(USB, ON1, notes, &n); key(12, 0);
+    CHECK(n >= 3, "Key Scale + locked chord plays a chord (%u notes)", n);
+    tap(KK_BTN_SEQ);
+    CHECK(kk.mode == KK_MODE_NORMAL && kk.chord_lock && kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "and back to Normal");
     settle(); uint32_t locked = host_rgb[12];
     CHECK((locked & 0xff) > KK_RGB_PEAK * 3 / 4, "LOCK pad bright (%06x)", locked);
     pad(13, 100); pad(13, 0); CHECK(!kk.chord_lock && !kk.chord_mods, "LOCK off releases the latch");
@@ -733,31 +751,37 @@ static void test_031(void)
     /* 0.42: the light show crossfades in (no one-frame jump = no flash). */
     {
         uint32_t before = host_rgb[0]; unsigned steps = 0, prev = before;
-        btn(KK_BTN_REC, 1);
+        show_on();
         for (unsigned i = 0; i < 10; ++i) { frames(1, 25); if (host_rgb[0] != prev) ++steps; prev = host_rgb[0]; }
         CHECK(steps >= 4, "light show fades in over several frames (%u)", steps);
-        btn(KK_BTN_REC, 0); frames(20, 25);
+        show_off(); frames(20, 25);
     }
-    /* SEQ REC light show keeps refreshing while the LCD is redrawing. */
-    btn(KK_BTN_REC, 1); fader(0, 127);
+    /* The light show keeps refreshing while the LCD is redrawing. */
+    show_on(); fader(0, 127);
     uint32_t seen[8]; unsigned changes = 0;
     for (unsigned i = 0; i < 8; ++i) { frames(10, 4); seen[i] = host_rgb[5]; if (i && seen[i] != seen[i - 1]) ++changes; }
     CHECK(changes >= 6, "pads animate at ~30 fps (%u/7 samples changed)", changes);
     uint32_t before = kk.anim_phase; frames(100, 5);  /* 500 ms at 2 Hz = one full cycle */
     uint32_t moved = kk.anim_phase - before;
     CHECK(moved > 0xe0000000U || moved < 0x20000000U, "2 Hz show completes a cycle in 500 ms (%08x)", moved);
-    btn(KK_BTN_REC, 0);
+    show_off();
 }
 
 /* 0.54: ARP follows Ableton's tempo (Remote Script CC 102/103 on ch 16). */
-/* 0.57: three quick SEQ REC taps toggle ripple lights; pads keep working. */
+/* 0.59: holding KNOB BANK + FADER BANK for 3 s toggles ripple lights;
+ * pads keep working. */
 static void test_ripple(void)
 {
     boot(); settle();
     unsigned pattern = kk.anim_pattern;
-    tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC);
-    CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "3 quick taps -> ripple on, pattern unchanged");
-    frames(5, 5); uint32_t idle = host_rgb[6];
+    show_on(); frames(140, 10); show_off();
+    CHECK(!kk.ripple, "a 1.4 s light show does not toggle ripples");
+    pattern = kk.anim_pattern; frames(20, 10);
+    host_clear(); show_on(); frames(310, 10);
+    CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "3 s combo hold -> ripple on, pattern unchanged, show stops");
+    show_off();
+    CHECK(out_count(USB, CC15, 22) == 0 && out_count(USB, CC15, 25) == 0, "no Capture / Record sent");
+    settle(); frames(40, 25); uint32_t idle = host_rgb[6];
     host_clear(); pad(1, 100);
     CHECK(!kk.anim_active, "pad still plays (no light show)");
     frames(16, 5);                                  /* ~80 ms: ring around pad 1 */
@@ -766,11 +790,8 @@ static void test_ripple(void)
     CHECK(host_rgb[6] == idle, "ripple fades away (%06x vs %06x)", host_rgb[6], idle);
     host_clear(); key(36, 100); key(36, 0);
     CHECK(out_count(USB, ON1, -1) == 1, "keys still play with ripples on");
-    btn(KK_BTN_REC, 1); frames(30, 10); btn(KK_BTN_REC, 0);
-    CHECK(kk.ripple, "holding SEQ REC (light show) does not count as a tap");
-    frames(60, 10);
-    tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC); frames(10, 10); tap(KK_BTN_REC);
-    CHECK(!kk.ripple, "3 quick taps again -> off");
+    show_on(); frames(310, 10); show_off();
+    CHECK(!kk.ripple, "3 s combo hold again -> off");
 }
 
 /* 0.58: Step Mode (hold CHORD): pads and function keys on channel 14,
@@ -781,7 +802,7 @@ static void test_step_mode(void)
     host_clear(); btn(KK_BTN_CHORD, 1); host_ms += 700; frames(2, 1);
     CHECK(kk.mode == KK_MODE_STEP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SYNC_CC | 127 << 8),
           "hold CHORD -> Step Mode, tells the script (ch 14 CC 127 = 127)");
-    btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_STEP && kk_led_button(KK_BTN_CHORD) == 2, "release keeps Step Mode, CHORD lit");
+    btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_STEP && kk_led_button(KK_BTN_REC) == 2, "release keeps Step Mode, SEQ REC lit");
     host_clear(); pad(3, 90); pad(3, 0);
     CHECK(out_count(USB, 0x9D, 38) == 1 && out_count(USB, 0x8D, 38) == 1 && host_local_n == 0, "pad 3 -> ch 14 note 38, never the synth");
     host_clear(); key(0, 100); key(2, 100); key(2, 0); key(0, 0);

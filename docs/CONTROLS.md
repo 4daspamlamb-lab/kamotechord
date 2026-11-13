@@ -28,7 +28,7 @@ The scanner lists its 18 buttons "left to right" (`btnmap`, 左到右), in pairs
 | ARP | tap: ARP on/off; hold 0.6 s: ARP page | bright while ARP is on |
 | NOTE REPEAT | **SUSTAIN** on/off: released notes hold until the next key; keys pressed together hold together; with ARP on it latches the arpeggio. A pedal sends CC 64 | bright while on |
 | SCALE | Pad Scale Mode on/off | bright **only** in Pad Scale Mode |
-| CHORD | Clip Mode on/off | bright in Clip Mode |
+| CHORD | tap: Clip Mode on/off; hold 0.6 s: Step Mode | bright in Clip Mode |
 | GLOBE | Ableton Stop (CC 21) | dim; bright while pressed |
 | BT | Bluetooth menu on/off; hold 1.5 s: diagnostics | bright while a menu is open |
 | PATCH | Patch page on/off | bright while open |
@@ -36,9 +36,10 @@ The scanner lists its 18 buttons "left to right" (`btnmap`, 左到右), in pairs
 | FX | Drum Mode on/off | bright in Drum Mode |
 | SEQ | Key Scale Mode on/off | bright **only** in Key Scale Mode |
 | SEQ PLAY | Ableton Start (CC 20) | dim; bright while pressed |
-| SEQ REC | light show (next pattern per press, runs while held) | bright while running |
-| KNOB BANK | Ableton Session Record (CC 25, momentary) | dim; bright **only while pressed** |
-| FADER BANK | Ableton Capture MIDI (CC 22) | dim; bright while pressed |
+| SEQ REC | Step Mode on/off | bright in Step Mode |
+| KNOB BANK | Ableton Session Record (CC 25, on release) | dim; bright while pressed / light show |
+| FADER BANK | Ableton Capture MIDI (CC 22, on release) | dim; bright while pressed / light show |
+| KNOB + FADER BANK | light show while held (next pattern per press); hold 3 s: ripple lights on/off | both bright while running |
 | ◀ / ▶ | Undo (CC 24, on release; not when used with PARA) / Redo (CC 27); HOME/SAVE inside the BT menu | dim; bright while pressed |
 | OCT − / OCT + | keyboard octave (starts −2); pad octave in Pad Scale/Drum (starts 0); −4 … +4 | dim; bright while pressed |
 
@@ -84,7 +85,7 @@ The pad numbers follow SMK37 OPEN's convention (pad *n* = scanner pad id *n* −
 
 | Control | Function |
 |---|---|
-| Fader 1 | velocity (> 10 %) / light-show speed while SEQ REC is held |
+| Fader 1 | velocity (> 10 %) / light-show speed while KNOB + FADER BANK are held |
 | Fader 2 | scale |
 | Fader 3 | root |
 | Fader 4 | pad brightness; LCD half-dim at ≤ 10 % |
