@@ -10,7 +10,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamotKeys"
-#define KAMOTKEYS_VERSION "0.42"
+#define KAMOTKEYS_VERSION "0.43"
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -39,7 +39,10 @@ enum {
 /* Ableton control change numbers (channel 15). */
 enum {
     KK_CC_START = 20, KK_CC_STOP = 21, KK_CC_CAPTURE = 22,
-    KK_CC_UNDO = 24, KK_CC_RECORD = 25, KK_CC_REDO = 27
+    KK_CC_UNDO = 24, KK_CC_RECORD = 25, KK_CC_REDO = 27,
+    /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
+     * (undefined in the MIDI spec), 127 press / 0 release. */
+    KK_CC_SPARE_BASE = 102
 };
 
 /* Physical button indexes reported by app/board/scan.c (btnmap order).

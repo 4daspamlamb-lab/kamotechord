@@ -1,4 +1,4 @@
-# KamotKeys 0.42 for M-VAVE SMK-37 Pro / Elite
+# KamotKeys 0.43 for M-VAVE SMK-37 Pro / Elite
 
 KamotKeys is a performance firmware for the M-VAVE SMK-37 Pro and SMK-37 Elite, built on **SMK37 OPEN V01**. It keeps SMK37 OPEN's hardware drivers, native USB MIDI, Bluetooth LE MIDI, Bluetooth audio, flash storage and the official browser updater. It replaces the sequencer/editor application with KamotKeys: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, ARP and Note Repeat, four dedicated faders, Ableton Live transport buttons, an animated piano display, RGB pad lighting and an Aurora boot.
 
@@ -107,7 +107,7 @@ The modes are mutually exclusive. Pressing a mode button switches to that mode; 
   **Colours:** top row by chord mood (MAJ warm amber, MIN blue, DIM purple, SUS4 teal); bottom row extensions in one magenta→pink family (7, MAJ7, 6, 9 getting lighter); LOCK white.
 
   Holding only extension pads (9–12) builds the chord **diatonically** from the selected scale and root: in C major, 7 on G gives G7 and 7 on B gives Bm7♭5. Changing modifiers while keys are held re-voices those keys: common tones keep sounding, the others stop or start.
-- **Spare pads** 5–8 and 14–16 send notes 84–90 (C6–F♯6) on channel 1, each with its own colour.
+- **Spare pads** 5–8 and 14–16 are **mappable buttons**: CC 102–108 on channel 15, 127 on press and 0 on release (map them in Ableton with ⌘M). Each has its own colour and lights while held.
 
 ### Key Scale Mode (SCALE)
 
@@ -182,7 +182,7 @@ More: [ARP page](docs/screenshots/11_arp_page.png), [Patch page](docs/screenshot
 
 ## RGB and button lighting
 
-A single renderer ([`kk_led.c`](app/kamotkeys/kk_led.c)) decides every pad's colour and level (mode colour, then idle/pressed level, then the Fader 4 multiplier) and hands it to the board driver. Levels: chord pads 35 % at rest, spare pads 25 %, scale/drum pads 30 % (Pad Scale roots 65 %), 100 % when pressed or sounding. Starting or ending a light show crossfades over ~0.2 s. The peak is 160/255, scaled by Fader 4, and every channel value is rounded to a multiple of 4 (see below).
+A single renderer ([`kk_led.c`](app/kamotkeys/kk_led.c)) decides every pad's colour and level (mode colour, then idle/pressed level, then the Fader 4 multiplier) and hands it to the board driver. Levels: chord pads 25 % at rest, spare pads 18 %, scale/drum pads 22 % (Pad Scale roots 50 %), 100 % when pressed or sounding. Starting or ending a light show crossfades over ~0.2 s. The peak is 160/255, scaled by Fader 4, and every channel value is rounded to a multiple of 4 (see below).
 
 **How the pads are driven (lessons from hardware testing on an SMK-37 Pro):**
 - Root cause (0.41): the gap in front of each pad frame (SMK37 OPEN: 36 zero bytes, about 45 us) was shorter than the LEDs' reset time (about 280 us), so a stray pulse when the shared SPI line switched from the LCD to the pads shifted the whole frame by a bit. Pad 1 blinked green, and colour bits spilled between pads at the start and end of the chain. KamotKeys drives the line low before switching and sends 320 zero bytes (about 400 us) before every frame.

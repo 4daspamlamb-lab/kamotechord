@@ -364,14 +364,28 @@ static void test_pad_modes(void)
 static void test_spare_and_refcount(void)
 {
     boot();
-    host_clear(); pad(5, 100);
-    CHECK(out_count(USB, ON1, 84) == 1, "spare pad 5 -> 84");
-    key(36, 100);  /* top C = 84 too */
-    CHECK(out_count(USB, ON1, 84) == 1, "shared note sent once");
-    pad(5, 0);
-    CHECK(out_count(USB, OFF1, 84) == 0, "no spurious off while the key still holds it");
-    key(36, 0);
-    CHECK(out_count(USB, OFF1, 84) == 1, "off when last owner releases");
+    /* 0.43: spare pads are mappable CC buttons on channel 15 (CC 102-108). */
+    static const uint8_t spare_pads[7] = {5, 6, 7, 8, 14, 15, 16};
+    for (unsigned i = 0; i < 7; ++i) {
+        host_clear(); pad(spare_pads[i], 100);
+        CHECK(last_out(USB, CC15, 0) == ((102 + (int)i) | 127 << 8) && out_count(USB, ON1, -1) == 0 && host_local_n == 0,
+              "spare pad %u -> CC %u = 127 (no note, no synth)", spare_pads[i], 102 + i);
+        frames(2, 2); CHECK(kk_pad_lit(spare_pads[i] - 1), "lit while held");
+        pad(spare_pads[i], 0);
+        CHECK(last_out(USB, CC15, 0) == (102 + (int)i) && out_count(USB, CC15, -1) == 2, "release -> CC 0");
+    }
+    host_clear(); tap(KK_BTN_ARP); pad(5, 100); tap(KK_BTN_ARP); pad(5, 0);
+    CHECK(out_count(USB, CC15, 102) == 2, "ARP toggles never retrigger a held CC pad (%u)", out_count(USB, CC15, 102));
+    host_clear(); pad(6, 100); tap(KK_BTN_SEQ);
+    CHECK(last_out(USB, CC15, 0) == 103, "mode change releases a held CC pad");
+    pad(6, 0); tap(KK_BTN_SEQ); CHECK(out_count(USB, CC15, 103) == 2, "and its release stays silent");
+    /* Two sources sharing one note: C major on the second C and the G key. */
+    host_clear(); pad(1, 100); key(12, 100); key(19, 100);
+    CHECK(out_count(USB, ON1, 67) == 1, "shared note sent once");
+    key(12, 0);
+    CHECK(out_count(USB, OFF1, 67) == 0, "no spurious off while the other key still holds it");
+    key(19, 0); pad(1, 0);
+    CHECK(out_count(USB, OFF1, 67) == 1, "off when last owner releases");
     host_clear(); pad(1, 100); pad(1, 0);
     CHECK(host_out_n == 0, "chord pad alone sends nothing");
     /* AUTO port policy. */

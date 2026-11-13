@@ -56,9 +56,9 @@ Mode buttons are mutually exclusive. Pressing the active mode's button returns t
 
  Normal / Key Scale Mode
  ┌─────┬─────┬─────┬─────┬─────┬─────┬─────┬─────┐
- │ MAJ │ MIN │ DIM │SUS4 │ 84  │ 85  │ 86  │ 87  │   chord modifiers | spare MIDI pads
+ │ MAJ │ MIN │ DIM │SUS4 │CC102│CC103│CC104│CC105│   chord modifiers | CC buttons (ch. 15)
  ├─────┼─────┼─────┼─────┼─────┼─────┼─────┼─────┤
- │  7  │MAJ7 │  6  │  9  │LOCK │ 88  │ 89  │ 90  │
+ │  7  │MAJ7 │  6  │  9  │LOCK │CC106│CC107│CC108│
  └─────┴─────┴─────┴─────┴─────┴─────┴─────┴─────┘
 
  Drum Mode (octave 0, channel 10) — vertical pairs

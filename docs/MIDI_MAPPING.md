@@ -1,4 +1,4 @@
-# KamotKeys 0.31 MIDI mapping
+# KamotKeys MIDI mapping
 
 All values are identical on USB and Bluetooth. Which port(s) carry them depends on **MIDI OUT** (Patch page): AUTO (default: USB when connected, else BLE), ALL, USB or BLE. Note Offs are always offered to every port; the router drops the ones a port never had a Note On for.
 
@@ -10,7 +10,7 @@ All values are identical on USB and Bluetooth. Which port(s) carry them depends 
 | Keyboard (Key Scale Mode) | 1 |
 | Chord-generated notes | 1 |
 | Pad Scale Mode | 1 |
-| Spare pads | 1 |
+| Spare pads (CC buttons) | 15 |
 | Drum Mode | 10 |
 | Ableton control buttons | 15 |
 | Clip Mode launcher and feedback | 16 (see [ABLETON_REMOTE_SCRIPT.md](ABLETON_REMOTE_SCRIPT.md)) |
@@ -76,14 +76,14 @@ Pad *n* (1–16) = 48 + root + scale degree (*n* − 1) + 12 × pad octave (star
 
 The pad octave (starts at 0, set with OCT while in Drum Mode) adds or subtracts 12 on every pad (pad 1: 24 at −1, 48 at +1). The colours follow the note actually played, e.g. at +1 pad 1 (48) turns blue (tom). Notes 54–81 that are not kick/snare/hat/tom/cymbal are green (percussion); notes outside GM are grey.
 
-## Spare pads (Normal / Key Scale Mode, channel 1)
+## Spare pads (Normal / Key Scale Mode, channel 15)
+
+Mappable momentary buttons (since 0.43): Control Change, value 127 on press and 0 on release. CC 102–108 are undefined in the MIDI specification, so they do not collide with standard controls. Map them in Ableton with ⌘M (the Remote Script leaves them free).
 
 | Pad | 5 | 6 | 7 | 8 | 14 | 15 | 16 |
 |---|---|---|---|---|---|---|---|
-| Note | 84 C6 | 85 C♯6 | 86 D6 | 87 D♯6 | 88 E6 | 89 F6 | 90 F♯6 |
+| CC | 102 | 103 | 104 | 105 | 106 | 107 | 108 |
 | Colour | red | orange | yellow | green | cyan | blue | violet |
-
-Spare pads are not transposed by the octave buttons.
 
 ## Velocity
 
@@ -95,7 +95,7 @@ ARP and Note Repeat notes use the channel of the source they repeat (1, or 10 in
 
 ## Note ownership
 
-Every note has an owner count per channel. If two sources play the same note (for example the top C key and spare pad 5, both 84), one Note On is sent, and the Note Off goes out only when the last owner releases. Mode, octave, scale and root changes never change the pitch of a note that is already sounding: its release always stops exactly what was started.
+Every note has an owner count per channel. If two sources play the same note (for example two held chords that share a note), one Note On is sent, and the Note Off goes out only when the last owner releases. Mode, octave, scale and root changes never change the pitch of a note that is already sounding: its release always stops exactly what was started.
 
 ## Clip Mode (channel 16)
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## KamotKeys 0.43 (development snapshot)
+
+- **Spare pads 5-8 and 14-16 are mappable buttons:** CC 102-108 on channel 15 (127 press, 0 release) instead of notes 84-90. They light while held, never use ARP or Note Repeat, and are released cleanly on mode changes.
+- Resting pads slightly dimmer than 0.42: chord 25 %, spare 18 %, scale/drum 22 %, Pad Scale roots 50 %.
+
 ## KamotKeys 0.42 (development snapshot)
 
 ### Look and feel

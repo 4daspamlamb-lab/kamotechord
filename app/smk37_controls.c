@@ -14,7 +14,7 @@ struct kk_state kk;
 /* One source per key (0..36) and pad (37..52). A source remembers exactly
  * the notes it started, so its release always stops those notes even if the
  * octave, scale, root or mode has changed while it was held. */
-enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK };
+enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC };
 enum { SOURCES = KK_KEYS + KK_PADS, PAD_SOURCE = KK_KEYS };
 struct source {
     uint8_t held, route, channel, velocity, count, sounding;
@@ -94,6 +94,12 @@ static void intent(unsigned id, struct source *s)
     unsigned pad = id - PAD_SOURCE, channel;
     if (!pads_reassigned() && kk_chord_pad_modifier(pad)) { s->modifier = (uint16_t)kk_chord_pad_modifier(pad); return; }
     if (!pads_reassigned() && kk_is_lock_pad(pad)) { s->modifier = 0x8000U; return; }
+    if (!pads_reassigned() && kk_spare_pad_note(pad) >= 0) {
+        /* Spare pads are mappable CC buttons on channel 15, not notes. */
+        s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;
+        s->notes[0] = (uint8_t)(KK_CC_SPARE_BASE + (kk_spare_pad_note(pad) - 84));
+        return;
+    }
     int note = kk_pad_note(pad, &channel);
     s->channel = (uint8_t)channel;
     if (note >= 0) { s->notes[0] = (uint8_t)note; s->count = 1; }
@@ -101,6 +107,7 @@ static void intent(unsigned id, struct source *s)
 static unsigned route_for(unsigned id, const struct source *s)
 {
     if (s->modifier == 0x8000U) return ROUTE_LOCK;
+    if (s->modifier == 0x4000U) return ROUTE_CC;
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
     if (s->channel == KK_CH_CLIP) return ROUTE_DIRECT;     /* clip launches: no ARP/Repeat */
@@ -252,7 +259,10 @@ static void engage(unsigned id)
     struct source *s = &sources[id];
     s->route = (uint8_t)route_for(id, s);
     s->sounding = 0;
-    if (s->route == ROUTE_DIRECT) {
+    if (s->route == ROUTE_CC) {
+        kk_midi_cc(KK_CH_ABLETON, s->notes[0], 127);
+        s->sounding = 1;
+    } else if (s->route == ROUTE_DIRECT) {
         for (unsigned k = 0; k < s->count; ++k) kk_midi_note_on(s->channel, s->notes[k], kk_velocity(s->velocity));
         s->sounding = 1;
     } else if (s->route == ROUTE_REPEAT) {
@@ -266,6 +276,7 @@ static void engage(unsigned id)
 }
 static void disengage(struct source *s)
 {
+    if (s->route == ROUTE_CC && s->sounding) kk_midi_cc(KK_CH_ABLETON, s->notes[0], 0);
     if ((s->route == ROUTE_DIRECT || s->route == ROUTE_REPEAT) && s->sounding)
         for (unsigned k = 0; k < s->count; ++k) kk_midi_note_off(s->channel, s->notes[k]);
     s->sounding = 0;
@@ -320,7 +331,8 @@ static void reroute_all(void)
     arp_stop();
     for (unsigned i = 0; i < SOURCES; ++i) {
         struct source *s = &sources[i];
-        if (!s->held || s->route == ROUTE_NONE || s->route == ROUTE_MOD) continue;
+        if (!s->held || s->route == ROUTE_NONE || s->route == ROUTE_MOD || s->route == ROUTE_LOCK ||
+            s->route == ROUTE_CC) continue;
         disengage(s); engage(i);
     }
 }
