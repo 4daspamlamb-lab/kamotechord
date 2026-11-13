@@ -521,7 +521,21 @@ static void source_press(unsigned id, unsigned velocity)
         mods_refresh(); ++kk.edit_revision; return;
     }
     if (s->route == ROUTE_MOD) {
-        if (kk.chord_lock) kk.latched_mods ^= s->modifier;
+        if (kk.chord_lock) {
+            /* LOCK (0.42): within a row a tap SWITCHES (MIN replaces MAJ; 9
+             * replaces 7); pads combine only when pressed while another pad
+             * of the same row is held; tapping the active pad clears its row. */
+            enum { QUALITY = KK_MOD_MAJ | KK_MOD_MIN | KK_MOD_DIM | KK_MOD_SUS4,
+                   EXTENSION = KK_MOD_7 | KK_MOD_MAJ7 | KK_MOD_6 | KK_MOD_9 };
+            unsigned group = (s->modifier & QUALITY) ? QUALITY : EXTENSION, held_same = 0;
+            for (unsigned p = 0; p < KK_PADS; ++p) {
+                const struct source *o = &sources[PAD_SOURCE + p];
+                if (PAD_SOURCE + p != id && o->held && o->route == ROUTE_MOD && (o->modifier & group)) held_same = 1;
+            }
+            if (held_same) kk.latched_mods |= s->modifier;                        /* chord of both */
+            else if ((kk.latched_mods & group) == s->modifier) kk.latched_mods &= ~group; /* off */
+            else kk.latched_mods = (uint16_t)((kk.latched_mods & ~group) | s->modifier);  /* switch */
+        }
         mods_refresh(); return;
     }
     if (s->channel == KK_CH_CLIP) kk.clip_pad = (uint8_t)(id - PAD_SOURCE);

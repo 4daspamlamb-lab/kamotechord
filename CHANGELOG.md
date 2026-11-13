@@ -1,5 +1,16 @@
 # Changelog
 
+## KamotKeys 0.42 (development snapshot)
+
+### Look and feel
+- Resting pads much brighter: chord 35 %, spare 25 %, scale/drum 30 % (were 12 / 4 / 10 %); Clip Mode states brighter too.
+- Chord pad colours by meaning: MAJ warm amber, MIN blue, DIM purple, SUS4 teal; extensions 7, MAJ7, 6, 9 as one magenta-to-pink family; LOCK white.
+- Pad Scale roots rest at 65 % in a whiter cyan, clearly different from the other notes at rest.
+- SEQ REC light show crossfades in (~200 ms) and out (~150 ms) instead of jumping in one frame (seen as a flash).
+
+### LOCK
+- While locked, tapping a pad switches within its row (pads 1-4: MAJ/MIN/DIM/SUS4; pads 9-12: 7/MAJ7/6/9). Pads combine only when pressed while another pad of the same row is held. Tapping the active pad clears its row.
+
 ## KamotKeys 0.41 (development snapshot)
 
 ### Pad LEDs: root cause

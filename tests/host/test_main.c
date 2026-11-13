@@ -280,10 +280,10 @@ static void test_velocity_faders(void)
     CHECK(((full >> 16) & 255) == KK_RGB_PEAK && ((half >> 16) & 255) * 2 >= KK_RGB_PEAK - 4 && ((half >> 16) & 255) * 2 <= KK_RGB_PEAK + 4, "brightness scales (%06x %06x)", full, half);
     pad(5, 0); frames(10, 3);
     unsigned released = (host_rgb[4] >> 16) & 255;
-    CHECK(released <= 4, "release returns to idle at once (%u)", released);
+    CHECK(released >= 16 && released <= 24, "release returns to idle at once (%u)", released);
     settle();
     unsigned idle = (host_rgb[4] >> 16) & 255;
-    CHECK(idle == 4, "spare idle ~4%% (%u)", idle);
+    CHECK(idle >= 16 && idle <= 24, "spare idle 25%% of half brightness (%u)", idle);
     fader(3, 10); CHECK(kk.screen_dim, "LCD dims at <= 10%%"); fader(3, 127); CHECK(!kk.screen_dim, "LCD normal");
     /* Every channel sent to the pads is a multiple of 4, in every mode and at
      * every Fader 4 position (values with bit 0/1 set flash on hardware). */
@@ -325,7 +325,9 @@ static void test_pad_modes(void)
     CHECK(host_out[0].b[1] == 50 && host_out[2 * 7].b[1] == 62, "pad 1 = D3, pad 8 = D4");
     /* Root pads cyan, others green. */
     settle();
-    CHECK((host_rgb[0] & 0xff) > ((host_rgb[0] >> 8) & 0xff) / 2 && (host_rgb[1] & 0xff) < 8, "root cyan / other green (%06x %06x)", host_rgb[0], host_rgb[1]);
+    CHECK((host_rgb[0] & 0xff) * 10 >= ((host_rgb[0] >> 8) & 0xff) * 9 && ((host_rgb[1] >> 8) & 0xff) > 2 * (host_rgb[1] & 0xff),
+          "root cyan / other green (%06x %06x)", host_rgb[0], host_rgb[1]);
+    CHECK(((host_rgb[0] >> 8) & 0xff) > 3 * ((host_rgb[1] >> 8) & 0xff) / 2, "idle roots clearly brighter than other notes");
     pad(3, 110); frames(60, 2); shot("04_pad_scale"); pad(3, 0);
     /* Pad ARP in Pad Scale Mode: channel 1. */
     tap(KK_BTN_ARP); host_clear();
@@ -516,11 +518,24 @@ static void test_031(void)
     key(12, 100); uint8_t notes[64]; unsigned n; notes_on(USB, ON1, notes, &n);
     CHECK(n == 4 && notes[0] == 60 && notes[1] == 63 && notes[2] == 67 && notes[3] == 70, "locked Cm7 from one key");
     key(12, 0);
-    pad(9, 100); pad(9, 0); CHECK(kk.chord_mods == KK_MOD_MIN, "while locked, a modifier pad toggles off");
-    pad(10, 100); pad(10, 0); CHECK(kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "and toggles on");
-    settle(); CHECK((host_rgb[12] & 0xff) > KK_RGB_PEAK * 3 / 4, "LOCK pad bright (%06x)", host_rgb[12]);
+    pad(9, 100); pad(9, 0); CHECK(kk.chord_mods == KK_MOD_MIN, "locked: tapping the active extension clears it");
+    pad(10, 100); pad(10, 0); CHECK(kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "and a new one turns on");
+    pad(1, 100); pad(1, 0); CHECK(kk.chord_mods == (KK_MOD_MAJ | KK_MOD_MAJ7), "locked: MAJ replaces MIN (%x)", kk.chord_mods);
+    pad(4, 100); pad(4, 0); CHECK(kk.chord_mods == (KK_MOD_SUS4 | KK_MOD_MAJ7), "SUS4 replaces MAJ");
+    pad(11, 100); pad(11, 0); CHECK(kk.chord_mods == (KK_MOD_SUS4 | KK_MOD_6), "6 replaces MAJ7");
+    pad(9, 100); pad(12, 100); pad(12, 0); pad(9, 0);
+    CHECK(kk.chord_mods == (KK_MOD_SUS4 | KK_MOD_7 | KK_MOD_9), "7 and 9 pressed together combine (%x)", kk.chord_mods);
+    pad(2, 100); pad(2, 0); pad(10, 100); pad(10, 0);
+    CHECK(kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "back to MIN + MAJ7");
+    settle(); uint32_t locked = host_rgb[12];
+    CHECK((locked & 0xff) > KK_RGB_PEAK * 3 / 4, "LOCK pad bright (%06x)", locked);
     pad(13, 100); pad(13, 0); CHECK(!kk.chord_lock && !kk.chord_mods, "LOCK off releases the latch");
-    settle(); CHECK((host_rgb[12] & 0xff) < KK_RGB_PEAK / 5, "LOCK pad idle");
+    settle(); CHECK((host_rgb[12] & 0xff) * 2 < (locked & 0xff), "LOCK pad idle is clearly dimmer (%06x)", host_rgb[12]);
+    /* 0.42 palette: MAJ warm amber, MIN blue, DIM purple, SUS4 teal. */
+    CHECK((host_rgb[0] >> 16) > (host_rgb[0] & 255) * 4, "MAJ idle warm (%06x)", host_rgb[0]);
+    CHECK((host_rgb[1] & 255) > ((host_rgb[1] >> 16) & 255) * 3, "MIN idle blue (%06x)", host_rgb[1]);
+    CHECK((host_rgb[2] & 255) > ((host_rgb[2] >> 8) & 255) * 3 && (host_rgb[2] >> 16) > ((host_rgb[2] >> 8) & 255) * 2, "DIM idle purple (%06x)", host_rgb[2]);
+    CHECK(((host_rgb[3] >> 8) & 255) > (host_rgb[3] >> 16) * 4, "SUS4 idle teal (%06x)", host_rgb[3]);
 
     /* 0.34: playing keys and chords in Normal Mode changes no pad colour at
      * all, so KamotKeys sends the pads no frame on a key press. */
@@ -553,8 +568,8 @@ static void test_031(void)
     settle();
     CHECK(((host_rgb[0] >> 8) & 255) >= KK_RGB_PEAK * 9 / 10 && (host_rgb[0] >> 16) < 4, "playing = bright green (%06x)", host_rgb[0]);
     CHECK((host_rgb[1] >> 16) >= KK_RGB_PEAK * 9 / 10 && (host_rgb[1] & 0xffff) == 0, "recording = bright red (%06x)", host_rgb[1]);
-    CHECK((host_rgb[2] & 255) >= KK_RGB_PEAK / 8 && (host_rgb[2] & 255) <= KK_RGB_PEAK / 3 && (host_rgb[2] >> 16) <= 4, "stopped = dim blue (%06x)", host_rgb[2]);
-    CHECK(((host_rgb[4] >> 16) & 255) < 6, "empty/unknown = very dim (%06x)", host_rgb[4]);
+    CHECK((host_rgb[2] & 255) >= KK_RGB_PEAK / 4 && (host_rgb[2] & 255) <= KK_RGB_PEAK / 2 && (host_rgb[2] >> 16) <= 8, "stopped = dim blue (%06x)", host_rgb[2]);
+    CHECK(((host_rgb[4] >> 16) & 255) <= 8, "empty/unknown = very dim (%06x)", host_rgb[4]);
     unsigned a = 0, b = 255;
     for (unsigned i = 0; i < 20; ++i) { frames(10, 5); unsigned r = (host_rgb[3] >> 16) & 255; if (r > a) a = r; if (r < b) b = r; }
     CHECK(a >= KK_RGB_PEAK * 9 / 10 && b <= KK_RGB_PEAK / 4, "queued blinks amber (%u..%u)", b, a);
@@ -576,6 +591,14 @@ static void test_031(void)
     kk_midi_set_local(0); host_clear(); host_in(0x90, 60, 100);
     CHECK(host_local_n == 0, "internal synth off: host notes stay silent"); host_in(0x80, 60, 0); kk_midi_set_local(1);
 
+    /* 0.42: the light show crossfades in (no one-frame jump = no flash). */
+    {
+        uint32_t before = host_rgb[0]; unsigned steps = 0, prev = before;
+        btn(KK_BTN_REC, 1);
+        for (unsigned i = 0; i < 10; ++i) { frames(1, 25); if (host_rgb[0] != prev) ++steps; prev = host_rgb[0]; }
+        CHECK(steps >= 4, "light show fades in over several frames (%u)", steps);
+        btn(KK_BTN_REC, 0); frames(20, 25);
+    }
     /* SEQ REC light show keeps refreshing while the LCD is redrawing. */
     btn(KK_BTN_REC, 1); fader(0, 127);
     uint32_t seen[8]; unsigned changes = 0;
