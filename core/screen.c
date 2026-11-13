@@ -334,8 +334,8 @@ static void draw_info(void)
     decimal(p, octave);
     int after = text(width + 16, w->y + 10, buf, 1, octave ? AMBER : DIM);
     if (kk_midi_host_protocol()) { pill(after + 4, w->y + 7, 30, 13, C565(0, 60, 30)); text(after + 8, w->y + 10, "LIVE", 1, GREEN); }
-    decimal(buf, kk.bpm);
-    text_right(206, w->y + 6, buf, 2, TEXT);
+    decimal(buf, kk_tempo_bpm());                      /* Live's tempo has priority */
+    text_right(206, w->y + 6, buf, 2, kk_midi_host_tempo_x10() ? GREEN : TEXT);
     text(210, w->y + 13, "BPM", 1, DIM);
 }
 static void draw_big(void)
@@ -480,7 +480,7 @@ static void draw_repeat(void)
 {
     body_title("NOTE REPEAT", GREEN);
     row(0, KK_K1 " DIVISION", kk_division_name(kk.repeat_division), 0);
-    char buf[8]; decimal(buf, kk.bpm); row(1, "TEMPO (MAIN E1)", buf, 0);
+    char buf[8]; decimal(buf, kk_tempo_bpm()); row(1, kk_midi_host_tempo_x10() ? "TEMPO (FROM LIVE)" : "TEMPO (MAIN E1)", buf, 0);
     text(12, 210, kk.repeat_on ? "REPEAT ON" : "REPEAT OFF", 1, kk.repeat_on ? GREEN : DIM);
     text(12, 222, "TAP NOTE REPEAT: BACK", 1, FAINT);
 }
@@ -686,7 +686,7 @@ static void signatures(void)
         return;
     }
     wanted[W_HEADER] = mixsig(base, fm1_midi_ready_ports());
-    uint32_t h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)kk_active_octave()); h = mixsig(h, kk.bpm);
+    uint32_t h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)kk_active_octave()); h = mixsig(h, kk_tempo_x10());
     h = mixsig(h, kk_midi_host_protocol());
     wanted[W_INFO] = h;
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
@@ -710,7 +710,7 @@ static void signatures(void)
     h = mixsig(h, kk_midi_local() * 8U + kk_midi_ports_mode() + kk.pad_sensitivity * 64U);
     h = mixsig(h, kk.arp.mode | kk.arp.direction << 2 | kk.arp.division << 5 | (uint32_t)kk.arp.gate << 8 |
                   (uint32_t)kk.arp.swing << 16 | (uint32_t)kk.arp.octaves << 24);
-    h = mixsig(h, kk.arp_on * 2U + kk.repeat_on); h = mixsig(h, kk.repeat_division); h = mixsig(h, kk.bpm);
+    h = mixsig(h, kk.arp_on * 2U + kk.repeat_on); h = mixsig(h, kk.repeat_division); h = mixsig(h, kk_tempo_x10());
     if (kk.page == KK_PAGE_BT) {
         h = mixsig(h, ble_view | ble_action << 2 | ble_device << 4 | ble_forget << 8);
         h = mixsig(h, (uint32_t)ble_result); h = mixsig(h, ble_seconds);
@@ -847,7 +847,10 @@ static void main_input(void)
         for (unsigned i = 3; i < 7; ++i) (void)take(i);
         return;
     }
-    if ((d = take(0))) { kk_edit_bpm(d > 2 || d < -2 ? d * 2 : d); decimal(v, kk.bpm); popup_value("TEMPO", v); }
+    if ((d = take(0))) {
+        if (kk_midi_host_tempo_x10()) say("TEMPO FOLLOWS ABLETON", 1200);
+        else { kk_edit_bpm(d > 2 || d < -2 ? d * 2 : d); decimal(v, kk.bpm); popup_value("TEMPO", v); }
+    }
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
     if ((d = take(3))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }

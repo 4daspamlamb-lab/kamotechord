@@ -25,7 +25,7 @@ All values are identical on USB and Bluetooth. Which port(s) carry them depends 
 | Capture MIDI | 22 | FADER BANK | 127 press / 0 release |
 | Play/Pause | 23 | PARA (FM-1: SAVE tap) | 127 press / 0 release; the script stops, or continues from the stop position |
 | Undo | 24 | ◀ LEFT (FM-1: HOME + OCT −) | 127 then 0 on release (not after ◀ + PARA, not in the BT menu) |
-| Metronome | 26 | ◀ + PARA (FM-1: HOME + SAVE) | 127 press / 0 release; the script toggles the metronome |
+| Metronome | 26 | PATCH + PARA or ◀ + PARA (FM-1: HOME + SAVE) | 127 press / 0 release; the script toggles the metronome |
 | Session Record | 25 | KNOB BANK | 127 press / 0 release (the Remote Script toggles Session Record on press) |
 | Redo | 27 | RIGHT ▶ | 127 press / 0 release (not while the BT menu is open) |
 
@@ -108,6 +108,8 @@ Every note has an owner count per channel. If two sources play the same note (fo
 | Note | 36–43 (Track 1–8, Clip 1) | 44–51 (Track 1–8, Clip 2) |
 | with OVERDUB held (1st black key) | 52–59 | 60–67 |
 | with DELETE held (2nd black key) | 68–75 | 76–83 |
+
+Tempo from the Remote Script: CC 102 / 103 = Live's tempo × 10 (MSB, LSB). While it arrives, ARP and the internal engine follow Live and the tempo knob is ignored ("TEMPO FOLLOWS ABLETON").
 
 Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamoteKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
 

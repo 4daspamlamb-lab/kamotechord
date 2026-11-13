@@ -1,5 +1,13 @@
 # Changelog
 
+## KamoteKeys 0.54 (development snapshot)
+
+- **Sustain holds until the next key:** released notes keep sounding until the next key or pad is pressed; keys pressed together (or added while others are held) are held together. No CC 64 from the button (a pedal still sends it). With ARP on the same rule latches the arpeggio.
+- **ARP follows Ableton's tempo** (Ableton has priority): the Remote Script sends Live's tempo (CC 102/103 on ch 16); the BPM turns green and the tempo knob is ignored while Live is connected.
+- **Overdub off with a plain press:** pressing a clip that is being overdubbed turns overdub off (no need to hold the OVERDUB key).
+- **PATCH + PARA = metronome** (PATCH is SMK37 OPEN's HOME); ◀ + PARA still works. PATCH now opens its page on release.
+- Update the Remote Script folder for the tempo and overdub changes.
+
 ## KamoteKeys 0.53 (development snapshot)
 
 - **Sustain holds the ARP** (both devices): with ARP on, the Sustain button (SMK-37 NOTE REPEAT, FM-1 SEL) or a sustain pedal keeps the arpeggio playing after the keys are released, and notes played meanwhile join the pattern; Sustain off ends them. No CC 64 is sent while ARP is on.

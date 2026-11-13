@@ -13,7 +13,7 @@
 #include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.53" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.54" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -31,10 +31,14 @@ enum {
  *                  Note 68+pad: with DELETE held (second black key): delete it
  *                  CC 127 = 127: "send me the full clip state" (sync)
  *  host -> device: CC 80+pad = clip state (enum below)
- *                  CC 126 = protocol version: Remote Script is connected */
+ *                  CC 126 = protocol version: Remote Script is connected
+ *                  CC 102/103 = Live tempo x 10 (MSB, LSB) */
 enum {
     KK_CLIP_NOTE_BASE = 36, KK_CLIP_OVERDUB_BASE = 52, KK_CLIP_DELETE_BASE = 68, KK_CLIP_STATE_CC = 80, KK_CLIP_HELLO_CC = 126,
-    KK_CLIP_SYNC_CC = 127, KK_CLIP_PROTOCOL = 1
+    KK_CLIP_SYNC_CC = 127, KK_CLIP_PROTOCOL = 1,
+    /* host -> device (0.54): Live's tempo x 10 as two 7-bit CCs, MSB first;
+     * applied when the LSB arrives. While received, ARP follows Live. */
+    KK_HOST_TEMPO_MSB_CC = 102, KK_HOST_TEMPO_LSB_CC = 103
 };
 enum {
     KK_CLIP_EMPTY = 0, KK_CLIP_STOPPED = 1, KK_CLIP_PLAYING = 2, KK_CLIP_QUEUED = 3,

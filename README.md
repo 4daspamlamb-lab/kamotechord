@@ -1,4 +1,4 @@
-# KamoteKeys 0.53 for M-VAVE SMK-37 Pro / Elite and FM-1
+# KamoteKeys 0.54 for M-VAVE SMK-37 Pro / Elite and FM-1
 
 KamoteKeys is a performance firmware for M-VAVE keyboards: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, Ableton clip launching, ARP, a SUSTAIN button, Ableton Live transport buttons, an animated piano display and BLE/USB MIDI. **One codebase builds all three firmwares:**
 
@@ -8,7 +8,7 @@ KamoteKeys is a performance firmware for M-VAVE keyboards: chord pads, a scale-r
 | SMK-37 Elite | SMK37 OPEN V01 | `build.bat smk37-elite --package` | this README |
 | FM-1 | FM1 OPEN V14 | `build.bat fm1 --package` | [docs/FM1.md](docs/FM1.md) (chord keys, white keys as pads, SMK-37 button layout) |
 
-> **Status: development snapshot.** SMK-37: built and used on an SMK-37 Pro (pad LEDs and Clip Mode confirmed). FM-1: flashed and running (0.49). Elite: built from the same code but not yet run on hardware. PC tests: 6780 SMK-37 unit/fuzz checks, 15 SMK-37 and 52 FM-1 integration checks against each device's real engine in its browser simulator, Remote Script tests. See [Hardware validation](#hardware-validation).
+> **Status: development snapshot.** SMK-37: built and used on an SMK-37 Pro (pad LEDs and Clip Mode confirmed). FM-1: flashed and running (0.49). Elite: built from the same code but not yet run on hardware. PC tests: 6789 SMK-37 unit/fuzz checks, 15 SMK-37 and 54 FM-1 integration checks against each device's real engine in its browser simulator, Remote Script tests. See [Hardware validation](#hardware-validation).
 
 ## One codebase
 
@@ -62,7 +62,7 @@ Detailed references: [MIDI mapping](docs/MIDI_MAPPING.md) · [Button and pad dia
 | SMK-37 Elite | `build.bat smk37-elite`. Same SMK37 OPEN board driver; not yet run on hardware. |
 | FM-1 | `build.bat fm1`. See [docs/FM1.md](docs/FM1.md); not yet run on hardware. |
 
-Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`core/kamotkeys/kk_config.h`](core/kamotkeys/kk_config.h) (one version for all devices; the FM-1 build shows it as `0.53-FM1`).
+Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`core/kamotkeys/kk_config.h`](core/kamotkeys/kk_config.h) (one version for all devices; the FM-1 build shows it as `0.54-FM1`).
 
 ## Controls at a glance
 
@@ -82,14 +82,14 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 | Button | Short press | Hold |
 |---|---|---|
 | ARP | ARP on/off | 0.6 s: ARP settings page |
-| NOTE REPEAT | **SUSTAIN** on/off (CC 64, channel 1; latching). With ARP on: **holds the arpeggio** | |
+| NOTE REPEAT | **SUSTAIN** on/off: notes hold until the next key; with ARP on it latches the arpeggio | |
 | SCALE | Pad Scale Mode on/off | |
 | CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | |
 | GLOBE | Ableton **Stop** (CC 21) | |
 | BT | Open/close the Bluetooth menu | 1.5 s: diagnostics |
 | PATCH | Open/close the patch page | |
 | PARA | Ableton **Play/Pause** (CC 23: continues from where it stopped) | |
-| ◀ + PARA | Ableton **metronome** on/off (CC 26) | |
+| PATCH + PARA (or ◀ + PARA) | Ableton **metronome** on/off (CC 26) | |
 | FX | Drum Mode on/off | |
 | SEQ | Key Scale Mode on/off | |
 | SEQ PLAY | Ableton **Start** (CC 20) | |
@@ -181,9 +181,12 @@ All 16 pads send drum notes on **channel 10**. The layout is vertical: pad 1 = 3
 - Parameters (ARP page, or the main-screen knobs): **Mode** NORMAL/LATCH, **Direction** UP, DOWN, UP-DOWN, RANDOM, ORDER (as played), **Division** 1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32 (default 1/8), **Gate** 10–100 % (default 75 %), **Swing** 0–50 %, **Octaves** 1–4.
 - Toggling ARP while notes are held moves them safely between direct play and the arpeggiator.
 
-**Sustain** (the NOTE REPEAT button, labelled SUSTAIN on screen): tap to latch sustain on (CC 64 = 127 on channel 1, to the internal synth and MIDI out), tap again to release (CC 64 = 0). The button LED is bright and the status line shows SUSTAIN while it is on. It shares one state with a sustain pedal: sustain is on while the latch **or** the pedal is on, and no duplicate CC 64 is ever sent. Panic and mode resets release it. (Note Repeat was removed in 0.45.)
-
-**Sustain + ARP (0.53):** with ARP on, Sustain (button or pedal) **holds the arpeggio** instead of sending CC 64: notes keep arpeggiating after you let go, and every note you play while it is on joins the pattern. Turning Sustain off ends the held notes. (CC 64 would smear each ARP step into the next, so it is not sent while ARP is on; turning ARP off with Sustain still on sends it.)
+**Sustain** (the NOTE REPEAT button, 0.54): tap to turn it on (LED bright, SUSTAIN in the status line), tap again to turn it off.
+- When you let go, the notes **keep sounding until you press the next key** (or pad); that next key ends them and plays.
+- Keys **pressed together, or added while others are still held, are sustained together**.
+- Chord-modifier pads (MAJ, MIN, …) do not end the held notes; a mode change or Sustain off releases them.
+- KamoteKeys holds the notes itself, so the synth and Ableton see long notes (no CC 64). A real **sustain pedal** still sends CC 64.
+- **With ARP on**, the same rule latches the arpeggio: it keeps playing after you let go, and the next key or chord replaces it.
 
 KamoteKeys turns off the SMK37 OPEN engine's own per-track ARP so that notes are never doubled.
 
@@ -271,7 +274,7 @@ Note Offs always go to every port, so a port change between Note On and Note Off
    | Capture MIDI | FADER BANK | 22 |
    | Play/Pause | PARA | 23 |
    | Undo | ◀ (on release) | 24 |
-   | Metronome | ◀ + PARA | 26 |
+   | Metronome | PATCH + PARA (or ◀ + PARA) | 26 |
    | Session Record | KNOB BANK | 25 |
    | Redo | ▶ | 27 |
 
@@ -289,9 +292,9 @@ Saved automatically, about 1.5 s after the last change and only while nothing is
 Windows x64 with PowerShell and the [JieLi 2.5.3 Windows toolchain](https://jl-update.oss-cn-shenzhen.aliyuncs.com/2.5.3.exe) (PI32v2 clang 4.0.1, `r3`), exactly as SMK37 OPEN / FM1 OPEN. Each SDK manifest verifies the toolchain and SDK hashes; do not modify `devices/*/sdk/`.
 
 ```powershell
-cd C:\path\to\kamotekeys-0.53                     # a local C: folder, not \\Mac\... (cmd cannot run there)
+cd C:\path\to\kamotekeys-0.54                     # a local C: folder, not \\Mac\... (cmd cannot run there)
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.53-source.zip'  # any https URL; publish the real source if you share builds
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.54-source.zip'  # any https URL; publish the real source if you share builds
 .\build.bat smk37-pro --package                     # or smk37-elite, or fm1
 ```
 

@@ -193,6 +193,9 @@ static void test_buttons(void)
     CHECK(out_count(USB, CC15, 26) == 2 && out_count(USB, CC15, 24) == 0 && out_count(USB, CC15, 23) == 0, "HOME + PARA -> metronome, no Undo");
     host_clear(); tap(KK_BTN_LEFT);
     CHECK(out_count(USB, CC15, 24) == 2, "HOME alone still Undo");
+    /* 0.54: PATCH (SMK37 OPEN's HOME) + PARA = metronome; PATCH then opens no page. */
+    host_clear(); btn(KK_BTN_PATCH, 1); tap(KK_BTN_PARA); btn(KK_BTN_PATCH, 0);
+    CHECK(out_count(USB, CC15, 26) == 2 && out_count(USB, CC15, 23) == 0 && kk.page == KK_PAGE_MAIN, "PATCH + PARA -> metronome, no page");
     /* 0.45: SEQ = Key Scale, SCALE = Pad Scale, independent. */
     tap(KK_BTN_SEQ);
     CHECK(kk.mode == KK_MODE_KEY_SCALE && kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "SEQ -> Key Scale only");
@@ -413,40 +416,53 @@ static void test_spare_and_refcount(void)
     kk_midi_set_ports(KK_PORTS_ALL); host_clear(); key(0, 100); key(0, 0);
     CHECK(out_count(BLE, ON1, 48) == 1 && out_count(USB, ON1, 48) == 1, "ALL sends both");
     kk_midi_set_ports(KK_PORTS_AUTO);
-    /* 0.45: NOTE REPEAT button = SUSTAIN latch (CC 64 ch1), shared with a pedal. */
+    /* 0.54: SUSTAIN holds released notes until the next key (no CC 64);
+     * keys pressed together are held together. */
     host_clear(); tap(KK_BTN_NOTE_REPEAT);
-    CHECK(kk.sustain_on && out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == (64 | 127 << 8) && kk_led_button(KK_BTN_NOTE_REPEAT) == 2,
-          "SUSTAIN tap -> CC64 127, LED bright");
-    CHECK(local_count(CC1, 64) == 1, "SUSTAIN also reaches the internal synth");
-    host_clear(); key(0, 100); frames(250, 2); key(0, 0); frames(100, 2);
-    CHECK(out_count(USB, ON1, 48) == 1 && out_count(USB, OFF1, 48) == 1, "SUSTAIN does not retrigger notes");
+    CHECK(kk.sustain_on && out_count(USB, CC1, 64) == 0 && kk_led_button(KK_BTN_NOTE_REPEAT) == 2, "SUSTAIN on: LED bright, no CC 64");
+    host_clear(); key(0, 100); key(4, 100); key(0, 0); key(4, 0); frames(100, 2);
+    CHECK(out_count(USB, ON1, 48) == 1 && out_count(USB, ON1, 52) == 1 && out_count(USB, OFF1, -1) == 0, "keys pressed together keep sounding after release");
+    key(7, 100);
+    CHECK(out_count(USB, OFF1, 48) == 1 && out_count(USB, OFF1, 52) == 1 && out_count(USB, ON1, 55) == 1, "the next key ends them and plays");
+    key(9, 100);   /* added while 7 is held: joins */
+    key(7, 0); key(9, 0); frames(50, 2);
+    CHECK(out_count(USB, OFF1, 55) == 0 && out_count(USB, OFF1, 57) == 0, "a key added while another is held is sustained with it");
+    host_clear(); key(0, 100);
+    CHECK(out_count(USB, OFF1, 55) == 1 && out_count(USB, OFF1, 57) == 1 && out_count(USB, ON1, 48) == 1, "next phrase replaces both");
+    key(0, 0);
+    host_clear(); key(0, 100); key(0, 0);
+    CHECK(out_count(USB, OFF1, 48) == 1 && out_count(USB, ON1, 48) == 1 && kk_midi_count(0, 48) == 1, "same note again retriggers cleanly");
+    host_clear(); pad(2, 100); pad(2, 0);
+    CHECK(out_count(USB, OFF1, 48) == 0, "a chord-modifier pad does not end the held notes");
+    host_clear(); tap(KK_BTN_NOTE_REPEAT);
+    CHECK(!kk.sustain_on && out_count(USB, OFF1, 48) == 1 && kk_midi_count(0, 48) == 0 && kk_led_button(KK_BTN_NOTE_REPEAT) == 1, "SUSTAIN off releases what it held");
+    host_clear(); key(0, 100); key(0, 0);
+    CHECK(out_count(USB, ON1, 48) == 1 && out_count(USB, OFF1, 48) == 1, "SUSTAIN off: normal release");
+    /* A pedal still sends CC 64 (not the button). */
     host_clear(); pedal(127); pedal(0);
-    CHECK(out_count(USB, CC1, 64) == 0, "pedal under a latched SUSTAIN sends nothing extra");
-    host_clear(); tap(KK_BTN_NOTE_REPEAT);
-    CHECK(!kk.sustain_on && out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == 64 && kk_led_button(KK_BTN_NOTE_REPEAT) == 1,
-          "SUSTAIN tap again -> CC64 0, LED dim");
-    host_clear(); pedal(127); tap(KK_BTN_NOTE_REPEAT); tap(KK_BTN_NOTE_REPEAT);
-    CHECK(out_count(USB, CC1, 64) == 1, "latch toggling under a held pedal keeps sustain on");
-    pedal(0); CHECK(out_count(USB, CC1, 64) == 2 && last_out(USB, CC1, 0) == 64, "pedal release ends it");
+    CHECK(out_count(USB, CC1, 64) == 2 && last_out(USB, CC1, 0) == 64, "pedal -> CC 64 127 / 0");
     btn(KK_BTN_NOTE_REPEAT, 1); host_ms += 1000; frames(2, 1); btn(KK_BTN_NOTE_REPEAT, 0);
     CHECK(kk.page == KK_PAGE_MAIN, "long SUSTAIN opens no page");
     tap(KK_BTN_NOTE_REPEAT);
     CHECK(!kk.sustain_on, "sustain off again");
-    /* 0.53: with ARP on, SUSTAIN holds the arpeggio (no CC 64). */
+    /* Mode change releases held notes. */
+    tap(KK_BTN_NOTE_REPEAT); key(0, 100); key(0, 0); host_clear(); tap(KK_BTN_FX);
+    CHECK(out_count(USB, OFF1, 48) == 1 && kk_midi_count(0, 48) == 0, "mode change releases sustained notes");
+    tap(KK_BTN_FX); tap(KK_BTN_NOTE_REPEAT);
+    /* With ARP on, SUSTAIN latches the arpeggio the same way. */
     tap(KK_BTN_ARP); host_clear(); tap(KK_BTN_NOTE_REPEAT);
-    CHECK(kk.sustain_on && out_count(USB, CC1, 64) == 0, "SUSTAIN with ARP sends no CC 64");
     key(0, 100); key(4, 100); frames(60, 2); key(0, 0); key(4, 0);
     host_clear(); frames(500, 2);                      /* 1 s at 1/8 = ~4 steps */
     unsigned held_steps = out_count(USB, ON1, 48) + out_count(USB, ON1, 52);
     CHECK(held_steps >= 3 && out_count(USB, ON1, 48) && out_count(USB, ON1, 52), "released notes keep arpeggiating (%u)", held_steps);
     key(7, 100); key(7, 0); host_clear(); frames(500, 2);
-    CHECK(out_count(USB, ON1, 55) >= 1 && out_count(USB, ON1, 48) >= 1, "a note added under sustain joins the pattern");
+    CHECK(out_count(USB, ON1, 55) >= 2 && out_count(USB, ON1, 48) == 0 && out_count(USB, ON1, 52) == 0, "the next key replaces the held arpeggio");
+    key(7, 100); key(9, 100); frames(10, 2); key(7, 0); key(9, 0); host_clear(); frames(500, 2);
+    CHECK(out_count(USB, ON1, 55) >= 1 && out_count(USB, ON1, 57) >= 1, "keys pressed together arpeggiate together");
     tap(KK_BTN_NOTE_REPEAT); frames(200, 2); host_clear(); frames(500, 2);
     CHECK(out_count(USB, ON1, -1) == 0, "sustain off: the held arpeggio stops");
-    CHECK(kk_midi_count(0, 48) + kk_midi_count(0, 52) + kk_midi_count(0, 55) == 0, "no stuck ARP notes");
-    tap(KK_BTN_NOTE_REPEAT); host_clear(); tap(KK_BTN_ARP);
-    CHECK(out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == (64 | 127 << 8), "ARP off while sustained -> CC 64 on");
-    host_clear(); tap(KK_BTN_NOTE_REPEAT); CHECK(out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == 64, "and off");
+    CHECK(kk_midi_count(0, 48) + kk_midi_count(0, 52) + kk_midi_count(0, 55) + kk_midi_count(0, 57) == 0, "no stuck ARP notes");
+    tap(KK_BTN_ARP);
 }
 
 static void test_arp_keys_and_persistence(void)
@@ -711,6 +727,27 @@ static void test_031(void)
     btn(KK_BTN_REC, 0);
 }
 
+/* 0.54: ARP follows Ableton's tempo (Remote Script CC 102/103 on ch 16). */
+static void test_live_tempo(void)
+{
+    boot();
+    CHECK(kk_tempo_x10() == 1200, "own tempo 120 without Live");
+    host_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    host_in(0xBF, KK_HOST_TEMPO_MSB_CC, 985 >> 7); host_in(0xBF, KK_HOST_TEMPO_LSB_CC, 985 & 127);
+    CHECK(kk_tempo_x10() == 985 && kk_tempo_bpm() == 99, "Live tempo 98.5 has priority (%u)", kk_tempo_x10());
+    kk_edit_bpm(10); CHECK(kk.bpm == 120 && kk_tempo_x10() == 985, "tempo knob ignored while Live sets it");
+    tap(KK_BTN_ARP); host_clear(); key(0, 100); key(4, 100);
+    frames(1218, 1);                     /* 4 steps of 1/8 at 98.5 BPM = 1218 ms */
+    unsigned on = out_count(USB, ON1, -1);
+    key(0, 0); key(4, 0); tap(KK_BTN_ARP); frames(100, 2);
+    CHECK(on == 4 || on == 5, "ARP steps at Live's tempo (%u in 1218 ms)", on);
+    host_ready_ports = 0; frames(5, 2);
+    CHECK(kk_tempo_x10() == 1200, "Live gone: back to the own tempo");
+    host_ready_ports = 6; frames(5, 2);
+    host_in(0xBF, KK_HOST_TEMPO_MSB_CC, 1400 >> 7); host_in(0xBF, KK_HOST_TEMPO_LSB_CC, 1400 & 127);
+    CHECK(kk_tempo_x10() == 1200, "tempo without the script's hello is ignored");
+}
+
 int main(void)
 {
     test_theory();
@@ -723,6 +760,7 @@ int main(void)
     test_fuzz();
     test_display();
     test_031();
+    test_live_tempo();
     printf("%u checks, %u failures\n", checks, failures);
     return failures != 0;
 }

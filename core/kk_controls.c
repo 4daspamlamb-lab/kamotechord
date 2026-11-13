@@ -27,6 +27,7 @@ struct source {
     uint64_t off_us;
 };
 static struct source sources[SOURCES];
+static void hold_release(void);   /* SUSTAIN: release the held notes */
 static uint16_t press_order;
 static uint64_t clock_us;      /* monotonic microseconds from fm1_millis */
 static uint32_t last_ms;
@@ -39,10 +40,17 @@ static const char *const mode_names[KK_MODES] = {"NORMAL", "KEY SCALE", "PAD SCA
 const char *kk_division_name(unsigned d) { return division_names[d % KK_DIVS]; }
 const char *kk_direction_name(unsigned d) { return direction_names[d % KK_DIRS]; }
 const char *kk_mode_name(unsigned m) { return mode_names[m < KK_MODES ? m : 0]; }
+/* Tempo in tenths of BPM: Ableton's (via the Remote Script) has priority. */
+unsigned kk_tempo_x10(void)
+{
+    unsigned live = kk_midi_host_tempo_x10();
+    if (live) return live;
+    return (kk.bpm < 30 ? 30U : kk.bpm) * 10U;
+}
+unsigned kk_tempo_bpm(void) { return (kk_tempo_x10() + 5U) / 10U; }
 static uint64_t step_us(unsigned division)
 {
-    unsigned bpm = kk.bpm < 30 ? 30 : kk.bpm;
-    return 60000000ULL / ((uint64_t)bpm * division_den[division % KK_DIVS]);
+    return 600000000ULL / ((uint64_t)kk_tempo_x10() * division_den[division % KK_DIVS]);
 }
 
 /* ------------------------------------------------------------- velocity */
@@ -404,6 +412,7 @@ void kk_settings_touch(void) { ++kk.edit_revision; groove_settings_panel_changed
 void kk_set_mode(unsigned mode)
 {
     if (mode == kk.mode) mode = KK_MODE_NORMAL;     /* same button again: normal */
+    hold_release();                                   /* sustained notes belong to the old mode */
     kk.chord_lock = 0; kk.latched_mods = 0;
     unsigned keys_change = (mode == KK_MODE_KEY_SCALE) != (kk.mode == KK_MODE_KEY_SCALE);
 #ifdef KK_PAD_SCALE_ON_KEYS
@@ -435,6 +444,7 @@ void kk_set_octave(int octave)
 static int clampi(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 void kk_edit_bpm(int delta)
 {
+    if (kk_midi_host_tempo_x10()) return;              /* Ableton sets the tempo */
     int next = clampi((int)kk.bpm + delta, 30, 300);
     if (next != kk.bpm) { kk.bpm = (uint16_t)next; kk_settings_touch(); }
 }
@@ -530,7 +540,7 @@ static unsigned animation_speed(void)
 static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLETON, controller, value); }
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
-static uint8_t left_combo, para_cc = KK_CC_PLAY_PAUSE;
+static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE;
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -548,8 +558,13 @@ static void button(unsigned id, unsigned down, uint32_t now)
     if (!down && (menu_owned & bit)) { menu_owned &= ~bit; return; }
     switch (id) {
     /* 0.51: PARA = Ableton Play/Pause; with HOME (LEFT) held = metronome. */
+    /* PATCH (SMK37 OPEN's HOME) or LEFT held + PARA = metronome (0.54). */
     case KK_BTN_PARA:
-        if (down) { para_cc = (kk.buttons & (1U << KK_BTN_LEFT)) ? KK_CC_METRONOME : KK_CC_PLAY_PAUSE; left_combo |= para_cc == KK_CC_METRONOME; }
+        if (down) {
+            unsigned shift = kk.buttons & ((1U << KK_BTN_LEFT) | (1U << KK_BTN_PATCH));
+            para_cc = shift ? KK_CC_METRONOME : KK_CC_PLAY_PAUSE;
+            if (shift) { left_combo = 1; patch_combo = 1; }
+        }
         ableton(para_cc, down ? 127 : 0); return;
     case KK_BTN_CHORD: if (down) kk_set_mode(KK_MODE_CLIP); return;
     case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
@@ -577,14 +592,19 @@ static void button(unsigned id, unsigned down, uint32_t now)
         if (!down && kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);
         else if (!down && kk.page == KK_PAGE_ARP && held_ms < 600) open_page(KK_PAGE_MAIN);
         return;
-    case KK_BTN_NOTE_REPEAT:   /* 0.45: SUSTAIN latch (tap on, tap off) */
-        if (down) { kk.sustain_on = !kk.sustain_on; sustain_update(); }
+    case KK_BTN_NOTE_REPEAT:   /* SUSTAIN (hold until the next key) on/off */
+        if (down) {
+            kk.sustain_on = !kk.sustain_on;
+            if (!kk.sustain_on) { hold_release(); sustained_count = 0; }
+            ++kk.edit_revision;
+        }
         return;
     case KK_BTN_BT:
         if (down) open_page(kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG ? KK_PAGE_MAIN : KK_PAGE_BT);
         return;
-    case KK_BTN_PATCH:
-        if (down) open_page(kk.page == KK_PAGE_PATCH ? KK_PAGE_MAIN : KK_PAGE_PATCH);
+    case KK_BTN_PATCH:   /* on release, unless it was used with PARA */
+        if (down) patch_combo = 0;
+        else if (!patch_combo) open_page(kk.page == KK_PAGE_PATCH ? KK_PAGE_MAIN : KK_PAGE_PATCH);
         return;
     case KK_BTN_REC:
         if (down) {
@@ -616,9 +636,10 @@ static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
 static unsigned sustain_active(void) { return kk.sustain_on || pedal_down; }
 static void sustain_update(void)
 {
-    /* With ARP on, Sustain holds the arpeggio instead of sending CC 64 (which
-     * would smear every ARP step into the next). */
-    unsigned want = sustain_active() && !kk.arp_on;
+    /* CC 64 comes only from a sustain pedal (the SUSTAIN button holds notes
+     * itself), and not while ARP is on: there the pedal holds the arpeggio
+     * (CC 64 would smear every ARP step into the next). */
+    unsigned want = pedal_down && !kk.arp_on;
     if (want == sustain_sent) return;
     sustain_sent = (uint8_t)want;
     kk_midi_cc(KK_CH_MELODIC, 64, want ? 127 : 0);
@@ -643,6 +664,36 @@ static void clip_action_refresh(void)
     }
     if (action != kk.clip_action) { kk.clip_action = (uint8_t)action; ++kk.edit_revision; }
 }
+/* ------------------------------------------------------------ Sustain */
+/* SUSTAIN button (0.54): released notes keep sounding until the next key or
+ * pad is pressed with nothing else held; notes pressed together (or added
+ * while others are held) are sustained together. KamoteKeys holds the notes
+ * itself (no CC 64), so the synth and the DAW see long notes. A sustain pedal
+ * still sends CC 64. With ARP on the same rule latches the arpeggio. */
+enum { HOLD_MAX = 32 };
+static struct { uint8_t channel, note; } hold[HOLD_MAX];
+static unsigned hold_count;
+static void hold_release(void)
+{
+    for (unsigned i = 0; i < hold_count; ++i) kk_midi_note_off(hold[i].channel, hold[i].note);
+    if (hold_count) ++kk.edit_revision;
+    hold_count = 0;
+}
+static void hold_keep(const struct source *s)
+{
+    for (unsigned k = 0; k < s->count; ++k) {
+        if (hold_count == HOLD_MAX) { kk_midi_note_off(s->channel, s->notes[k]); continue; }
+        hold[hold_count].channel = s->channel; hold[hold_count].note = s->notes[k]; ++hold_count;
+    }
+}
+static unsigned musical(unsigned route) { return route == ROUTE_DIRECT || route == ROUTE_ARP || route == ROUTE_REPEAT; }
+/* A musical press with no other musical source held starts a new phrase. */
+static unsigned new_phrase(unsigned id)
+{
+    for (unsigned i = 0; i < SOURCES; ++i)
+        if (i != id && sources[i].held && musical(sources[i].route)) return 0;
+    return 1;
+}
 static void source_press(unsigned id, unsigned velocity)
 {
     if (id >= PAD_SOURCE) velocity = kk_pad_curve(velocity);
@@ -651,6 +702,10 @@ static void source_press(unsigned id, unsigned velocity)
     s->held = 1; s->velocity = (uint8_t)velocity; s->order = ++press_order;
     intent(id, s);
     if (id >= PAD_SOURCE && kk.anim_active) { s->count = 0; s->modifier = 0; s->route = ROUTE_NONE; return; }
+    if (kk.sustain_on && musical(route_for(id, s)) && new_phrase(id)) {
+        hold_release();                                  /* the next key ends the held notes */
+        sustained_count = 0;                             /* and a held arpeggio */
+    }
     engage(id);
     if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {
@@ -688,6 +743,9 @@ static void source_release(unsigned id)
     struct source *s = &sources[id];
     if (!s->held) return;
     unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK, was_clip = s->route == ROUTE_CLIPMOD;
+    if (kk.sustain_on && s->route == ROUTE_DIRECT && s->sounding && s->channel != KK_CH_CLIP) {
+        hold_keep(s); s->sounding = 0;                   /* keep sounding until the next key */
+    }
     disengage(s);
     s->held = 0; s->route = ROUTE_NONE; s->count = 0; s->modifier = 0;
     if (was_mod) mods_refresh();
@@ -731,7 +789,7 @@ void kk_controls_panic(void)
     arp_stop();
     kk_midi_all_off();
     kk.keys = 0; kk.pads = 0; kk.buttons = 0; kk.chord_mods = 0; kk.anim_active = 0; kk.clip_action = 0; kk.knob_shift = 0;
-    pedal_down = 0; kk.sustain_on = 0; sustain_update();
+    pedal_down = 0; kk.sustain_on = 0; sustain_update(); hold_count = 0;   /* all off was sent */
     ++kk.edit_revision;
 }
 
@@ -837,9 +895,11 @@ void kk_perform_guard(void)
     }
     /* The engine tempo follows the KamoteKeys BPM (clock out, synced delay).
      * Edit once per change: never accumulate deltas against a stale view. */
-    if (synced_bpm != kk.bpm || synced_revision != groove_project_revision()) {
-        if (view.tempo && view.tempo != kk.bpm) groove_tempo_edit((int)kk.bpm - (int)view.tempo);
-        synced_bpm = kk.bpm; synced_revision = groove_project_revision();
+    unsigned bpm = kk_tempo_bpm();
+    if (bpm > 300) bpm = 300;                          /* engine range */
+    if (synced_bpm != bpm || synced_revision != groove_project_revision()) {
+        if (view.tempo && view.tempo != bpm) groove_tempo_edit((int)bpm - (int)view.tempo);
+        synced_bpm = (uint16_t)bpm; synced_revision = groove_project_revision();
     }
 }
 
@@ -859,6 +919,7 @@ void kk_perform_init(void)
     kk.chord_root = -1; kk.last_note = -1;
     kk.scale = (struct kk_scale_ctx){0, 0};
     arp_running = latched_count = repeat_running = 0; arp_note = -1;
+    hold_count = 0; sustained_count = 0;
     pedal_down = 0; sustain_sent = 0; wheel_sent[0] = 64; wheel_sent[1] = 0;
     last_ms = fm1_millis(); clock_us = 0;
     synced_program = 255; synced_bpm = 0; program_revision = synced_revision = 0;

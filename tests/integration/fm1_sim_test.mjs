@@ -106,10 +106,16 @@ const pp = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
 check(pp === '23:127 23:0 26:127 26:0', 'SAVE tap = Play/Pause, HOME+SAVE = metronome, SAVE+knob = nothing: ' + pp);
 check(leds()[B.HOME] === 0, 'HOME + SAVE opens no page');
 
-// Sustain (SEL, where the SMK-37 has SUSTAIN).
+// Sustain (SEL, where the SMK-37 has SUSTAIN, 0.54): notes are held until
+// the next key; keys pressed together are held together; no CC 64.
 midi = [];
-tap(B.SEL); check(out(USB, 0xb0, 64).length === 1 && out(USB, 0xb0, 64)[0].d[2] === 127 && leds()[B.SEL] === 1, 'SEL -> sustain on, LED on');
-tap(B.SEL); check(out(USB, 0xb0, 64).length === 2 && out(USB, 0xb0, 64)[1].d[2] === 0 && leds()[B.SEL] === 0, 'SEL again -> sustain off');
+tap(B.SEL); check(leds()[B.SEL] === 1 && out(USB, 0xb0, 64).length === 0, 'SEL -> sustain on, LED on, no CC 64');
+key(19, 1); key(23, 1); key(19, 0); key(23, 0); ms(50);
+check(out(USB, 0x90).length === 2 && out(USB, 0x80).length === 0, 'released notes keep sounding');
+key(21, 1); key(21, 0); ms(20);
+check(out(USB, 0x80, 60).length === 1 && out(USB, 0x80, 64).length === 1 && out(USB, 0x90, 62).length === 1, 'next key ends them');
+tap(B.SEL); ms(20);
+check(leds()[B.SEL] === 0 && out(USB, 0x80, 62).length === 1, 'SEL again -> sustain off, held note released');
 
 // Knobs: K1 = tempo; with SAVE held K1-K3 = velocity, scale, root.
 btn(B.SAVE, 1); knob(E.K1, -20); btn(B.SAVE, 0);

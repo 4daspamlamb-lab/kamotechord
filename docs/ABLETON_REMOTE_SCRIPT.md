@@ -57,7 +57,9 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 | | an empty slot | arms the track and records a new clip |
 | the **second black key** (SMK-37: D#, FM-1: G#) | a clip | **deletes** it |
 
-The screen shows OVERDUB or DELETE while the key is held; in Clip Mode these two keys play no note. Update the Remote Script folder to the 0.50 version: older scripts ignore these presses.
+The screen shows OVERDUB or DELETE while the key is held; in Clip Mode these two keys play no note. A plain press on a clip that is being overdubbed turns overdub off (the clip keeps playing); the next press stops it as usual.
+
+**Tempo (0.54).** The script sends Live's tempo to the keyboard. While Live is connected, ARP follows Live (Ableton has priority): the BPM on the screen turns green and the tempo knob shows TEMPO FOLLOWS ABLETON. Without Live, the keyboard uses its own tempo again. Update the Remote Script folder to the 0.50 version: older scripts ignore these presses.
 
 | Clip state | Pad |
 |---|---|
@@ -80,7 +82,7 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 | FADER BANK | 22 | Capture MIDI |
 | PARA (FM-1: SAVE tap) | 23 | **Play/Pause**: stops, or continues from where it stopped |
 | ◀ | 24 | Undo |
-| ◀ + PARA (FM-1: HOME + SAVE) | 26 | **Metronome** on/off |
+| PATCH + PARA or ◀ + PARA (FM-1: HOME + SAVE) | 26 | **Metronome** on/off |
 | KNOB BANK | 25 | **Session Record** on/off: records new clips on armed tracks at the selected scene, or overdubs playing clips |
 | ▶ | 27 | Redo |
 

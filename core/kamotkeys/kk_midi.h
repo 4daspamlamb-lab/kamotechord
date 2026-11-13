@@ -39,6 +39,9 @@ unsigned kk_midi_remote(unsigned channel, unsigned note);  /* host note held */
 void kk_midi_remote_clear(void);
 unsigned kk_midi_clip_state(unsigned pad);                 /* KK_CLIP_* */
 unsigned kk_midi_host_protocol(void);                      /* 0 = no script */
+/* Live's tempo in tenths of BPM from the Remote Script, 0 = none (no script,
+ * or disconnected). Ableton has priority over the KamoteKeys tempo. */
+unsigned kk_midi_host_tempo_x10(void);
 uint32_t kk_midi_input_revision(void);
 void kk_midi_clip_sync_request(void);
 

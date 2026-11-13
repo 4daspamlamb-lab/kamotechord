@@ -12,6 +12,7 @@ Protocol (must match core/kamotkeys/kk_config.h in the firmware):
                    ch 15  CC 23 / 26         Play/Pause, Metronome on/off
   Live -> device   ch 16  CC 80..95 = state  clip state of pads 1..16
                    ch 16  CC 126 = 1         protocol hello (script connected)
+                   ch 16  CC 102 / 103       Live tempo x 10, MSB then LSB (ARP follows Live)
 
 Clip states: 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording,
 5 queued to record, 6 empty slot on an armed track.
@@ -34,6 +35,7 @@ OVERDUB_BASE = NOTE_BASE + 16
 DELETE_BASE = NOTE_BASE + 32
 STATE_CC = 80
 HELLO_CC = 126
+TEMPO_MSB_CC, TEMPO_LSB_CC = 102, 103
 SYNC_CC = 127
 TRACKS = 8
 SCENES = 2
@@ -50,6 +52,7 @@ class KamoteKeys(ControlSurface):
     def __init__(self, c_instance):
         ControlSurface.__init__(self, c_instance)
         self._sent = [None] * (TRACKS * SCENES)
+        self._tempo_sent = None
         self._ticks = 0
         self._received = False
         # Standard _Framework controls (as in Ableton's own controller
@@ -126,6 +129,11 @@ class KamoteKeys(ControlSurface):
             if clip.is_recording:
                 clip.fire()              # finish recording (Live keeps playing it)
                 action = 'finish recording'
+            elif self.song().session_record and (clip.is_playing or clip.is_triggered):
+                # Overdubbing this clip: a plain press ends the overdub and the
+                # clip keeps playing (no need to hold the OVERDUB key).
+                self.song().session_record = False
+                action = 'overdub off'
             elif clip.is_playing or clip.is_triggered:
                 slot.stop()              # same pad again: stop (quantized)
                 action = 'stop'
@@ -224,8 +232,21 @@ class KamoteKeys(ControlSurface):
             self._sent[pad] = state
             self._send_midi((0xB0 | CLIP_CHANNEL, STATE_CC + pad, state))
 
+    def _send_tempo(self, force=False):
+        """Live's tempo to the keyboard (tenths of BPM): its ARP follows Live."""
+        try:
+            tempo = int(round(self.song().tempo * 10))
+        except Exception:
+            return
+        tempo = max(200, min(9990, tempo))
+        if force or tempo != self._tempo_sent:
+            self._tempo_sent = tempo
+            self._send_midi((0xB0 | CLIP_CHANNEL, TEMPO_MSB_CC, tempo >> 7))
+            self._send_midi((0xB0 | CLIP_CHANNEL, TEMPO_LSB_CC, tempo & 127))
+
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
+        self._send_tempo(force=True)
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
 
@@ -240,6 +261,7 @@ class KamoteKeys(ControlSurface):
             return
         for pad in range(TRACKS * SCENES):
             self._send_state(pad)
+        self._send_tempo()
 
     def refresh_state(self):
         ControlSurface.refresh_state(self)

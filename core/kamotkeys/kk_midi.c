@@ -15,6 +15,8 @@ static volatile uint8_t clip_states[16] = {
     KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN,
     KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN, KK_CLIP_UNKNOWN};
 static volatile uint8_t host_protocol;
+static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
+static uint8_t tempo_msb;
 static volatile uint32_t input_revision;
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
 static uint32_t revision;
@@ -120,7 +122,13 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
             clip_states[d1 - KK_CLIP_STATE_CC] = (uint8_t)(d2 <= KK_CLIP_EMPTY_ARMED ? d2 : KK_CLIP_EMPTY);
             ++input_revision;
         } else if (type == 0xb0 && d1 == KK_CLIP_HELLO_CC) {
-            host_protocol = (uint8_t)d2; ++input_revision;
+            host_protocol = (uint8_t)d2; if (!d2) host_tempo = 0; ++input_revision;
+        } else if (type == 0xb0 && d1 == KK_HOST_TEMPO_MSB_CC) {
+            tempo_msb = (uint8_t)d2;
+        } else if (type == 0xb0 && d1 == KK_HOST_TEMPO_LSB_CC) {
+            unsigned t = (unsigned)tempo_msb << 7 | d2;
+            host_tempo = (uint16_t)(t >= 200 && t <= 9990 ? t : 0);   /* 20.0 .. 999.0 BPM */
+            ++input_revision;
         }
         return 1;
     }
@@ -146,9 +154,10 @@ void kk_midi_remote_clear(void)
 {
     for (unsigned s = 0; s < 2; ++s) for (unsigned k = 0; k < 128; ++k) remote_notes[s][k] = 0;
     for (unsigned p = 0; p < 16; ++p) clip_states[p] = KK_CLIP_UNKNOWN;
-    host_protocol = 0;
+    host_protocol = 0; host_tempo = 0;
     ++input_revision;
 }
+unsigned kk_midi_host_tempo_x10(void) { return host_protocol ? host_tempo : 0; }
 unsigned kk_midi_clip_state(unsigned pad) { return pad < 16 ? clip_states[pad] : KK_CLIP_UNKNOWN; }
 unsigned kk_midi_host_protocol(void) { return host_protocol; }
 uint32_t kk_midi_input_revision(void) { return input_revision; }

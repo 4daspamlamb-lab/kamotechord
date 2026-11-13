@@ -81,7 +81,7 @@ class Track(object):
 
 class Song(object):
     def __init__(self, n): self.visible_tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
-    is_playing = False; metronome = False
+    is_playing = False; metronome = False; tempo = 120.0
     def continue_playing(self): self.calls.append('continue'); self.is_playing = True
     def start_playing(self): self.calls.append('start')
     def stop_playing(self): self.calls.append('stop')
@@ -165,6 +165,15 @@ class T(unittest.TestCase):
         self.tap(52 + 1); self.assertFalse(self.song.session_record)   # again: overdub off
         self.assertIn('overdub off', self.s.shown[-1])
 
+    def test_plain_press_ends_overdub(self):
+        t = self.song.visible_tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
+        self.tap(52 + 1); slot.clip.is_triggered = False; slot.clip.is_playing = True
+        self.assertTrue(self.song.session_record)
+        self.press(1)                                     # plain launch note
+        self.assertFalse(self.song.session_record); self.assertEqual(t.log, ['fire'])   # not stopped
+        self.assertIn('overdub off', self.s.shown[-1])
+        self.press(1); self.assertEqual(t.log[-1], 'stop')   # next plain press stops as before
+
     def test_overdub_empty_slot_arms_and_records(self):
         t = self.song.visible_tracks[3]
         self.tap(52 + 3); self.assertTrue(t.arm); self.assertEqual(t.log, ['record'])
@@ -184,9 +193,15 @@ class T(unittest.TestCase):
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertTrue(self.song.metronome)
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 
+    def test_tempo_follows_live(self):
+        self.assertIn((0xBF, 102, 1200 >> 7), self.s.sent); self.assertIn((0xBF, 103, 1200 & 127), self.s.sent)
+        self.s.sent.clear(); self.song.tempo = 98.5; self.s.update_display()
+        self.assertEqual(self.s.sent, [(0xBF, 102, 985 >> 7), (0xBF, 103, 985 & 127)])
+        self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])   # only changes
+
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 17)
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 19)   # hello, tempo x2, 16 states
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])

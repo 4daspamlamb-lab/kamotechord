@@ -81,7 +81,10 @@ void kk_set_arp(unsigned on);
 void kk_set_repeat(unsigned on);
 void kk_set_octave(int octave);           /* octave of the active mode (keys or pads) */
 int kk_active_octave(void);
-void kk_edit_bpm(int delta);
+void kk_edit_bpm(int delta);                      /* ignored while Live sets the tempo */
+/* Effective tempo: Ableton's while the Remote Script sends it, else kk.bpm. */
+unsigned kk_tempo_x10(void);
+unsigned kk_tempo_bpm(void);
 void kk_edit_arp(unsigned parameter, int delta);   /* 0 mode .. 5 octaves */
 void kk_edit_repeat(int delta);
 void kk_edit_program(int delta);
