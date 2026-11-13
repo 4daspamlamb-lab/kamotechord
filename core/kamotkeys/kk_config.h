@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.60" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.61" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -56,7 +56,7 @@ enum {
 /* Step Mode protocol (channel 14, 0.58), shared with remote_script/KamoteKeys.
  *  device -> host: Note 36+pad = step pad 1..16 (press / release)
  *                  Note 60.. = function keys (KK_STEP_*; press / release)
- *                  CC 104 = drum key pressed (0..15 = drum of the bank, 0.60)
+ *                  Note 80+i = drum key i of the bank pressed (0.61; on + off at once)
  *                  CC 127 = 127 entering Step Mode (send everything), 0 leaving
  *  host -> device: CC 80+pad = pad colour code (KK_STEPC_*)
  *                  CC 96 page, 97 page count, 98 resolution, 99 follow,
@@ -67,10 +67,11 @@ enum {
     KK_STEP_DRUM = 60, KK_STEP_PAGE_PREV, KK_STEP_PAGE_NEXT, KK_STEP_LENGTH, KK_STEP_DOUBLE,
     KK_STEP_RESOLUTION, KK_STEP_FOLLOW, KK_STEP_COPY, KK_STEP_CLEAR,
     KK_STEP_VEL_1, KK_STEP_VEL_2, KK_STEP_VEL_3, KK_STEP_VEL_4, KK_STEP_VEL_5, KK_STEP_VEL_6,
-    KK_STEP_VEL_DOWN, KK_STEP_VEL_UP,
+    KK_STEP_VEL_DOWN, KK_STEP_VEL_UP, KK_STEP_PASTE,
+    KK_STEP_DRUM_NOTE = 80,
     KK_STEP_CODE_CC = 80, KK_STEP_PAGE_CC = 96, KK_STEP_PAGES_CC = 97, KK_STEP_RES_CC = 98,
     KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
-    KK_STEP_BANK_CC = 103, KK_STEP_SELECT_CC = 104,
+    KK_STEP_BANK_CC = 103,
     KK_STEP_SYNC_CC = 127
 };
 /* Pad colour codes sent by the script (rendered by kk_led.c). */

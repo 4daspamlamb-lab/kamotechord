@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.61 (development snapshot)
+
+- **Step Mode COPY / PASTE / CLEAR on the lowest octave's black keys (SMK-37):** C# = COPY, D# = PASTE, A# = CLEAR. COPY tap copies the shown page, PASTE tap replaces the shown page with it; with a drum key held they copy / paste just that sound (paste onto another sound works too). CLEAR as before.
+- **Fix: a pad after a drum key did nothing in Live.** The drum key now reaches the Remote Script as a channel 14 note (80–95), the same path as the step pads, instead of a CC (the kick's CC value was 0). The script logs `KamoteKeys step: drum key ...` to Log.txt.
+- Needs the updated Remote Script.
+
 ## KamoteKeys 0.60 (development snapshot)
 
 - **Step Mode laid out like Ableton Move (SMK-37):** the second octave is 12 **drum keys** (C = kick, the first 12 sounds of the Drum Rack bank): a key plays its sound and selects it for the steps. COPY and CLEAR move to C# / D# of the lowest octave, so that octave holds all the controls.

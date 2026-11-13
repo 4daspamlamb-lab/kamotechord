@@ -122,7 +122,8 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 |---|---|---|
 | keyboard → Live | Note 36–51 | step pads 1–16 (press / release) |
 | keyboard → Live | Note 60–76 | DRUM, page ◀, page ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW, COPY, CLEAR, velocity 1–6, velocity down, velocity up |
-| keyboard → Live | CC 104 | drum key pressed: 0–15 = drum of the current bank (SMK-37 second octave) |
+| keyboard → Live | Note 77 | PASTE |
+| keyboard → Live | Note 80–95 | drum key 1–16 of the current bank pressed (SMK-37 second octave; on + off at once) |
 | keyboard → Live | Note on channel 10 | the drum key's own note (bank + key), so the armed track and the internal drum kit play it |
 | keyboard → Live | CC 127 | 127 = Step Mode started, 0 = ended |
 | Live → keyboard | CC 80–95 | pad colour code |

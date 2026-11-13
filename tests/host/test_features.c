@@ -42,14 +42,18 @@ void test_step_mode(void)
           "C = DRUM (hold), D = page prev");
     host_clear(); key(24, 100); key(24, 0); key(6, 100); key(6, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x90, 54) == 1, "C4 = velocity 1, F# still plays");
-    host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1, "C# = COPY, D# = CLEAR");
+    host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0); key(10, 100); key(10, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
+          "C# = COPY, D# = PASTE, A# = CLEAR");
     /* 0.60: second octave = drum keys (Move-style drum pads). */
     host_clear(); key(12, 100);
-    CHECK(out_count(USB, 0x99, 36) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SELECT_CC | 0 << 8), "2nd-octave C = kick (ch 10 note 36) + selects drum 0");
+    CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x9D, KK_STEP_DRUM_NOTE) == 1 && out_count(USB, 0x8D, KK_STEP_DRUM_NOTE) == 1,
+          "2nd-octave C = kick (ch 10 note 36) + selects drum 0 (ch 14 note 80)");
+    pad(1, 90); pad(1, 0);
+    CHECK(out_count(USB, 0x9D, 36) == 1 && out_count(USB, 0x8D, 36) == 1, "a pad after a drum key still sends its step");
     key(12, 0); CHECK(out_count(USB, 0x89, 36) == 1, "drum key release = note off");
     host_in(0xBD, KK_STEP_BANK_CC, 52); host_clear(); key(23, 90); key(23, 0);
-    CHECK(out_count(USB, 0x99, 63) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SELECT_CC | 11 << 8), "B = drum 12 of the bank from the script (63)");
+    CHECK(out_count(USB, 0x99, 63) == 1 && out_count(USB, 0x9D, KK_STEP_DRUM_NOTE + 11) == 1, "B = drum 12 of the bank from the script (63)");
     tap(KK_BTN_ARP); host_clear(); key(14, 100); key(14, 0); tap(KK_BTN_ARP);
     CHECK(out_count(USB, 0x99, 54) == 1, "drum keys ignore the ARP");
     host_in(0xBD, KK_STEP_BANK_CC, 36);

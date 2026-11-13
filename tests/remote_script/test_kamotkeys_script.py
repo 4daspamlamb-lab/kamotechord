@@ -141,7 +141,7 @@ class T(unittest.TestCase):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
         self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
-        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 77)))   # step pads, step functions
+        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 78)) + list(range(80, 96)))   # step pads, functions, drum keys
         self.assertTrue(all(b.channel in (13, 14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
@@ -406,20 +406,35 @@ class StepTest(unittest.TestCase):
         self.assertIs(self.song.track.devices[0].view.selected_drum_pad, self.song.track.devices[0].drum_pads[38])
         self.tap(3); self.assertEqual([n.pitch for n in self.clip.notes], [38])
 
+    def drum(self, i): deliver((0x9D, 80 + i, 127)); deliver((0x8D, 80 + i, 0))
+    def pitches(self): return sorted((n.pitch, n.start_time) for n in self.clip.notes)
+
     def test_drum_keys_clear_and_auto_arm(self):
-        """0.60, Move-style: drum keys select the sound, CLEAR + drum key
-        deletes that sound, a CLEAR tap clears the page, the track is armed."""
+        """Move-style: drum keys select the sound (kick = drum key 0 too),
+        CLEAR + drum key deletes that sound, a CLEAR tap clears the page,
+        the track is armed while Step Mode is on."""
         self.mode(True)
         self.assertTrue(self.song.track.arm); self.assertEqual(self.info(103), 36)
-        deliver((0xBD, 104, 2)); self.s.update_display()                  # drum key D = 38 (snare)
-        self.assertEqual(self.info(102), 38)
-        self.tap(0); self.tap(4); deliver((0xBD, 104, 0)); self.tap(2)    # snare x2, kick x1
-        self.assertEqual(sorted(n.pitch for n in self.clip.notes), [36, 38, 38])
-        self.fn(68); deliver((0xBD, 104, 2)); self.fn(68, False)          # CLEAR + snare key
-        self.assertEqual([n.pitch for n in self.clip.notes], [36])
-        self.assertEqual(self.info(102), 36)                              # active drum unchanged
+        self.drum(2); self.s.update_display(); self.assertEqual(self.info(102), 38)     # snare
+        self.tap(0); self.tap(4)
+        self.drum(0); self.s.update_display(); self.assertEqual(self.info(102), 36)     # kick, then a pad
+        self.tap(2)
+        self.assertEqual(self.pitches(), [(36, 0.5), (38, 0.0), (38, 1.0)])
+        self.fn(68); self.drum(2); self.fn(68, False)                     # CLEAR + snare key
+        self.assertEqual(self.pitches(), [(36, 0.5)]); self.assertEqual(self.info(102), 36)
         self.press(68); self.assertEqual(self.clip.notes, [])              # CLEAR tap = clear page
         self.mode(False); self.assertFalse(self.song.track.arm)           # auto-arm released
+
+    def test_copy_paste(self):
+        self.mode(True); self.tap(0); self.drum(2); self.tap(4)            # kick step 1, snare step 5
+        self.press(67)                                                     # COPY tap = whole page
+        self.fn(63); self.press(62); self.pad(15); self.pad(15, False); self.fn(63, False)   # 2 bars
+        self.press(62); self.press(77)                                     # page 2, PASTE
+        self.assertEqual(self.pitches(), [(36, 0.0), (36, 4.0), (38, 1.0), (38, 5.0)])
+        self.fn(67); self.drum(2); self.fn(67, False)                      # COPY + snare key = snare lane
+        self.fn(77); self.drum(6); self.fn(77, False)                      # PASTE + key 6 (42) = onto the hat
+        self.assertIn((42, 5.0), self.pitches())
+        self.assertEqual(len(self.clip.notes), 5)
 
     def test_length_double_resolution_and_follow(self):
         self.mode(True)

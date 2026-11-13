@@ -34,11 +34,11 @@ STEP_CHANNEL = 13                      # MIDI channel 14
 PAD_NOTE = 36
 PADS = 16
 (F_DRUM, F_PAGE_PREV, F_PAGE_NEXT, F_LENGTH, F_DOUBLE, F_RESOLUTION, F_FOLLOW, F_COPY, F_CLEAR,
- F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP) = range(60, 77)
-FUNCTION_NOTES = tuple(range(60, 77))
+ F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP, F_PASTE) = range(60, 78)
+FUNCTION_NOTES = tuple(range(60, 78))
+DRUM_NOTE = 80                         # device -> host: notes 80..95 = drum key 0..15 of the bank (0.61)
 CODE_CC, PAGE_CC, PAGES_CC, RES_CC, FOLLOW_CC, STATUS_CC, DRUMVIEW_CC, ACTIVE_CC = 80, 96, 97, 98, 99, 100, 101, 102
 BANK_CC = 103                          # host -> device: first note of the drum bank
-SELECT_CC = 104                        # device -> host: drum key 0..15 of the bank pressed (0.60)
 MODE_CC = 127
 
 # Pad colour codes (KK_STEPC_* in the firmware).
@@ -85,7 +85,8 @@ class StepSequencer(object):
         self._sent = [None] * PADS
         self._info_sent = {}
         self._armed = None             # track this mode armed (disarmed again on exit)
-        self._clear_used = False       # CLEAR held and used with a drum key
+        self._used = set()             # COPY / PASTE / CLEAR held and already used with another key
+        self._clipboard = None         # (lane pitch or None, [(pitch, offset, duration, velocity, mute)])
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -138,7 +139,7 @@ class StepSequencer(object):
             self._active = False
             self._disarm()
             self._unbind()
-            self._held, self._fn, self._consumed = [], set(), set()
+            self._held, self._fn, self._consumed, self._used = [], set(), set(), set()
             self._log('Step Mode ended')
 
     def _unbind(self):
@@ -452,14 +453,19 @@ class StepSequencer(object):
             return
         if not pressed:
             self._fn.discard(note)
-            if note == F_CLEAR and not self._clear_used:
-                self._clear_page()     # a plain tap clears the active drum on the page
-                self._dirty = True
+            if note not in self._used:          # plain taps act on release
+                if note == F_CLEAR:
+                    self._clear_page()
+                elif note == F_COPY:
+                    self._copy(None)
+                elif note == F_PASTE:
+                    self._paste(None)
+            self._used.discard(note)
+            self._dirty = True
             self.update()
             return
         self._fn.add(note)
-        if note == F_CLEAR:
-            self._clear_used = False
+        self._used.discard(note)
         if note in (F_PAGE_PREV, F_PAGE_NEXT):
             self._page_key(-1 if note == F_PAGE_PREV else 1)
         elif note == F_DOUBLE:
@@ -624,6 +630,7 @@ class StepSequencer(object):
             self._bank = max(0, min(112, self._bank + 16 * delta))
             self._say('drum bank %d-%d' % (self._bank, self._bank + 15))
         elif F_COPY in self._fn:
+            self._used.add(F_COPY)
             self._copy_page(self._page + delta)
         else:
             limit = self._pages() - 1 + (F_LENGTH in self._fn)   # one page past the end while LENGTH is held
@@ -637,12 +644,63 @@ class StepSequencer(object):
         if not self._active or not 0 <= index < PADS:
             return
         note = self._bank + index
+        self._log('drum key %d -> note %d' % (index, note))
         if F_CLEAR in self._fn:
-            self._clear_used = True
+            self._used.add(F_CLEAR)
             self._clear_drum(note)
+        elif F_COPY in self._fn:
+            self._used.add(F_COPY)
+            self._copy(note)
+        elif F_PASTE in self._fn:
+            self._used.add(F_PASTE)
+            self._paste(note)
         else:
             self._select_drum(note)
         self.update()
+
+    # Copy / paste (0.61, like Move's Copy button): COPY copies the shown page
+    # (all drums) or, with a drum key, that drum's lane on the page; PASTE
+    # puts it on the shown page (a lane goes to the drum key held, else to the
+    # active drum).
+    def _copy(self, lane):
+        if self._clip is None:
+            return
+        span, src = self._span(), self._step_time(0)
+        try:
+            if lane is None:
+                notes = self._clip.get_notes_extended(0, 128, src - EPS, span)
+            else:
+                notes = self._clip.get_notes_extended(lane, 1, src - EPS, span)
+            self._clipboard = (lane, [(n.pitch, n.start_time - src, n.duration, n.velocity, n.mute) for n in notes])
+            self._say('copied %s of page %d' % ('all drums' if lane is None else 'drum %d' % lane, self._page + 1))
+        except Exception as error:
+            self._log('cannot copy: %s' % error)
+
+    def _paste(self, target):
+        if self._clipboard is None:
+            self._say('nothing copied yet')
+            return
+        if not self._ensure_clip():
+            return
+        lane, notes = self._clipboard
+        span, dst = self._span(), self._step_time(0)
+        try:
+            if lane is None and target is None:
+                self._clip.remove_notes_extended(0, 128, dst - EPS, span)
+                specs = [self._spec(p, dst + o, d, v, m) for p, o, d, v, m in notes]
+            else:
+                pitch = target if target is not None else (self._pitch if lane is not None else None)
+                source = [n for n in notes if lane is not None or n[0] == self._pitch]
+                self._clip.remove_notes_extended(pitch, 1, dst - EPS, span)
+                specs = [self._spec(pitch, dst + o, d, v, m) for p, o, d, v, m in source]
+            if dst + span > self._clip.loop_end + EPS:
+                self._set_length(dst + span - self._start())
+            if specs:
+                self._clip.add_new_notes(tuple(specs))
+            self._say('pasted onto page %d' % (self._page + 1))
+        except Exception as error:
+            self._log('cannot paste: %s' % error)
+        self._dirty = True
 
     def _clear_drum(self, note):
         if self._clip is None:
