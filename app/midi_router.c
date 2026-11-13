@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception */
 #include "instrument.h"
 #include "fm1_engine_control.h"
+#include "kamotkeys/kk_midi.h"
 #include <string.h>
 #ifdef FM1_HOST_TEST
 #include <stdatomic.h>
@@ -13,11 +14,14 @@
  * ports/local/clock/live flags, and Thru/source-clock fields. */
 static struct groove_midi_config config;
 enum { LOCAL_OFF = 8, CLOCK_OUT = 16, LIVE_OUT = 32, QUEUE = 128 };
+/* Owners: 0-7 generated, 8-15 physical (per track), 16-31 Thru channels,
+ * 32-47 KamoteKeys (one per output channel). */
+enum { THRU_OWNER = 16, KK_OWNER = 32, OWNERS = 48 };
 struct events { WORD read, write, lost; unsigned seen; uint32_t data[QUEUE]; } __attribute__((aligned(32)));
 /* One producer per audio owner and one for the MIDI routing task. */
 static struct events events[3] __attribute__((aligned(32)));
 struct output {
-    uint8_t held[32][16]; /* generated, physical, then Thru channel owners */
+    uint8_t held[OWNERS][16]; /* generated, physical, Thru, then KamoteKeys channel owners */
     uint16_t channels, recover, sustain, sent_sustain;
     uint8_t reset, stop;
 };
@@ -156,10 +160,10 @@ FM1_AUDIO_CODE void groove_midi_clock(unsigned owner, unsigned tempo)
     }
     clock_phase += tempo * 24U * FM1_BLOCK_FRAMES;
 }
-static unsigned owner_channel(unsigned owner) { return owner < 16 ? channel(owner & 7U) : owner - 16; }
+static unsigned owner_channel(unsigned owner) { return owner < THRU_OWNER ? channel(owner & 7U) : (owner - THRU_OWNER) & 15U; }
 static int held_elsewhere(const struct output *o, unsigned owner, unsigned ch, unsigned note)
 {
-    for (unsigned i = 0; i < 32; ++i)
+    for (unsigned i = 0; i < OWNERS; ++i)
         if (i != owner && (o->held[i][note >> 3] & (1U << (note & 7U))) && owner_channel(i) == ch) return 1;
     return 0;
 }
@@ -187,7 +191,7 @@ static void deliver(unsigned port, unsigned owner, const uint8_t *m)
         if (m[2] >= 64) o->sent_sustain |= (uint16_t)(1U << ch);
         else o->sent_sustain &= (uint16_t)~(1U << ch);
     } else if (type == 0xb0 && (m[1] == 120 || m[1] == 123)) {
-        for (unsigned i = 0; i < 32; ++i) if (owner_channel(i) == ch) memset(o->held[i], 0, 16);
+        for (unsigned i = 0; i < OWNERS; ++i) if (owner_channel(i) == ch) memset(o->held[i], 0, 16);
     } else if (type == 0xb0 && m[1] == 121) {
         o->sustain &= (uint16_t)~(1U << ch); o->sent_sustain &= (uint16_t)~(1U << ch);
     }
@@ -321,7 +325,10 @@ void fm1_app_midi_received(unsigned source, const uint8_t *m, size_t n)
     if (source >= 3 || !m || !n || n > 3) return;
     unsigned clock = m[0] == 0xf8 || m[0] == 0xfa || m[0] == 0xfb || m[0] == 0xfc || m[0] == 0xf2;
     if (clock && !groove_midi_clock_accept(source, m[0])) return;
-    (void)fm1_midi_post(m, n);
+    /* KamoteKeys: Clip Mode feedback and host note activity are recorded
+     * first; channel 16 never reaches the synth (nor anything else when the
+     * internal synth is switched off). */
+    if (!kk_midi_input(source, m, n)) (void)fm1_midi_post(m, n);
     if (m[0] == 0xff) enqueue(2, 0, (config.flags | config.thru) & 7U, 0xff, 0, 0);
     if (((config.thru >> 3) & 3U) == source && m[0] != 0xff && (m[0] < 0xf0 || clock)) {
         unsigned ports = config.thru & 7U & ~(1U << source) & fm1_midi_output_ports();
@@ -329,3 +336,12 @@ void fm1_app_midi_received(unsigned source, const uint8_t *m, size_t n)
     }
 }
 uint32_t groove_midi_dropped(void) { return dropped; }
+/* KamoteKeys performance output: control task only. The message keeps its own
+ * channel; per-port note ownership and disconnect recovery are shared with
+ * the rest of the router. Destinations that are offline are skipped. */
+void groove_midi_kk_send(const uint8_t *m, size_t n, unsigned ports)
+{
+    if (!m || !n || n > 3 || m[0] < 0x80 || m[0] >= 0xf0) return;
+    uint8_t data[3] = {m[0], n > 1 ? m[1] : 0, n > 2 ? m[2] : 0};
+    send_event(KK_OWNER + (m[0] & 15U), ports & fm1_midi_output_ports(), data);
+}

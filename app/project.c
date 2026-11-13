@@ -158,19 +158,33 @@ static int read_project(unsigned sector)
 enum { TUNING_MAGIC = 0x54314d46U, TUNING_VERSION = 2, SAMPLE_BANK_MAGIC = 0x53314d46U };
 struct tuning_entry { uint32_t key; struct groove_tuning t[GROOVE_TRACKS]; uint32_t crc; };
 /* Optional tail leaves every existing tuning entry at its original offset. */
-enum { SESSION_MAGIC = 0x31534d46U };
+enum { SESSION_MAGIC = 0x31534d46U, KAMOTKEYS_MAGIC = 0x314b4b46U };
 struct session_settings { uint32_t magic; uint8_t role[8], channel[8]; uint32_t crc; };
-struct tuning_sector { uint32_t magic, version; struct tuning_entry entry[GROOVE_PROJECT_SLOTS]; struct session_settings session; };
+/* KamoteKeys preferences (BPM, ARP, scale, root, velocity, patch, MIDI
+ * ports). Appended after the session record so every earlier field keeps
+ * its offset. */
+struct kamotkeys_settings { uint32_t magic; uint8_t data[16]; uint32_t crc; };
+struct tuning_sector { uint32_t magic, version; struct tuning_entry entry[GROOVE_PROJECT_SLOTS]; struct session_settings session; struct kamotkeys_settings kamotkeys; };
 struct tuning_block { uint32_t magic; struct groove_tuning t[GROOVE_TRACKS]; uint32_t crc; };
 _Static_assert(sizeof(struct groove_tuning) == 24, "tuning table layout");
 _Static_assert(sizeof(struct tuning_entry) == 200, "tuning entry layout");
 _Static_assert(sizeof(struct tuning_block) == GROOVE_TUNING_BLOCK_BYTES, "tuning block layout");
 _Static_assert(sizeof(struct tuning_sector) <= FM1_FLASH_SECTOR_BYTES, "one tuning sector");
-enum { LEGACY_TUNING_JOURNAL_MAGIC = 0x4a544d46U, TUNING_JOURNAL_MAGIC = 0x4b544d46U,
+enum { LEGACY_TUNING_JOURNAL_MAGIC = 0x4a544d46U, SESSION_TUNING_JOURNAL_MAGIC = 0x4b544d46U,
+       TUNING_JOURNAL_MAGIC = 0x4c544d46U,
        TUNING_JOURNAL_ADDRESS = STAGING_SECTOR * FM1_FLASH_SECTOR_BYTES };
 struct tuning_journal { uint32_t magic, crc, commit; };
 _Static_assert(sizeof(struct tuning_journal) + sizeof(struct tuning_sector) <= FM1_FLASH_SECTOR_BYTES,
                "tuning journal fits shared staging");
+/* Bytes covered by a journal of each layout (0: not a tuning journal). */
+static unsigned tuning_journal_bytes(unsigned magic)
+{
+    return magic==LEGACY_TUNING_JOURNAL_MAGIC?offsetof(struct tuning_sector,session):
+        magic==SESSION_TUNING_JOURNAL_MAGIC?offsetof(struct tuning_sector,kamotkeys):
+        magic==TUNING_JOURNAL_MAGIC?sizeof(struct tuning_sector):0;
+}
+extern void kamotkeys_settings_read(uint8_t data[16]) __attribute__((weak));
+extern int kamotkeys_settings_apply(const uint8_t data[16]) __attribute__((weak));
 static int flash_checksum(uint32_t address, unsigned bytes, uint32_t *result)
 {
     uint8_t buffer[64];
@@ -191,10 +205,9 @@ static int tuning_location(uint32_t *address)
     *address = GROOVE_TUNING_OFFSET;
     struct tuning_journal header;
     int r = fm1_flash_read(TUNING_JOURNAL_ADDRESS, &header, sizeof header);
-    if (r || (header.magic != TUNING_JOURNAL_MAGIC && header.magic != LEGACY_TUNING_JOURNAL_MAGIC) || header.commit) return r;
+    if (r || !tuning_journal_bytes(header.magic) || header.commit) return r;
     uint32_t crc, body = TUNING_JOURNAL_ADDRESS + sizeof header;
-    r = flash_checksum(body, header.magic == LEGACY_TUNING_JOURNAL_MAGIC
-        ? offsetof(struct tuning_sector, session) : sizeof(struct tuning_sector), &crc);
+    r = flash_checksum(body, tuning_journal_bytes(header.magic), &crc);
     if (!r && crc == header.crc) *address = body;
     return r;
 }
@@ -208,8 +221,7 @@ static int tuning_recover(void)
     struct tuning_journal header;
     r = fm1_flash_read(TUNING_JOURNAL_ADDRESS, &header, sizeof header);
     memset(data, 0xff, sizeof *data);
-    if (!r) r = fm1_flash_read(address, data, header.magic == LEGACY_TUNING_JOURNAL_MAGIC
-        ? offsetof(struct tuning_sector, session) : sizeof *data);
+    if (!r) r = fm1_flash_read(address, data, tuning_journal_bytes(header.magic));
     uint32_t expected = r ? 0 : ~groove_crc32(~0U, data, sizeof *data), actual;
     if (!r) r = fm1_flash_erase(GROOVE_TUNING_OFFSET);
     if (!r) r = fm1_flash_write(GROOVE_TUNING_OFFSET, data, sizeof *data);
@@ -739,13 +751,20 @@ static int session_settings_load(unsigned before_project)
     uint32_t address; r = tuning_location(&address);
     struct session_settings c;
     if (!r) r = fm1_flash_read(address + offsetof(struct tuning_sector,session),&c,sizeof c);
-    if (r || !session_settings_valid(&c)) return r;
-    for (unsigned t=0;t<8;++t) {
+    if (r) return r;
+    if (session_settings_valid(&c)) for (unsigned t=0;t<8;++t) {
         /* Off must release resources before loading the project. Play is
          * initialized afterwards so its starting timbre comes from that slot. */
         if (before_project && c.role[t] != GROOVE_TRACK_OFF) continue;
         r = groove_track_role_set(t,c.role[t]); if (r) return r;
         if (!before_project) { r = groove_midi_input_set(t,c.channel[t]); if (r) return r; }
+    }
+    if (!before_project && kamotkeys_settings_apply) {
+        struct kamotkeys_settings k;
+        r = fm1_flash_read(address + offsetof(struct tuning_sector,kamotkeys),&k,sizeof k);
+        if (r) return r;
+        if (k.magic==KAMOTKEYS_MAGIC && k.crc==~groove_crc32(~0U,&k,offsetof(struct kamotkeys_settings,crc)))
+            (void)kamotkeys_settings_apply(k.data);
     }
     return 0;
 }
@@ -762,7 +781,16 @@ static int session_settings_save(void)
         struct session_settings c = {.magic=SESSION_MAGIC};
         for (unsigned t=0;t<8;++t) { c.role[t]=(uint8_t)groove_track_role(t); c.channel[t]=(uint8_t)groove_midi_input_channel(t); }
         c.crc = ~groove_crc32(~0U,&c,offsetof(struct session_settings,crc));
-        if (memcmp(&s->session,&c,sizeof c)) { s->session=c; r=tuning_commit(s); }
+        unsigned changed = memcmp(&s->session,&c,sizeof c) != 0;
+        s->session=c;
+        if (kamotkeys_settings_read) {
+            struct kamotkeys_settings k = {.magic=KAMOTKEYS_MAGIC};
+            kamotkeys_settings_read(k.data);
+            k.crc = ~groove_crc32(~0U,&k,offsetof(struct kamotkeys_settings,crc));
+            changed |= memcmp(&s->kamotkeys,&k,sizeof k) != 0;
+            s->kamotkeys = k;
+        }
+        if (changed) r=tuning_commit(s);
     }
     free(s); return r;
 }
@@ -777,6 +805,8 @@ int groove_settings_track(unsigned track, unsigned parameter, int delta)
     return r;
 }
 int groove_settings_status(void) { return settings_result; }
+/* KamoteKeys: its preferences changed; save them with the session record. */
+void groove_settings_panel_changed(void) { session_dirty=1; settings_mark(); }
 void groove_project_init(void)
 {
     memset(&settings, 0, sizeof settings);
