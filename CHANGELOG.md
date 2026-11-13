@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.49 (development snapshot)
+
+- **One codebase for the SMK-37 Pro, SMK-37 Elite and FM-1.** Shared KamoteKeys code in `core/`; SMK37 OPEN in `devices/smk37`, FM1 OPEN in `devices/fm1`, each with its device glue and a `kk_device.h` describing the hardware. `build.bat smk37-pro | smk37-elite | fm1 [--package]` copies the core into the device tree and runs its own SDK build. `tools/test-all.sh` runs every test for every device.
+- FM-1 edition included (previously branch `kamotekeys-fm1`): split keyboard with chord keys, white keys as pads in Pad Scale/Drum/Clip, FM-1 button and knob mapping. See docs/FM1.md.
+- No functional change on the SMK-37 (same tests pass); saved settings are kept.
+
 ## KamoteKeys 0.48 (development snapshot)
 
 - Spare (CC) pads 5-8 and 14-16 rest at **half** the chord pads' brightness: 12.5 % (chord 25 %).

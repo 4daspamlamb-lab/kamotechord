@@ -1,10 +1,36 @@
-# KamoteKeys 0.44 for M-VAVE SMK-37 Pro / Elite
+# KamoteKeys 0.49 for M-VAVE SMK-37 Pro / Elite and FM-1
 
-KamoteKeys is a performance firmware for the M-VAVE SMK-37 Pro and SMK-37 Elite, built on **SMK37 OPEN V01**. It keeps SMK37 OPEN's hardware drivers, native USB MIDI, Bluetooth LE MIDI, Bluetooth audio, flash storage and the official browser updater. It replaces the sequencer/editor application with KamoteKeys: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, ARP, a SUSTAIN button, four dedicated faders, Ableton Live transport buttons, an animated piano display, RGB pad lighting and an Aurora boot.
+KamoteKeys is a performance firmware for M-VAVE keyboards: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, Ableton clip launching, ARP, a SUSTAIN button, Ableton Live transport buttons, an animated piano display and BLE/USB MIDI. **One codebase builds all three firmwares:**
 
-> **Status: development snapshot (consolidated 0.37).** Builds with the JieLi toolchain (0.30–0.36 were built and flashed to an SMK-37 Pro). PC tests: 6709 unit/fuzz checks, 15 integration checks against the SMK37 OPEN engine, 11 Remote Script tests against a mock Live API. **Open on hardware:** pad LEDs are not yet fully steady, and Clip Mode launching in Live is not yet confirmed. See [Hardware validation](#hardware-validation).
+| Device | Built on | Build | Guide |
+|---|---|---|---|
+| SMK-37 Pro | SMK37 OPEN V01 | `build.bat smk37-pro --package` | this README |
+| SMK-37 Elite | SMK37 OPEN V01 | `build.bat smk37-elite --package` | this README |
+| FM-1 | FM1 OPEN V14 | `build.bat fm1 --package` | [docs/FM1.md](docs/FM1.md) (split keyboard, white keys as pads) |
 
-This release is one clean change on top of the unmodified SMK37 OPEN V01 (`kamotkeys-0.37.diff`). Feature history is in the [CHANGELOG](CHANGELOG.md).
+> **Status: development snapshot.** SMK-37: built and used on an SMK-37 Pro (pad LEDs and Clip Mode confirmed). Elite and FM-1: built from the same code but **not yet run on hardware**. PC tests: 6761 SMK-37 unit/fuzz checks, 15 SMK-37 and 39 FM-1 integration checks against each device's real engine in its browser simulator, Remote Script tests. See [Hardware validation](#hardware-validation).
+
+## One codebase
+
+```
+core/                 KamoteKeys itself, one copy for every device:
+  kk_controls.c         performance core: modes, chords, ARP, Sustain, buttons, settings
+  screen.c              LCD: pages, piano, pad map, Bluetooth menu, boot
+  kamotkeys/            music theory, MIDI engine, LED logic, configuration
+devices/smk37/        SMK37 OPEN V01 + SMK-37 glue (pad scanner, RGB pads, faders)
+devices/fm1/          FM1 OPEN V14 + FM-1 glue (split keyboard, key LEDs)
+  app/kamotkeys/kk_device.h   the device's sizes, labels and feature switches
+remote_script/        Ableton Remote Script (all devices)
+tests/, docs/         tests and documentation
+build.bat             build.bat smk37-pro | smk37-elite | fm1 [--package]
+```
+
+- **Change features in `core/`.** Every device gets the change on its next build: `build.bat` copies `core/` into the device tree (`tools/Sync-Core.ps1`; on Linux/macOS `tools/sync-core.sh`) and then runs that device's unmodified vendor build. The copies inside `devices/*/app` are git-ignored; don't edit them.
+- **Device differences** live in `devices/<device>/app/kamotkeys/kk_device.h` (key count, key-to-note anchor, default octave, fixed velocity, knob labels) and a few clearly marked `#ifdef KK_DEVICE_FM1` / `KK_DEVICE_SMK37` blocks in the core (FM-1 HOME/SAVE buttons, device settings bytes, diagnostics page).
+- **Hardware code** stays in each device tree: SMK-37 `app/board/scan.c`, `panel.c`, `kamotkeys/kk_led_rgb.c`; FM-1 `app/kamotkeys/kk_fm1_input.c`. Each vendor SDK (`devices/*/sdk`) is hash-locked and unmodified.
+- **Test everything:** `tools/test-all.sh` (set `WASI_SDK` to also run both browser-simulator suites).
+
+The rest of this README describes the **SMK-37**. The FM-1 has no pads or faders; its key layout, buttons and knobs are in [docs/FM1.md](docs/FM1.md).
 
 ![Key Scale Mode, A Minor Pentatonic, Am7](docs/screenshots/02_key_scale_Am7.png)
 
@@ -32,10 +58,11 @@ Detailed references: [MIDI mapping](docs/MIDI_MAPPING.md) · [Button and pad dia
 
 | Model | Status |
 |---|---|
-| SMK-37 Pro | Supported by source (`build.bat pro`). Shares the SMK37 OPEN board driver. |
-| SMK-37 Elite | Supported by source (`build.bat elite`). |
+| SMK-37 Pro | `build.bat smk37-pro`. Built and used on hardware. |
+| SMK-37 Elite | `build.bat smk37-elite`. Same SMK37 OPEN board driver; not yet run on hardware. |
+| FM-1 | `build.bat fm1`. See [docs/FM1.md](docs/FM1.md); not yet run on hardware. |
 
-Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`app/kamotkeys/kk_config.h`](app/kamotkeys/kk_config.h).
+Both models need SMK37 OPEN's update path (the model-specific workbench page). Pro and Elite packages are **not** interchangeable. The firmware keeps SMK37 OPEN's update identity (`SMK-37 Pro_8000001` / `SMK-37 Elite_8000001`, release `V01`) so the official workbench recognises the device. The KamoteKeys version is a separate constant, `KAMOTKEYS_VERSION` in [`core/kamotkeys/kk_config.h`](core/kamotkeys/kk_config.h) (one version for all devices; the FM-1 build shows it as `0.49-FM1`).
 
 ## Controls at a glance
 
@@ -83,7 +110,7 @@ All Ableton commands are on **MIDI channel 15**. The full table, with the pad ma
 | 3 | **Root key** C … B, with hysteresis. |
 | 4 | **Pad brightness** multiplier: 0 % = pads fully off, 50 % = half, 100 % = full. At ≤ 10 % the LCD also drops to half apparent brightness (software dimming). |
 
-Scales: Major, Natural Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Harmonic Minor, Melodic Minor, Major Pentatonic, Minor Pentatonic, Blues, Phrygian Dominant, Double Harmonic, Hirajoshi, Whole Tone, Diminished Whole-Half, Diminished Half-Whole, Bebop Dominant, Bebop Major, Bebop Minor, 6-Diminished, Minor 6-Diminished. One shared engine ([`kk_theory.c`](app/kamotkeys/kk_theory.c)) serves the keys, pads, chords, LEDs and display.
+Scales: Major, Natural Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Harmonic Minor, Melodic Minor, Major Pentatonic, Minor Pentatonic, Blues, Phrygian Dominant, Double Harmonic, Hirajoshi, Whole Tone, Diminished Whole-Half, Diminished Half-Whole, Bebop Dominant, Bebop Major, Bebop Minor, 6-Diminished, Minor 6-Diminished. One shared engine ([`kk_theory.c`](core/kamotkeys/kk_theory.c)) serves the keys, pads, chords, LEDs and display.
 
 ## Performance modes
 
@@ -182,7 +209,7 @@ More: [ARP page](docs/screenshots/11_arp_page.png), [Patch page](docs/screenshot
 
 ## RGB and button lighting
 
-A single renderer ([`kk_led.c`](app/kamotkeys/kk_led.c)) decides every pad's colour and level (mode colour, then idle/pressed level, then the Fader 4 multiplier) and hands it to the board driver. Levels: chord pads 25 % at rest, spare (CC) pads 12.5 % (half the chord pads), scale/drum pads 22 % (Pad Scale roots 50 %), 100 % when pressed or sounding. Starting or ending a light show crossfades over ~0.2 s. The peak is 160/255, scaled by Fader 4, and every channel value is rounded to a multiple of 4 (see below).
+A single renderer ([`kk_led.c`](core/kamotkeys/kk_led.c), RGB output in [`kk_led_rgb.c`](devices/smk37/app/kamotkeys/kk_led_rgb.c)) decides every pad's colour and level (mode colour, then idle/pressed level, then the Fader 4 multiplier) and hands it to the board driver. Levels: chord pads 25 % at rest, spare (CC) pads 12.5 % (half the chord pads), scale/drum pads 22 % (Pad Scale roots 50 %), 100 % when pressed or sounding. Starting or ending a light show crossfades over ~0.2 s. The peak is 160/255, scaled by Fader 4, and every channel value is rounded to a multiple of 4 (see below).
 
 **How the pads are driven (lessons from hardware testing on an SMK-37 Pro):**
 - Root cause (0.41): the gap in front of each pad frame (SMK37 OPEN: 36 zero bytes, about 45 us) was shorter than the LEDs' reset time (about 280 us), so a stray pulse when the shared SPI line switched from the LCD to the pads shifted the whole frame by a bit. Pad 1 blinked green, and colour bits spilled between pads at the start and end of the chain. KamoteKeys drives the line low before switching and sends 320 zero bytes (about 400 us) before every frame.
@@ -250,20 +277,20 @@ Saved automatically, about 1.5 s after the last change and only while nothing is
 
 ## Build
 
-Windows x64 with PowerShell and the [JieLi 2.5.3 Windows toolchain](https://jl-update.oss-cn-shenzhen.aliyuncs.com/2.5.3.exe) (PI32v2 clang 4.0.1, `r3`), exactly as SMK37 OPEN. The SDK manifest verifies the toolchain and SDK hashes; do not modify `sdk/`.
+Windows x64 with PowerShell and the [JieLi 2.5.3 Windows toolchain](https://jl-update.oss-cn-shenzhen.aliyuncs.com/2.5.3.exe) (PI32v2 clang 4.0.1, `r3`), exactly as SMK37 OPEN / FM1 OPEN. Each SDK manifest verifies the toolchain and SDK hashes; do not modify `devices/*/sdk/`.
 
 ```powershell
-cd C:\path\to\kamotkeys-0.37-smk37_open          # a local C: folder, not \\Mac\... (cmd cannot run there)
+cd C:\path\to\kamotekeys-0.49                     # a local C: folder, not \\Mac\... (cmd cannot run there)
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotkeys-0.37-source.zip'   # any https URL; publish the real source if you share builds
-.\build.bat pro --package
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.49-source.zip'  # any https URL; publish the real source if you share builds
+.\build.bat smk37-pro --package                     # or smk37-elite, or fm1
 ```
 
 Needs the x64 Visual C++ Redistributable (for the bundled web compiler) and, on first run, downloads WASI SDK 27 (set `FM1_WASI_SDK` to reuse it). A copy-and-paste version for Parallels is in [docs/BUILD_FLASH_RECOVERY.md](docs/BUILD_FLASH_RECOVERY.md).
 
-The output is `build\official-web\pro\SMK37-Open-Source.html`, the offline workbench with the KamoteKeys firmware embedded. The build log prints the image, VM and user sizes and stops if the package exceeds 1 MiB. For the firmware image alone: `.\sdk\Build.ps1 -Model pro -FirmwareOnly -Toolchain 'C:\JL\pi32'`. Full details: [docs/BUILD_FLASH_RECOVERY.md](docs/BUILD_FLASH_RECOVERY.md).
+Outputs (the offline workbench with the KamoteKeys firmware embedded): `devices\smk37\build\official-web\pro\SMK37-Open-Source.html` (or `...\elite\...`) and `devices\fm1\build\official-web\FM1-Official-Open-Source.html`. The build log prints the image, VM and user sizes and stops if the package exceeds 1 MiB. Firmware image alone: run `tools\Sync-Core.ps1 -Device smk37`, then `devices\smk37\sdk\Build.ps1 -Model pro -FirmwareOnly -Toolchain 'C:\JL\pi32'`. Full details: [docs/BUILD_FLASH_RECOVERY.md](docs/BUILD_FLASH_RECOVERY.md).
 
-PC-side tests (no toolchain needed): `tests/host/run.sh`; see [docs/TESTING.md](docs/TESTING.md).
+PC-side tests (no toolchain needed): `tools/test-all.sh`; see [docs/TESTING.md](docs/TESTING.md).
 
 ## Flash
 
@@ -274,7 +301,7 @@ PC-side tests (no toolchain needed): `tests/host/run.sh`; see [docs/TESTING.md](
 ## Recovery
 
 - **Back to official SMK37 OPEN:** flash the official workbench from <https://open.m-vave.com/smk37-workbench> (Device update). KamoteKeys uses the same update identity, so the switch is a normal update.
-- **Back to factory V16:** in the workbench (official, or the KamoteKeys build), use **Restore factory V16**. It installs the unmodified M-VAVE V016 package (hash-verified in `sdk/firmware/`). Power-cycle after resource verification.
+- **Back to factory V16:** in the workbench (official, or the KamoteKeys build), use **Restore factory V16**. It installs the unmodified M-VAVE V016 package (hash-verified in `devices/smk37/sdk/firmware/`). Power-cycle after resource verification.
 - **If the firmware does not start:** the SMK37 loader remains in place (KamoteKeys does not touch boot, VM/BTIF or calibration areas). Reconnect and let the workbench find the loader, confirm the physical model, and flash again. See [docs/BUILD_FLASH_RECOVERY.md](docs/BUILD_FLASH_RECOVERY.md).
 
 ## Hardware validation
@@ -294,20 +321,22 @@ PC-side tests (no toolchain needed): `tests/host/run.sh`; see [docs/TESTING.md](
 
 | Path | Contents |
 |---|---|
-| `app/kamotkeys/kk_config.h` | version constant, channels, CC numbers, button ids |
-| `app/kamotkeys/kk_theory.*` | shared scale/chord engine, key/pad/drum maps, chord naming |
-| `app/kamotkeys/kk_midi.*` | central owner-counted MIDI note engine and port policy |
-| `app/kamotkeys/kk_led.*` | pad/button LED renderer, light shows, Aurora pads |
-| `app/kamotkeys/kk_perform.h` | performance state shared by the modules |
-| `app/smk37_controls.c` | performance core: modes, sources, chord pads, ARP, Sustain, faders, buttons, settings (keeps the SDK build script's flags for this file) |
-| `app/screen.c` | LCD: renderer, pages, Bluetooth menu, boot; SDK entry points (kept native by the SDK build script) |
-| `app/kamotkeys/kk_web_compat.c` | shims so the browser workbench still builds (web builds only) |
-| `app/midi_router.c`, `app/project.c`, `app/board/*` | SMK37 OPEN, with small marked KamoteKeys additions |
-| `tests/` | host tests, integration test |
-| `docs/upstream/` | the original SMK37 OPEN README (EN/中文) |
+| `core/kamotkeys/kk_config.h` | version constant, channels, CC numbers, logical button ids (device values from `kk_device.h`) |
+| `core/kamotkeys/kk_theory.*` | scale/chord engine, key/pad/drum maps, chord naming |
+| `core/kamotkeys/kk_midi.*` | central owner-counted MIDI note engine and port policy |
+| `core/kamotkeys/kk_led.*`, `kk_led_util.h` | pad colour/level logic, button LED levels |
+| `core/kamotkeys/kk_perform.h`, `kk_events.h` | performance state and the physical event interface |
+| `core/kk_controls.c` | performance core: modes, sources, chord pads, ARP, Sustain, faders/knobs, buttons, settings (copied to `app/smk37_controls.c` on the SMK-37 to keep the SDK's flags for that file) |
+| `core/screen.c` | LCD: renderer, pages, Bluetooth menu, boot; SDK entry points |
+| `devices/smk37/app/kamotkeys/kk_device.h`, `kk_led_rgb.c`, `kk_web_compat.c` | SMK-37 description, RGB pad output/light shows, browser-workbench shims |
+| `devices/smk37/app/midi_router.c`, `project.c`, `board/*`, `smk37_controls.h` | SMK37 OPEN, with small marked KamoteKeys additions |
+| `devices/fm1/app/kamotkeys/kk_device.h`, `kk_fm1_input.c`, `kk_web_compat.c` | FM-1 description, key/button/knob adapter and key LEDs, shims |
+| `devices/fm1/app/midi_router.c`, `project.c` | FM1 OPEN, with small marked KamoteKeys additions |
+| `tools/` | core sync scripts, `test-all.sh` |
+| `tests/` | SMK-37 host tests, SMK-37 and FM-1 integration tests, Remote Script tests |
 
 Removed: SMK37 OPEN's sequencer/editor UI (track, step, FM edit, mixer, effects, project and preset pages) and its panel control layer. The underlying engine library, project storage, sample bank, DX7 library and workbench transfer code remain, so the official workbench's backup and restore features keep working.
 
 ## License and attribution
 
-KamoteKeys is a modification of **SMK37 OPEN V01** (© 2026 珠海笙科智能科技有限公司 / M-VAVE and contributors), distributed under the same terms: application sources under [GPLv3 with the SDK linking exception](LICENSE.md). The native SDK and factory firmware are binary components under their own terms; see [THIRD_PARTY.md](THIRD_PARTY.md). Keep these files when redistributing, and publish the matching source archive (the `FM1_SOURCE_URL` the build requires). KamoteKeys is not affiliated with or endorsed by M-VAVE.
+KamoteKeys is a modification of **SMK37 OPEN V01** and **FM1 OPEN V14** (© 2026 珠海笙科智能科技有限公司 / M-VAVE and contributors), distributed under the same terms: application sources under [GPLv3 with the SDK linking exception](LICENSE.md). The native SDK and factory firmware are binary components under their own terms; see [THIRD_PARTY.md](THIRD_PARTY.md). Keep these files when redistributing, and publish the matching source archive (the `FM1_SOURCE_URL` the build requires). KamoteKeys is not affiliated with or endorsed by M-VAVE.

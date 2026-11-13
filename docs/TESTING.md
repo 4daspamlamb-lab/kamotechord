@@ -1,5 +1,18 @@
 # Tests and verification
 
+## KamoteKeys 0.49 (one codebase, all devices)
+
+Run everything with `WASI_SDK=/path/to/wasi-sdk-27.0-x86_64-linux tools/test-all.sh` (it copies `core/` into both device trees first).
+
+| Suite | Device | Result |
+|---|---|---|
+| Host unit, behaviour and fuzz tests (`tests/host/run.sh`) | SMK-37 | **6761 checks, 0 failures** (ASan + UBSan) |
+| Browser-simulator integration, real SMK37 OPEN engine (`tests/integration/sim_test.mjs`) | SMK-37 | **15 checks, 0 failures** |
+| Browser-simulator integration, real FM1 OPEN engine (`tests/integration/fm1_sim_test.mjs`): split keyboard, chords, LOCK, CC keys, every button, knobs, Key Scale, Drum, Pad Scale, Clip feedback, LEDs, random play with no stuck notes | FM-1 | **39 checks, 0 failures** |
+| Remote Script against a mock Live API | all | **OK** |
+| 32-bit embedded syntax check, all app sources, `-Wall -Wextra` | both | clean |
+| JieLi pi32v2 build and flash | SMK-37 Pro by the user up to 0.48; Elite and FM-1 not yet | |
+
 ## KamoteKeys 0.37 (consolidated)
 
 | Suite | Result |
@@ -35,13 +48,15 @@ Still open: pads not fully steady in normal play; Clip Mode launching not yet co
 ## Running the tests
 
 ```sh
-tests/host/run.sh                 # any Linux/macOS with a C11 compiler; writes build/host/*.ppm screenshots
+tools/test-all.sh                 # every suite for every device (set WASI_SDK for the simulator tests)
+tests/host/run.sh                 # SMK-37 host tests only; writes build/host/*.ppm screenshots
 ```
 
 Integration (needs [WASI SDK 27](https://github.com/WebAssembly/wasi-sdk/releases/tag/wasi-sdk-27) and Node 18+):
 
 ```sh
 W=/path/to/wasi-sdk-27.0-x86_64-linux
+cd devices/smk37                  # or devices/fm1 (run tools/sync-core.sh first)
 FILES=$(find app web third_party/synth -type f -name '*.c' ! -path 'app/board/*' | LC_ALL=C sort)
 $W/bin/clang --sysroot=$W/share/wasi-sysroot -std=c11 -O2 -fwrapv -fno-fast-math -ffp-contract=off \
   -DFM1_HOST_TEST -DFM1_OPEN_WEB -Wall -Wextra -Werror -Wno-unused-function -Wno-array-parameter \

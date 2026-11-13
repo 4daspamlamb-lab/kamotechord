@@ -1,5 +1,7 @@
 # KamoteKeys Remote Script and Clip Mode
 
+> **FM-1:** everything below applies; where it says "SMK37 Open", choose the **FM-1's own USB or Bluetooth MIDI port** instead. Clip pads are white keys 01-16, SAVE is Capture MIDI and REC is Session Record (see [FM1.md](FM1.md)).
+
 The Remote Script turns KamoteKeys into a two-way Ableton Live controller: an 8 × 2 clip launcher with live LED feedback, plus Start/Stop/Capture/Undo/Redo/Session Record without manual MIDI mapping.
 
 > Tested against a mock Live API (`tests/remote_script`); **not yet tested inside Ableton Live.** Uses the standard `_Framework` API shipped with Live 10.1 – 12.

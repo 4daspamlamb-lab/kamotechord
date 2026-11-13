@@ -1,6 +1,6 @@
 # Build, flash and recovery
 
-KamoteKeys uses SMK37 OPEN's native build system unchanged. Nothing under `sdk/` is modified: `sdk/manifest.json` hash-locks the SDK, the build script and the toolchain, and the build refuses to run if any of them differ.
+KamoteKeys uses each device's native build system unchanged (SMK37 OPEN for the SMK-37, FM1 OPEN for the FM-1). Nothing under `devices/*/sdk/` is modified: each `sdk/manifest.json` hash-locks the SDK, the build script and the toolchain, and the build refuses to run if any of them differ. FM-1 flashing and recovery: [FM1.md](FM1.md).
 
 ## 1. Requirements
 
@@ -11,23 +11,25 @@ KamoteKeys uses SMK37 OPEN's native build system unchanged. Nothing under `sdk/`
 
 ## 2. Build
 
+Run from the repository root. `build.bat` first copies the shared code (`core/`) into the device tree, then runs that device's own SDK build:
+
 ```powershell
-cd smk37_open
+cd kamotekeys
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL     = 'https://github.com/<you>/kamotkeys/archive/refs/tags/v0.37.zip'
-.\build.bat pro --package        # or: .\build.bat elite --package
+$env:FM1_SOURCE_URL     = 'https://github.com/<you>/<repo>/archive/refs/heads/kamotekeys.zip'
+.\build.bat smk37-pro --package        # or: smk37-elite, fm1
 ```
 
-Outputs:
+Outputs (paths relative to the repository root):
 
 | File | Use |
 |---|---|
-| `build\official-web\pro\SMK37-Open-Source.html` | offline workbench with KamoteKeys embedded: **this is what you flash with** |
-| `build\pro\generated\SMK37_PRO_OPEN.fwsc` | the firmware package |
-| `build\pro\sdk.elf`, `build\pro\sdk.map` | linked image and memory map |
-| `build\pro\build-identity.json` | build id shown by the workbench |
+| `devices\smk37\build\official-web\pro\SMK37-Open-Source.html` (`elite` for the Elite) | SMK-37 offline workbench with KamoteKeys embedded: **this is what you flash with** |
+| `devices\fm1\build\official-web\FM1-Official-Open-Source.html` | FM-1 offline workbench with KamoteKeys embedded |
+| `devices\smk37\build\pro\generated\SMK37_PRO_OPEN.fwsc`, `devices\fm1\build\dx7\generated\FM1_OFFICIAL_OPEN.fwsc` | the firmware packages |
+| `devices\<device>\build\...\sdk.elf`, `sdk.map`, `build-identity.json` | linked image, memory map, build id |
 
-Firmware image only (no workbench): `.\sdk\Build.ps1 -Model pro -FirmwareOnly -Toolchain 'C:\JL\pi32'`.
+Firmware image only (no workbench): `.\tools\Sync-Core.ps1 -Device smk37`, then `.\devices\smk37\sdk\Build.ps1 -Model pro -FirmwareOnly -Toolchain 'C:\JL\pi32'` (FM-1: `-Device fm1`, then `.\devices\fm1\sdk\Build.ps1 -FirmwareOnly -Toolchain 'C:\JL\pi32'`).
 
 ### What to check in the build log
 
@@ -41,18 +43,18 @@ Size expectation: on an ARM Thumb `-Oz` proxy compile, KamoteKeys's UI and contr
 
 ### Copy-and-paste build in Parallels
 
-Put `KamoteKeys-0.37.zip` in the Mac's Downloads folder, then paste into Windows PowerShell:
+Put `KamoteKeys-0.49.zip` in the Mac's Downloads folder, then paste into Windows PowerShell (change the device in the `build.bat` line and the output path for Elite or FM-1, see the table above):
 
 ```powershell
 cd $env:USERPROFILE\Desktop
-Copy-Item \\Mac\Home\Downloads\KamoteKeys-0.37.zip . -Force
-Expand-Archive .\KamoteKeys-0.37.zip . -Force
-Expand-Archive .\KamoteKeys-0.37\kamotkeys-0.37-source.zip . -Force
-cd .\kamotkeys-0.37-smk37_open
+Copy-Item \\Mac\Home\Downloads\KamoteKeys-0.49.zip . -Force
+Expand-Archive .\KamoteKeys-0.49.zip . -Force
+Expand-Archive .\KamoteKeys-0.49\kamotekeys-0.49-source.zip . -Force
+cd .\kamotekeys-0.49
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotkeys-0.37-source.zip'
-.\build.bat pro --package
-Copy-Item .\build\official-web\pro\SMK37-Open-Source.html \\Mac\Home\Downloads\SMK37-KamoteKeys-0.37.html -Force
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.49-source.zip'
+.\build.bat smk37-pro --package
+Copy-Item .\devices\smk37\build\official-web\pro\SMK37-Open-Source.html \\Mac\Home\Downloads\SMK37-KamoteKeys-0.49.html -Force
 ```
 
 Add `$env:FM1_WASI_SDK = '<folder>\build\tools\wasi-sdk-27.0-x86_64-windows'` (from an earlier build) before `build.bat` to skip the 518 MB download.

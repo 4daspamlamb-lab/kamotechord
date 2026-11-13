@@ -1,36 +1,17 @@
 @echo off
 rem SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
+rem KamoteKeys: one codebase, three firmwares.
+rem   build.bat smk37-pro   [--package^|--web]
+rem   build.bat smk37-elite [--package^|--web]
+rem   build.bat fm1         [--package^|--web]
 setlocal
-set "SMK37_MODEL=pro"
-if /i "%~1"=="pro" goto pro
-if /i "%~1"=="elite" goto elite
-goto arguments
-:elite
-set "SMK37_MODEL=elite"
-:pro
-shift
-:arguments
-if "%~1"=="" goto build
-if /i "%~1"=="--help" goto help
-if /i "%~1"=="--web" goto web
-if /i not "%~1"=="--package" goto invalid
-if not "%~2"=="" goto invalid
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sdk\Build.ps1" -Model %SMK37_MODEL% -Package
-exit /b %errorlevel%
-:build
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sdk\Build.ps1" -Model %SMK37_MODEL%
-exit /b %errorlevel%
-:web
-if not "%~2"=="" goto invalid
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\Build-Web.ps1"
-exit /b %errorlevel%
-:invalid
-echo Use build.bat [pro^|elite] [--web^|--package].
+if /i "%~1"=="smk37-pro" (set "DEV=smk37" & set "MODEL=pro" & goto build)
+if /i "%~1"=="smk37-elite" (set "DEV=smk37" & set "MODEL=elite" & goto build)
+if /i "%~1"=="fm1" (set "DEV=fm1" & set "MODEL=" & goto build)
+echo Use: build.bat smk37-pro^|smk37-elite^|fm1 [--package^|--web]
 exit /b 2
-:help
-echo build.bat pro          Build Pro firmware
-echo build.bat elite        Build Elite firmware
-echo build.bat --web        Build browser preview
-echo build.bat pro --package Build firmware and workbench
-echo Toolchain and output paths: README.md
-exit /b 0
+:build
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\Sync-Core.ps1" -Device %DEV%
+if errorlevel 1 exit /b %errorlevel%
+call "%~dp0devices\%DEV%\build.bat" %MODEL% %2
+exit /b %errorlevel%

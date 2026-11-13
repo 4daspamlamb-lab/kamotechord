@@ -1,0 +1,50 @@
+/* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
+ * KamoteKeys device description: M-VAVE FM-1.
+ * Shared code (core/) reads these values; see core/kamotkeys/kk_config.h. */
+#ifndef KK_DEVICE_H
+#define KK_DEVICE_H
+#include <stdint.h>
+
+#define KK_DEVICE_FM1 1
+#define KK_DEVICE_NAME "FM-1"
+#define KK_DEVICE_SUFFIX "-FM1"
+#define KK_FIRMWARE_BASE "FM1 OPEN"
+
+/* 27 keys (F to G, on/off only), 14 buttons, 7 encoders and an analog
+ * MASTER knob. No pads, no faders: pads are keys (kk_fm1_input.c) and the
+ * fader settings are knobs. */
+enum { KK_KEYS = 27 };
+/* Split keyboard (Normal and Key Scale Mode): keys 0..14 (F..G, the lowest
+ * nine white keys and the six black keys between them) are the chord pads
+ * and spare CC pads; keys 15..26 (G#..G) play. Key 19 is the C of the
+ * playing zone and sounds middle C at octave 0. */
+enum { KK_SPLIT_KEY = 15, KK_KEY_BASE_NOTE = 41, KK_ANCHOR_KEY = 19, KK_ANCHOR_NOTE = 60 };
+/* The playing zone is one octave, so the keyboard starts at octave 0. */
+enum { KK_KEY_OCTAVE_DEFAULT = 0 };
+/* Keys only switch: every note uses this fixed, saved velocity (PRESETS). */
+#define KK_FIXED_VELOCITY 1
+enum { KK_VELOCITY_DEFAULT = 100 };
+
+/* Knob labels as printed on the screen (K1-K4, SELECT, ALGORITHM, PRESETS). */
+#define KK_K1 "K1"
+#define KK_K2 "K2"
+#define KK_K3 "K3"
+#define KK_K4 "K4"
+#define KK_K5 "SEL"
+#define KK_K6 "ALG"
+#define KK_K7 "PRE"
+/* Navigation hints. */
+#define KK_TXT_PATCH_BACK "LFO OR HOME: BACK"
+#define KK_TXT_BT_FORGET "FORGET MIDI PAIRS? SAVE YES HOME NO"
+#define KK_TXT_BT_FOOTER "PRE ACTION SAVE OK HOME BACK LFO EXIT"
+#define KK_TXT_DIAG_EXIT "HOME / LFO EXIT"
+/* Last BLE error code this SDK reports. */
+#define KK_BLE_LAST_ERROR FM1_BLE_LINK_LOST
+
+/* FM-1 input adapter and LEDs (app/kamotkeys/kk_fm1_input.c). */
+struct fm1_controls;
+void kk_fm1_input(const struct fm1_controls *controls);
+void kk_fm1_input_reset(void);
+unsigned kk_fm1_key_led(unsigned key, uint32_t boot_ms);   /* key 0..26 */
+unsigned kk_fm1_button_led(unsigned button);               /* button 0..13 */
+#endif
