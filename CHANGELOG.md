@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.53 (development snapshot)
+
+- **Sustain holds the ARP** (both devices): with ARP on, the Sustain button (SMK-37 NOTE REPEAT, FM-1 SEL) or a sustain pedal keeps the arpeggio playing after the keys are released, and notes played meanwhile join the pattern; Sustain off ends them. No CC 64 is sent while ARP is on.
+
 ## KamoteKeys 0.52 (development snapshot)
 
 - **FM-1 Pad Scale keeps the chord keys:** the lowest nine keys stay MAJ…LOCK, and the 18 keys above (white and black) play consecutive scale notes from the root, with chords. The screen shows the piano and chord names. SMK-37 unchanged.

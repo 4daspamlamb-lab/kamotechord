@@ -1,12 +1,12 @@
 # Tests and verification
 
-## KamoteKeys 0.52 (one codebase, all devices)
+## KamoteKeys 0.53 (one codebase, all devices)
 
 Run everything with `WASI_SDK=/path/to/wasi-sdk-27.0-x86_64-linux tools/test-all.sh` (it copies `core/` into both device trees first).
 
 | Suite | Device | Result |
 |---|---|---|
-| Host unit, behaviour and fuzz tests (`tests/host/run.sh`), incl. Clip Mode overdub/delete | SMK-37 | **6772 checks, 0 failures** (ASan + UBSan) |
+| Host unit, behaviour and fuzz tests (`tests/host/run.sh`), incl. Clip Mode overdub/delete | SMK-37 | **6780 checks, 0 failures** (ASan + UBSan) |
 | Browser-simulator integration, real SMK37 OPEN engine (`tests/integration/sim_test.mjs`) | SMK-37 | **15 checks, 0 failures** |
 | Browser-simulator integration, real FM1 OPEN engine (`tests/integration/fm1_sim_test.mjs`): chord keys, LOCK, every button and HOME combination, SAVE + knobs, Key Scale, Drum, Pad Scale, Clip launch/overdub/delete and feedback, LEDs, random play with no stuck notes | FM-1 | **52 checks, 0 failures** |
 | Remote Script against a mock Live API (incl. overdub / delete) | all | **15 tests, OK** |

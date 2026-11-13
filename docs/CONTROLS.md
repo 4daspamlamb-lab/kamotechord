@@ -26,7 +26,7 @@ The scanner lists its 18 buttons "left to right" (`btnmap`, 左到右), in pairs
 | Button | Action | LED |
 |---|---|---|
 | ARP | tap: ARP on/off; hold 0.6 s: ARP page | bright while ARP is on |
-| NOTE REPEAT | **SUSTAIN** latch: tap on (CC 64 = 127, ch 1), tap off (CC 64 = 0); combined with a pedal | bright while sustain is latched |
+| NOTE REPEAT | **SUSTAIN** latch: tap on (CC 64 = 127, ch 1), tap off (CC 64 = 0); combined with a pedal. With ARP on it holds the arpeggio instead (no CC 64) | bright while sustain is latched |
 | SCALE | Pad Scale Mode on/off | bright **only** in Pad Scale Mode |
 | CHORD | Clip Mode on/off | bright in Clip Mode |
 | GLOBE | Ableton Stop (CC 21) | dim; bright while pressed |

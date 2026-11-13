@@ -13,7 +13,7 @@
 #include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.52" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.53" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */

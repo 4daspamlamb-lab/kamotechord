@@ -162,6 +162,18 @@ static unsigned latched_count, arp_running, arp_step;
 static uint64_t arp_next_us, arp_off_us;
 static int16_t arp_note = -1; static uint8_t arp_channel;
 static uint32_t arp_random = 0x2545f491U;
+/* Sustain hold (0.53): while Sustain (button latch or pedal) is on with ARP,
+ * every note played joins this pool and keeps arpeggiating after release,
+ * like a sustain pedal on a synth's arpeggiator. Cleared when sustain ends. */
+static struct arp_note sustained[POOL];
+static unsigned sustained_count;
+static unsigned sustain_active(void);
+static void sustained_add(const struct arp_note *note)
+{
+    for (unsigned j = 0; j < sustained_count; ++j)
+        if (sustained[j].note == note->note && sustained[j].channel == note->channel) return;
+    if (sustained_count < POOL) sustained[sustained_count++] = *note;
+}
 
 static unsigned arp_collect(struct arp_note *pool)
 {
@@ -179,7 +191,7 @@ static void arp_stop_note(void)
     if (arp_note >= 0) kk_midi_note_off(arp_channel, (unsigned)arp_note);
     arp_note = -1;
 }
-static void arp_stop(void) { arp_stop_note(); arp_running = 0; latched_count = 0; }
+static void arp_stop(void) { arp_stop_note(); arp_running = 0; latched_count = 0; sustained_count = 0; }
 /* Expand by octave range, then order by pitch or by press order. */
 static unsigned arp_sequence(struct arp_note *pool, unsigned n)
 {
@@ -230,7 +242,13 @@ static void arp_tick(void)
 {
     struct arp_note pool[POOL];
     unsigned n = arp_collect(pool);
-    if (n) {
+    if (sustain_active() && kk.arp_on) {
+        for (unsigned i = 0; i < n; ++i) sustained_add(&pool[i]);   /* add newly played notes */
+        memcpy(pool, sustained, sustained_count * sizeof *pool); n = sustained_count;
+    } else if (sustained_count) sustained_count = 0;      /* sustain released */
+    if (sustain_active() && kk.arp_on) {
+        /* held by sustain: skip the latch handling below */
+    } else if (n) {
         if (kk.arp.mode == KK_ARP_LATCH) { memcpy(latched, pool, n * sizeof *pool); latched_count = n; }
     } else if (kk.arp.mode == KK_ARP_LATCH && latched_count && kk.arp_on) {
         memcpy(pool, latched, latched_count * sizeof *pool); n = latched_count;
@@ -304,6 +322,13 @@ static void engage(unsigned id)
         s->sounding = 1;
     } else if (s->route == ROUTE_REPEAT) {
         repeat_hit(s, step_us(kk.repeat_division));
+    } else if (s->route == ROUTE_ARP && sustain_active()) {
+        /* Sustain hold: the notes join the held pattern at once, so even a
+         * tap shorter than one control tick is kept. */
+        for (unsigned k = 0; k < s->count; ++k) {
+            struct arp_note a = {s->channel, s->notes[k], s->velocity, s->order};
+            sustained_add(&a);
+        }
     } else if (s->route == ROUTE_ARP && kk.arp.mode == KK_ARP_LATCH) {
         /* A new chord after a full release replaces the latched one. */
         unsigned others = 0;
@@ -394,9 +419,10 @@ void kk_set_mode(unsigned mode)
     if (mode == KK_MODE_CLIP) kk_midi_clip_sync_request();   /* fresh clip LEDs */
     ++kk.edit_revision;
 }
+static void sustain_update(void);
 void kk_set_arp(unsigned on)
 {
-    kk.arp_on = !!on; reroute_all(); kk_settings_touch();
+    kk.arp_on = !!on; reroute_all(); sustain_update(); kk_settings_touch();
 }
 void kk_set_repeat(unsigned on) { kk.repeat_on = !!on; reroute_all(); ++kk.edit_revision; }
 void kk_set_octave(int octave)
@@ -587,9 +613,12 @@ static void long_presses(uint32_t now)
 static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
 /* Sustain (CC 64, channel 1) is on while the SUSTAIN button latch OR a
  * sustain pedal is on; one shared state, so nothing is sent twice. */
+static unsigned sustain_active(void) { return kk.sustain_on || pedal_down; }
 static void sustain_update(void)
 {
-    unsigned want = kk.sustain_on || pedal_down;
+    /* With ARP on, Sustain holds the arpeggio instead of sending CC 64 (which
+     * would smear every ARP step into the next). */
+    unsigned want = sustain_active() && !kk.arp_on;
     if (want == sustain_sent) return;
     sustain_sent = (uint8_t)want;
     kk_midi_cc(KK_CH_MELODIC, 64, want ? 127 : 0);

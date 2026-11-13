@@ -56,7 +56,7 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 |---|---|---|
 | OCT − / OCT + | octave of the playing zone (Pad Scale and Drum keep their own octave) | while pressed |
 | FX | tap: **ARP** on/off; hold 0.6 s: ARP settings | while ARP is on |
-| SEL | **Sustain** on/off (CC 64 on channel 1, latching) | while sustain is on |
+| SEL | **Sustain** on/off (CC 64 on channel 1, latching). With ARP on: **holds the arpeggio** (notes keep playing after release; new notes join) | while sustain is on |
 | ENV | **Pad Scale** Mode on/off | in Pad Scale |
 | LFO | **Clip Mode** on/off | in Clip Mode |
 | EDIT | Ableton **Stop** (CC 21) | while pressed |
@@ -105,7 +105,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.52-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.53-source.zip'
 .\build.bat fm1 --package
 ```
 

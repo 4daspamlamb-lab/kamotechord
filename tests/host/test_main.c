@@ -431,6 +431,22 @@ static void test_spare_and_refcount(void)
     btn(KK_BTN_NOTE_REPEAT, 1); host_ms += 1000; frames(2, 1); btn(KK_BTN_NOTE_REPEAT, 0);
     CHECK(kk.page == KK_PAGE_MAIN, "long SUSTAIN opens no page");
     tap(KK_BTN_NOTE_REPEAT);
+    CHECK(!kk.sustain_on, "sustain off again");
+    /* 0.53: with ARP on, SUSTAIN holds the arpeggio (no CC 64). */
+    tap(KK_BTN_ARP); host_clear(); tap(KK_BTN_NOTE_REPEAT);
+    CHECK(kk.sustain_on && out_count(USB, CC1, 64) == 0, "SUSTAIN with ARP sends no CC 64");
+    key(0, 100); key(4, 100); frames(60, 2); key(0, 0); key(4, 0);
+    host_clear(); frames(500, 2);                      /* 1 s at 1/8 = ~4 steps */
+    unsigned held_steps = out_count(USB, ON1, 48) + out_count(USB, ON1, 52);
+    CHECK(held_steps >= 3 && out_count(USB, ON1, 48) && out_count(USB, ON1, 52), "released notes keep arpeggiating (%u)", held_steps);
+    key(7, 100); key(7, 0); host_clear(); frames(500, 2);
+    CHECK(out_count(USB, ON1, 55) >= 1 && out_count(USB, ON1, 48) >= 1, "a note added under sustain joins the pattern");
+    tap(KK_BTN_NOTE_REPEAT); frames(200, 2); host_clear(); frames(500, 2);
+    CHECK(out_count(USB, ON1, -1) == 0, "sustain off: the held arpeggio stops");
+    CHECK(kk_midi_count(0, 48) + kk_midi_count(0, 52) + kk_midi_count(0, 55) == 0, "no stuck ARP notes");
+    tap(KK_BTN_NOTE_REPEAT); host_clear(); tap(KK_BTN_ARP);
+    CHECK(out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == (64 | 127 << 8), "ARP off while sustained -> CC 64 on");
+    host_clear(); tap(KK_BTN_NOTE_REPEAT); CHECK(out_count(USB, CC1, 64) == 1 && last_out(USB, CC1, 0) == 64, "and off");
 }
 
 static void test_arp_keys_and_persistence(void)
