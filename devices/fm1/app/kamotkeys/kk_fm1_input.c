@@ -11,8 +11,8 @@
  *    black, play consecutive scale notes (with chords). Root keys stay lit.
  *  - Drum Mode: white keys 01..16 are pads 1..16, black keys are silent.
  *  - Clip Mode: white keys 01..16 are clips; black keys held: F# = OVERDUB,
- *    G# = DELETE, A# = SELECT (+ a clip); top C# / D# / F# = launch scene,
- *    scene up, scene down (all handled by the core as keys).
+ *    G# = DELETE, A# = SELECT (+ a clip); C# (4th black key) = launch the
+ *    selected scene; top D# / F# = scene up / down (handled by the core).
  * A key's release always goes to whatever its press went to, even if the
  * mode changed while it was held.
  *

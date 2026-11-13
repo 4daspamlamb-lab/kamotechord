@@ -35,7 +35,8 @@ White keys 01–08 are pads 1–8 and 09–16 are pads 9–16.
   - Hold the **first black key (F#)** and press a clip: **overdub** into it (an empty slot: arm and record a new clip). The same again stops overdubbing.
   - Hold the **second black key (G#)** and press a clip: **delete** it.
   - Hold the **third black key (A#)** and press a clip: **select** that slot and **arm its track** (others disarmed); the next **REC** (Session Record) records there.
-  - The **last three black keys** (top C#, D#, F#): **launch the selected scene**, **scene up**, **scene down** (scrolls the grid through Live's scenes).
+  - The **fourth black key (C#)**: **launch the selected scene**.
+  - The **last two black keys** (top D#, F#): **scene up**, **scene down** (scrolls the grid through Live's scenes).
   - The screen shows OVERDUB / DELETE while the key is held. Key LEDs: playing = on, queued = blinking, recording = fast blink.
 
 Key LEDs light while a pad or key sounds, including ARP steps and notes played back from Live.
@@ -107,7 +108,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.55-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.56-source.zip'
 .\build.bat fm1 --package
 ```
 

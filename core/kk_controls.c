@@ -121,7 +121,7 @@ static void intent(unsigned id, struct source *s)
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
         (id == KK_SCENE_LAUNCH_KEY || id == KK_SCENE_UP_KEY || id == KK_SCENE_DOWN_KEY)) {
-        /* Clip Mode: the last three black keys are scene buttons (ch 15 CC). */
+        /* Clip Mode scene keys (ch 15 CC): launch, up, down. */
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;
         s->notes[0] = (uint8_t)(id == KK_SCENE_LAUNCH_KEY ? KK_CC_SCENE_LAUNCH : id == KK_SCENE_UP_KEY ? KK_CC_SCENE_UP : KK_CC_SCENE_DOWN);
         return;

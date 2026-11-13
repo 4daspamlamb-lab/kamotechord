@@ -1,5 +1,10 @@
 # Changelog
 
+## KamoteKeys 0.56 (development snapshot)
+
+- **Launch selected scene moves to the fourth black key** (SMK-37 G#, FM-1 C#); scene up / down stay on the last two black keys; the top F# (FM-1 top C#) plays its note again.
+- Remote Script: SELECT now arms the selected track (Live returns a new object for a track on every access, so the old identity test never matched).
+
 ## KamoteKeys 0.55 (development snapshot)
 
 - **Clip Mode SELECT:** hold the third black key (SMK-37 F#, FM-1 A#) and press a clip: select that slot and arm its track (others disarmed); the next Session Record (KNOB BANK / FM-1 REC) records there.

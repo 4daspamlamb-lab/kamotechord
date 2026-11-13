@@ -32,9 +32,9 @@ enum { KK_VELOCITY_DEFAULT = 100 };
  * while pressing a clip = OVERDUB, the second (G#) = DELETE. */
 enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
 /* The third black key (A#) held + clip = SELECT (select the slot, arm its
- * track); the last three black keys (top C#, D#, F#) = launch the selected
- * scene, scene up, scene down. */
-enum { KK_CLIP_SELECT_KEY = 5, KK_SCENE_LAUNCH_KEY = 20, KK_SCENE_UP_KEY = 22, KK_SCENE_DOWN_KEY = 25 };
+ * track); the fourth (C#) = launch the selected scene; the last two black
+ * keys (top D#, F#) = scene up, scene down. */
+enum { KK_CLIP_SELECT_KEY = 5, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 22, KK_SCENE_DOWN_KEY = 25 };
 
 /* Knob labels as printed on the screen (K1-K4, SELECT, ALGORITHM, PRESETS). */
 #define KK_K1 "K1"

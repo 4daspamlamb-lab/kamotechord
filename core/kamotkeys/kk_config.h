@@ -13,7 +13,7 @@
 #include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.55" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.56" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -57,7 +57,8 @@ enum {
     KK_CC_UNDO = 24, KK_CC_RECORD = 25, KK_CC_REDO = 27,
     /* 0.51: PARA = Play/Pause (continue / stop), HOME + PARA = metronome. */
     KK_CC_PLAY_PAUSE = 23, KK_CC_METRONOME = 26,
-    /* 0.55, Clip Mode top black keys: scene down / up, launch selected scene. */
+    /* Clip Mode black keys (0.55/0.56): scene down / up (last two), launch the
+     * selected scene (fourth from the bottom). */
     KK_CC_SCENE_DOWN = 28, KK_CC_SCENE_UP = 29, KK_CC_SCENE_LAUNCH = 30,
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

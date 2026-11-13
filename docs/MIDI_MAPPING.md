@@ -110,7 +110,7 @@ Every note has an owner count per channel. If two sources play the same note (fo
 | with DELETE held (2nd black key) | 68–75 | 76–83 |
 | with SELECT held (3rd black key) | 84–91 | 92–99 |
 
-Scene keys (Clip Mode, last three black keys): CC 28 scene down, CC 29 scene up, CC 30 launch selected scene (channel 15, 127 press / 0 release). The script sends CC 104 on channel 16 = first scene shown on the grid.
+Scene keys (Clip Mode: fourth black key = launch, last two black keys = up / down): CC 28 scene down, CC 29 scene up, CC 30 launch selected scene (channel 15, 127 press / 0 release). The script sends CC 104 on channel 16 = first scene shown on the grid.
 
 Tempo from the Remote Script: CC 102 / 103 = Live's tempo × 10 (MSB, LSB). While it arrives, ARP and the internal engine follow Live and the tempo knob is ignored ("TEMPO FOLLOWS ABLETON").
 
