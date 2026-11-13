@@ -39,6 +39,8 @@ static int settings_result;
 static unsigned session_dirty, session_pending;
 extern void smk37_panel_preferences_read(uint8_t data[4]) __attribute__((weak));
 extern void smk37_panel_preferences_apply(const uint8_t data[4]) __attribute__((weak));
+extern void kamotkeys_settings_read(uint8_t data[16]) __attribute__((weak));
+extern int kamotkeys_settings_apply(const uint8_t data[16]) __attribute__((weak));
 static int recover_staging(void);
 /* Older SDKs retain their checkpoint/apply path; current engines defer the
  * checkpoint until every required voice allocation has succeeded. */
@@ -160,17 +162,20 @@ static int read_project(unsigned sector)
 enum { TUNING_MAGIC = 0x54314d46U, TUNING_VERSION = 2, SAMPLE_BANK_MAGIC = 0x53314d46U };
 struct tuning_entry { uint32_t key; struct groove_tuning t[GROOVE_TRACKS]; uint32_t crc; };
 /* Optional tail leaves every existing tuning entry at its original offset. */
-enum { SESSION_MAGIC = 0x31534d46U, PANEL_MAGIC = 0x31504b53U };
+enum { SESSION_MAGIC = 0x31534d46U, PANEL_MAGIC = 0x31504b53U, KAMOTKEYS_MAGIC = 0x314b4b53U };
 struct session_settings { uint32_t magic; uint8_t role[8], channel[8]; uint32_t crc; };
 struct panel_settings { uint32_t magic; uint8_t data[4]; uint32_t crc; };
-struct tuning_sector { uint32_t magic, version; struct tuning_entry entry[GROOVE_PROJECT_SLOTS]; struct session_settings session; struct panel_settings panel; };
+/* KamotKeys preferences (BPM, ARP, Note Repeat, patch, MIDI ports). Appended
+ * after the panel record so every earlier field keeps its offset. */
+struct kamotkeys_settings { uint32_t magic; uint8_t data[16]; uint32_t crc; };
+struct tuning_sector { uint32_t magic, version; struct tuning_entry entry[GROOVE_PROJECT_SLOTS]; struct session_settings session; struct panel_settings panel; struct kamotkeys_settings kamotkeys; };
 struct tuning_block { uint32_t magic; struct groove_tuning t[GROOVE_TRACKS]; uint32_t crc; };
 _Static_assert(sizeof(struct groove_tuning) == 24, "tuning table layout");
 _Static_assert(sizeof(struct tuning_entry) == 200, "tuning entry layout");
 _Static_assert(sizeof(struct tuning_block) == GROOVE_TUNING_BLOCK_BYTES, "tuning block layout");
 _Static_assert(sizeof(struct tuning_sector) <= FM1_FLASH_SECTOR_BYTES, "one tuning sector");
 enum { LEGACY_TUNING_JOURNAL_MAGIC = 0x4a544d46U, SESSION_TUNING_JOURNAL_MAGIC = 0x4b544d46U,
-       TUNING_JOURNAL_MAGIC = 0x4c544d46U,
+       PANEL_TUNING_JOURNAL_MAGIC = 0x4c544d46U, TUNING_JOURNAL_MAGIC = 0x4d544d46U,
        TUNING_JOURNAL_ADDRESS = STAGING_SECTOR * FM1_FLASH_SECTOR_BYTES };
 struct tuning_journal { uint32_t magic, crc, commit; };
 _Static_assert(sizeof(struct tuning_journal) + sizeof(struct tuning_sector) <= FM1_FLASH_SECTOR_BYTES,
@@ -193,6 +198,7 @@ static unsigned tuning_journal_bytes(unsigned magic)
 {
     return magic==LEGACY_TUNING_JOURNAL_MAGIC?offsetof(struct tuning_sector,session):
         magic==SESSION_TUNING_JOURNAL_MAGIC?offsetof(struct tuning_sector,panel):
+        magic==PANEL_TUNING_JOURNAL_MAGIC?offsetof(struct tuning_sector,kamotkeys):
         magic==TUNING_JOURNAL_MAGIC?sizeof(struct tuning_sector):0;
 }
 /* A committed tuning journal is authoritative until its destination verifies. */
@@ -766,6 +772,13 @@ static int session_settings_load(unsigned before_project)
            p.crc==~groove_crc32(~0U,&p,offsetof(struct panel_settings,crc)))
             smk37_panel_preferences_apply(p.data);
     }
+    if(!before_project && kamotkeys_settings_apply) {
+        struct kamotkeys_settings k;
+        r=fm1_flash_read(address+offsetof(struct tuning_sector,kamotkeys),&k,sizeof k);
+        if(r)return r;
+        if(k.magic==KAMOTKEYS_MAGIC && k.crc==~groove_crc32(~0U,&k,offsetof(struct kamotkeys_settings,crc)))
+            (void)kamotkeys_settings_apply(k.data);
+    }
     return 0;
 }
 static int session_settings_save(void)
@@ -789,6 +802,13 @@ static int session_settings_save(void)
             p.crc=~groove_crc32(~0U,&p,offsetof(struct panel_settings,crc));
             changed|=memcmp(&s->panel,&p,sizeof p)!=0;
             s->panel=p;
+        }
+        if(kamotkeys_settings_read) {
+            struct kamotkeys_settings k={.magic=KAMOTKEYS_MAGIC};
+            kamotkeys_settings_read(k.data);
+            k.crc=~groove_crc32(~0U,&k,offsetof(struct kamotkeys_settings,crc));
+            changed|=memcmp(&s->kamotkeys,&k,sizeof k)!=0;
+            s->kamotkeys=k;
         }
         if(changed)r=tuning_commit(s);
     }

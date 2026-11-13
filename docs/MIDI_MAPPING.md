@@ -1,0 +1,110 @@
+# KamotKeys 0.31 MIDI mapping
+
+All values are identical on USB and Bluetooth. Which port(s) carry them depends on **MIDI OUT** (Patch page): AUTO (default: USB when connected, else BLE), ALL, USB or BLE. Note Offs are always offered to every port; the router drops the ones a port never had a Note On for.
+
+## Channels
+
+| Source | Channel |
+|---|---|
+| Keyboard (Normal Mode) | 1 |
+| Keyboard (Key Scale Mode) | 1 |
+| Chord-generated notes | 1 |
+| Pad Scale Mode | 1 |
+| Spare pads | 1 |
+| Drum Mode | 10 |
+| Ableton control buttons | 15 |
+| Clip Mode launcher and feedback | 16 (see [ABLETON_REMOTE_SCRIPT.md](ABLETON_REMOTE_SCRIPT.md)) |
+| Pitch wheel, modulation (CC 1), sustain pedal (CC 64) | 1 |
+
+## Ableton control changes (channel 15)
+
+| Function | CC | Button | Values |
+|---|---|---|---|
+| Start | 20 | SEQ PLAY | 127 press / 0 release |
+| Stop | 21 | GLOBE | 127 press / 0 release |
+| Capture MIDI | 22 | FADER BANK | 127 press / 0 release |
+| Undo | 24 | ◀ LEFT | 127 press / 0 release (not while the BT menu is open) |
+| Session Record | 25 | KNOB BANK | 127 press / 0 release (the Remote Script toggles Session Record on press) |
+| Redo | 27 | RIGHT ▶ | 127 press / 0 release (not while the BT menu is open) |
+
+These CCs are sent to the external ports only, never to the internal synth.
+
+## Keyboard
+
+37 keys, lowest key C. Octave −4 … +4; the keyboard starts at **−2** on every power-on (lowest key = 24).
+
+- **Normal:** note = 48 + key index + 12 × octave (C3 … C6 at octave 0).
+- **Key Scale:** the 2nd physical C (key index 12) = tonic in the C4–B4 octave (60 + root) + 12 × octave. White keys step through scale degrees above and below it; black keys are silent.
+- Out-of-range results (below 0 or above 127) are silent.
+
+## Chord pads (Normal / Key Scale Mode)
+
+| Pad | Adds | Pad | Adds |
+|---|---|---|---|
+| 1 MAJ | 0 4 7 | 9 "7" | ♭7 (10); 9 = dim7 with DIM; diatonic 7th when no quality pad |
+| 2 MIN | 0 3 7 | 10 MAJ7 | 11 (diatonic 7th when no quality pad) |
+| 3 DIM | 0 3 6 | 11 "6" | 9 (diatonic 6th when no quality pad) |
+| 4 SUS4 | 0 5 7 | 12 "9" | 14 (diatonic 9th when no quality pad) |
+| | | 13 LOCK | latches the current modifiers (no notes of its own) |
+
+Only extension pads held → the chord is built diatonically when the played note is in the scale. Off-scale notes fall back to a major triad. Voicing: root position, ascending, at most 6 notes, notes above 127 dropped.
+
+## Pad Scale Mode (channel 1)
+
+Pad *n* (1–16) = 48 + root + scale degree (*n* − 1) + 12 × pad octave (starts at 0). Root pads are lit cyan, others green.
+
+## Drum Mode (channel 10)
+
+| Pad | Note at octave 0 | GM sound | Colour |
+|---|---|---|---|
+| 1 | 36 | Bass Drum 1 | red (kick) |
+| 2 | 38 | Acoustic Snare | orange (snare) |
+| 3 | 40 | Electric Snare | orange |
+| 4 | 42 | Closed Hi-Hat | yellow (hi-hat) |
+| 5 | 44 | Pedal Hi-Hat | yellow |
+| 6 | 46 | Open Hi-Hat | yellow |
+| 7 | 48 | Hi-Mid Tom | blue (tom) |
+| 8 | 50 | High Tom | blue |
+| 9 | 37 | Side Stick | purple (rim) |
+| 10 | 39 | Hand Clap | pink (clap) |
+| 11 | 41 | Low Floor Tom | blue |
+| 12 | 43 | High Floor Tom | blue |
+| 13 | 45 | Low Tom | blue |
+| 14 | 47 | Low-Mid Tom | blue |
+| 15 | 49 | Crash Cymbal 1 | teal (cymbal) |
+| 16 | 51 | Ride Cymbal 1 | teal |
+
+The pad octave (starts at 0, set with OCT while in Drum Mode) adds or subtracts 12 on every pad (pad 1: 24 at −1, 48 at +1). The colours follow the note actually played, e.g. at +1 pad 1 (48) turns blue (tom). Notes 54–81 that are not kick/snare/hat/tom/cymbal are green (percussion); notes outside GM are grey.
+
+## Spare pads (Normal / Key Scale Mode, channel 1)
+
+| Pad | 5 | 6 | 7 | 8 | 14 | 15 | 16 |
+|---|---|---|---|---|---|---|---|
+| Note | 84 C6 | 85 C♯6 | 86 D6 | 87 D♯6 | 88 E6 | 89 F6 | 90 F♯6 |
+| Colour | red | orange | yellow | green | cyan | blue | violet |
+
+Spare pads are not transposed by the octave buttons.
+
+## Velocity
+
+Natural velocity comes from the keybed/pad sensors (1–127). Fader 1 above 10 % overrides it at Note On (≈13 at just above 10 %, 127 at 100 %). Note Off velocity is 0.
+
+## ARP and Note Repeat output
+
+ARP and Note Repeat notes use the channel of the source they repeat (1, or 10 in Drum Mode). Each step is a complete Note On/Note Off pair; ARP gate 10–100 %, Note Repeat gate 50 %.
+
+## Note ownership
+
+Every note has an owner count per channel. If two sources play the same note (for example the top C key and spare pad 5, both 84), one Note On is sent, and the Note Off goes out only when the last owner releases. Mode, octave, scale and root changes never change the pitch of a note that is already sounding: its release always stops exactly what was started.
+
+## Clip Mode (channel 16)
+
+| Pad | 1–8 | 9–16 |
+|---|---|---|
+| Note | 36–43 (Track 1–8, Clip 1) | 44–51 (Track 1–8, Clip 2) |
+
+Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamotKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
+
+## Notes received from the host
+
+Note On/Off on channels 1 and 10 coming from the computer light the matching Pad Scale/Drum pads (Move-style). They also play the internal synth unless *Internal synth* is off.

@@ -219,6 +219,9 @@ static void buttons_read(void)
     }
 }
 static u32 ledio[2]={0xffffffff,0xffffffff};
+/* KamotKeys: LEDs that are cleared here (active low) but set in ledio are
+ * lit only on one multiplex tick in eight, a fixed-hardware "dim" level. */
+static u32 leddim[2]={0xffffffff,0xffffffff};
 static u32 ledscanio=0xffffffff;
 
 const u8 led_map[BTN_CNT+1]={//左到右
@@ -242,6 +245,21 @@ void smk37_led(unsigned id,unsigned state)
     local_irq_restore(irq_state);
 }
 
+/* 0 off, 1 dim, 2 bright. Same atomic update as smk37_led(). */
+void smk37_led_level(unsigned id,unsigned level)
+{
+    if(id>=BTN_CNT+1)return;
+    unsigned irq_state;local_irq_save(irq_state);
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    const unsigned pin=led_map[id];
+    if(level>=2)ledio[pin>>4]&=~BIT(pin&15);
+    else ledio[pin>>4]|=BIT(pin&15);
+    if(level==1)leddim[pin>>4]&=~BIT(pin&15);
+    else leddim[pin>>4]|=BIT(pin&15);
+    __atomic_signal_fence(__ATOMIC_SEQ_CST);
+    local_irq_restore(irq_state);
+}
+
 static FM1_AUDIO_CODE void led_scan()
 {
     static u8 ledscan_cnt=0,ledscan_sta=0;
@@ -254,7 +272,7 @@ static FM1_AUDIO_CODE void led_scan()
     }
     else
     {
-        ledscanio = ledio[ledscan_sta];
+        ledscanio = (ledscan_cnt&7)==1 ? ledio[ledscan_sta]&leddim[ledscan_sta] : ledio[ledscan_sta];
         unsigned bit=ledscan_sta?BIT(18):BIT(17);
         SMK_REG(0x16a0cU)=(SMK_REG(0x16a0cU)|0x1000fU)&~bit;
     }

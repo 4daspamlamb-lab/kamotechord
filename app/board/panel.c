@@ -5,70 +5,90 @@
 #include "fm1_lcd_hw.h"
 #include "lcd.inc"
 
-static uint32_t virtual_leds;
 static uint16_t button_leds;
 static uint8_t rgb_buffer[420] __attribute__((aligned(4)));
 static uint32_t rgb_colors[16];
 static unsigned rgb_dirty=0xffff;
-static unsigned led_modes=~0U;
 static const uint8_t rgb_map[16]={0,15,14,13,12,11,10,9,1,2,3,4,5,6,7,8};
 /* PH8 is an encoder input on both boards, with no fitted TRS MIDI RX. */
 uint8_t fm1_io_trs_midi_enabled(void) {return 0;}
-void fm1_controls_init(void) {smk37_scan_init();led_modes=~0U;}
+void fm1_controls_init(void) {smk37_scan_init();}
+/* KamotKeys: the scanner delivers every event straight to the performance
+ * core (smk37_control_event). This snapshot only reports the battery ADC;
+ * button/pad LEDs are produced by app/kamotkeys/kk_led.c. */
 void fm1_controls_read(struct fm1_controls *state)
 {
-    smk37_scan_read();smk37_controls_snapshot(state);
+    smk37_scan_read();
+    memset(state,0,sizeof *state);
     state->battery=smk37_battery_adc();
-    unsigned bank=smk37_fader_bank(),pad=smk37_pad_steps()||smk37_pad_focus();
-    unsigned modes=bank|(pad<<1),changed=led_modes==~0U?3:modes^led_modes;
-    if(changed&1)smk37_led(1,bank);
-    if(changed&2)smk37_led(7,pad);
-    led_modes=modes;
-    for(unsigned i=0;i<16;++i) {
-        unsigned key=smk37_screen_pad_key(i);
-        unsigned on=key<27 && (virtual_leds&(1U<<key));
-        smk37_rgb_set(i,smk37_pad_color(i,on));
-    }
-    smk37_rgb_service();
 }
 void fm1_led_set(unsigned key,int on)
 {
     static const uint8_t physical[14]={4,5,14,8,9,9,13,10,12,3,6,15,16,17};
     if(key<14) {
         if(on)button_leds|=1U<<key;else button_leds&=~(1U<<key);
-        /* ENV and LFO share one physical indicator. */
         smk37_led(physical[key],(key==4||key==5)?(button_leds&0x30)!=0:on);
-    }
-    else if(key<41) {
-        unsigned bit=1U<<(key-14);
-        if(on)virtual_leds|=bit;else virtual_leds&=~bit;
     }
 }
 void smk37_rgb_set(unsigned id,unsigned rgb)
 {
     if(rgb_colors[id]!=rgb){rgb_colors[id]=rgb;rgb_dirty|=1U<<id;}
 }
+/* Busy-wait on the 24 MHz TIMER4 counter (started by smk37_scan_init). */
+static void spi_settle(unsigned microseconds)
+{
+    uint32_t started=fm1_device_ticks();
+    while((uint32_t)(fm1_device_ticks()-started)<24U*microseconds) {}
+}
+void smk37_rgb_touch(void) {rgb_dirty=0xffff;}
+/* KamotKeys 0.35: pad LED bit timing, selectable on the Diagnostics page
+ * because SMK37 OPEN's fixed timing garbled frames on real hardware. The
+ * SPI clock divider sets the bit period; zero/one set each bit's pulse. */
+static const struct {uint8_t baud,zero,one;} rgb_timings[SMK37_RGB_TIMINGS]={
+    {8,0xc0,0xf0},  /* 0 SMK37 OPEN original      */
+    {8,0x80,0xf0},  /* 1 shorter 0-pulse          */
+    {8,0x80,0xf8},  /* 2 short 0, long 1          */
+    {9,0xc0,0xf0},  /* 3 slower clock             */
+    {10,0x80,0xf0}, /* 4 slower clock, short 0    */
+    {7,0xc0,0xf0},  /* 5 faster clock             */
+    {6,0xc0,0xf8},  /* 6 faster clock, long 1     */
+    {11,0x80,0xe0}};/* 7 slowest, short pulses    */
+static uint8_t rgb_timing;
+void smk37_rgb_timing(unsigned timing)
+{
+    if(timing<SMK37_RGB_TIMINGS && timing!=rgb_timing){rgb_timing=(uint8_t)timing;rgb_dirty=0xffff;}
+}
+volatile uint32_t smk37_rgb_frames;   /* pad frames sent (diagnostics) */
 void smk37_rgb_service(void)
 {
+    /* KamotKeys: WS2812-type pads latch a frame only after the data line has
+     * been idle for ~280 us; the 36 leading zero bytes give ~45 us. Frames
+     * sent back to back (animations, fades) were read as one long stream:
+     * random colours and strobing. Keep >= 8 ms between frames (<= 125 fps). */
+    static uint32_t rgb_sent;
     if(!rgb_dirty || fm1_screen_pending())return;
-    static const uint32_t nibble[16]={
-        0xc0c0c0c0,0xf0c0c0c0,0xc0f0c0c0,0xf0f0c0c0,
-        0xc0c0f0c0,0xf0c0f0c0,0xc0f0f0c0,0xf0f0f0c0,
-        0xc0c0c0f0,0xf0c0c0f0,0xc0f0c0f0,0xf0f0c0f0,
-        0xc0c0f0f0,0xf0c0f0f0,0xc0f0f0f0,0xf0f0f0f0};
+    if((uint32_t)(fm1_millis()-rgb_sent)<20U)return;   /* <= 50 frames/s (0.36) */
+    /* One SPI byte per LED bit, MSB first: the high part of the byte is the
+     * LED's pulse. SMK37 OPEN used 0xC0/0xF0 at BAUD 8 (timing 0). */
+    const unsigned zero=rgb_timings[rgb_timing].zero,one=rgb_timings[rgb_timing].one;
     for(unsigned i=0;i<16;++i) {
         if(!(rgb_dirty&(1U<<i)))continue;
         unsigned rgb=rgb_colors[i],grb=((rgb&0xff00)<<8)|((rgb>>8)&0xff00)|(rgb&255);
-        for(unsigned n=0;n<6;++n) {
-            uint32_t word=nibble[(grb>>(20-4*n))&15];
-            memcpy(rgb_buffer+36+24*rgb_map[i]+4*n,&word,4);
-        }
+        uint8_t *bits=rgb_buffer+36+24*rgb_map[i];
+        for(unsigned b=0;b<24;++b)bits[b]=(uint8_t)((grb>>(23-b))&1U?one:zero);
     }
-    /* One task owns SPI1: finish LCD, keep CS high during RGB DMA, restore. */
-    fm1_lcd_deselect();JL_IOMAP->CON1|=BIT(4);JL_SPI1->BAUD=8;
+    /* One task owns SPI1: finish LCD, keep CS high during RGB DMA, restore.
+     * KamotKeys: the DMA "done" flag can precede the last bits leaving the
+     * shift register. Let any LCD tail drain before routing SPI1 to the pad
+     * LEDs, and let the last LED bits drain before routing it back, so no
+     * stray pulses reach the LED chain (which garbles every pad). */
+    fm1_lcd_deselect();spi_settle(20);
+    JL_IOMAP->CON1|=BIT(4);JL_SPI1->BAUD=rgb_timings[rgb_timing].baud;
     JL_SPI1->CON|=BIT(14);fm1_device_fence();
     JL_SPI1->ADR=(uint32_t)(uintptr_t)rgb_buffer;JL_SPI1->CNT=sizeof rgb_buffer;
     uint32_t errors=fm1_lcd_timeouts;fm1_lcd_wait();
+    spi_settle(20);
     JL_IOMAP->CON1&=~BIT(4);JL_SPI1->BAUD=4;
+    rgb_sent=fm1_millis();++smk37_rgb_frames;
     if(errors==fm1_lcd_timeouts)rgb_dirty=0;
 }

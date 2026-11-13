@@ -68,8 +68,8 @@ $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
 
 仅编译固件可运行 `.\sdk\Build.ps1 -Model pro -FirmwareOnly -Toolchain 'C:\JL\pi32'`（或 `-Model elite`）。网页首次构建下载 WASI SDK 27，可用 `FM1_WASI_SDK` 指定已有安装。环境变量名与 FM1 共用。
 
-输出：`build/preview/index.html`、`build/<model>/generated/` 和 `build/official-web/<model>/SMK37-Open-Source.html`。静态部署见 [HOSTING.md](HOSTING.md)。两款硬件共用 APP，驱动位于 `app/board/`。[逐轨调律接口](app/instrument.h)可用，暂未提供专门的调律编辑页面。
+输出：`build/preview/index.html`、`build/<model>/generated/` 和 `build/official-web/<model>/SMK37-Open-Source.html`。静态部署见 [HOSTING.md](../../HOSTING.md)。两款硬件共用 APP，驱动位于 `app/board/`。[逐轨调律接口](../../app/instrument.h)可用，暂未提供专门的调律编辑页面。
 
 ## 许可
 
-APP 与网页应用源码采用[附 SDK 链接例外的 GPLv3](LICENSE.md)，具有单独许可声明的文件保留其许可。原生 SDK 与原厂恢复固件以二进制提供，适用单独条款。再分发时请保留适用的 [SDK 条款、第三方许可和贡献者声明](THIRD_PARTY.md)。
+APP 与网页应用源码采用[附 SDK 链接例外的 GPLv3](../../LICENSE.md)，具有单独许可声明的文件保留其许可。原生 SDK 与原厂恢复固件以二进制提供，适用单独条款。再分发时请保留适用的 [SDK 条款、第三方许可和贡献者声明](../../THIRD_PARTY.md)。

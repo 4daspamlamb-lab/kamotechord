@@ -2,35 +2,33 @@
 #ifndef SMK37_CONTROLS_H
 #define SMK37_CONTROLS_H
 #include "fm1.h"
+/* Event kinds produced by app/board/scan.c. */
 enum { SMK37_BUTTON, SMK37_KEY, SMK37_PRESSURE, SMK37_PAD,
        SMK37_ENCODER, SMK37_COMBINATION, SMK37_PEDAL, SMK37_FADER };
-void smk37_controls_reset(void);
+/* Implemented by the KamotKeys performance core (app/smk37_controls.c). */
 void smk37_control_event(unsigned kind, unsigned id, int value);
-void smk37_controls_snapshot(struct fm1_controls *out);
 void smk37_controls_panic(void);
+/* Deferred device-preference save (app/project.c). */
+void groove_settings_panel_changed(void);
+/* Pad LED bit timing preset (app/board/panel.c), 0 = SMK37 OPEN original. */
+enum { SMK37_RGB_TIMINGS = 8 };
+void smk37_rgb_timing(unsigned timing);
+/* Button LED brightness: 0 off, 1 dim, 2 bright (app/board/scan.c). */
+void smk37_led_level(unsigned id, unsigned level);
+/* SMK37 OPEN panel hooks still used by the browser simulator
+ * (web/engine/Simulator.c); KamotKeys provides them only in FM1_OPEN_WEB
+ * builds, see app/kamotkeys/kk_web_compat.c. */
+void smk37_controls_snapshot(struct fm1_controls *out);
 void smk37_controls_release(void);
 unsigned smk37_fader_bank(void);
 unsigned smk37_pad_steps(void);
 unsigned smk37_shift(void);
-uint32_t smk37_pad_color(unsigned pad, unsigned lit);
 unsigned smk37_pickup_mask(void);
-uint32_t smk37_fader_feedback(void);
 unsigned smk37_master_level(void);
 void smk37_master_set(unsigned level);
-unsigned smk37_screen_track(void);
-int smk37_screen_octave(void);
 unsigned smk37_performance_track(unsigned pad);
 int smk37_performance_octave(unsigned pad);
 unsigned smk37_pad_focus(void);
 unsigned smk37_pad_aftertouch(void);
-void smk37_screen_note(unsigned owner, unsigned note);
-void smk37_screen_pad_mode(unsigned steps, unsigned instrument);
-void smk37_panel_preferences_read(uint8_t data[4]);
-void smk37_panel_preferences_apply(const uint8_t data[4]);
-void groove_settings_panel_changed(void);
-int smk37_screen_pad(unsigned pad, unsigned velocity, unsigned steps);
 unsigned smk37_screen_pad_key(unsigned pad);
-enum { SMK37_PAGE_BLUETOOTH, SMK37_PAGE_SOURCE, SMK37_PAGE_MIDI };
-void smk37_screen_page(unsigned page);
-void smk37_screen_shortcut(unsigned pad);
 #endif
