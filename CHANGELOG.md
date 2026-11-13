@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.48 (development snapshot)
+
+- Spare (CC) pads 5-8 and 14-16 rest at **half** the chord pads' brightness: 12.5 % (chord 25 %).
+
 ## KamoteKeys 0.47 (development snapshot)
 
 - Spare (CC) pads 5-8 and 14-16 rest **dimmer** than the chord pads again: 20 % (chord 25 %). 0.45/0.46 had them brighter by mistake.

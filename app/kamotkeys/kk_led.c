@@ -87,7 +87,7 @@ enum { ROOT_CYAN = 0x60f0ff, GREEN = 0x00ff3c };
 /* Levels in permille of programmed brightness (0.43: resting pads visible
  * but calm; pressed/sounding pads about 4x brighter). Pad Scale roots rest
  * more than twice as bright as the other scale notes. */
-enum { IDLE_CHORD = 250, IDLE_SPARE = 200, IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
+enum { IDLE_CHORD = 250, IDLE_SPARE = 125,   /* spare = half of chord (0.48) */ IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
 
 /* Clip Mode: the colour follows Ableton's real slot state. */
 static uint32_t clip_colour(unsigned pad, unsigned *level)

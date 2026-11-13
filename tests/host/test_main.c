@@ -289,10 +289,10 @@ static void test_velocity_faders(void)
     CHECK(((full >> 16) & 255) == KK_RGB_PEAK && ((half >> 16) & 255) * 2 >= KK_RGB_PEAK - 4 && ((half >> 16) & 255) * 2 <= KK_RGB_PEAK + 4, "brightness scales (%06x %06x)", full, half);
     pad(5, 0); frames(10, 3);
     unsigned released = (host_rgb[4] >> 16) & 255;
-    CHECK(released >= 12 && released <= 20, "release returns to idle at once (%u)", released);
+    CHECK(released >= 8 && released <= 12, "release returns to idle at once (%u)", released);
     settle();
     unsigned idle = (host_rgb[4] >> 16) & 255;
-    CHECK(idle >= 12 && idle <= 20, "spare idle 20%% of half brightness, below chord 25%% (%u)", idle);
+    CHECK(idle >= 8 && idle <= 12, "spare idle 12.5%% = half of chord 25%% (%u)", idle);
     fader(3, 10); CHECK(kk.screen_dim, "LCD dims at <= 10%%"); fader(3, 127); CHECK(!kk.screen_dim, "LCD normal");
     /* Every channel sent to the pads is a multiple of 4, in every mode and at
      * every Fader 4 position (values with bit 0/1 set flash on hardware). */
