@@ -113,22 +113,32 @@ All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK send on
 | very dim red | past the end of the clip |
 | while DRUM is held: white / teal / grey | active drum / Drum Rack pad with a sound / empty pad |
 
-**Function keys**
+**Keyboard (SMK-37), like Move's drum pads and buttons**
+
+| Octave | Keys |
+|---|---|
+| lowest (controls) | white: DRUM, page ◀, page ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW; black: C# = COPY, D# = CLEAR |
+| second (drum keys) | C … B = sounds 1–12 of the Drum Rack bank (C = kick, D = snare, F# = closed hat … in a standard kit) |
+| third | white C–A = velocity 30 / 50 / 70 / 90 / 110 / 127 |
+
+- **Drum keys** (second octave): the first 12 sounds of the Drum Rack bank (C = 36 in the first bank). Pressing one **plays it** (on the armed track and the internal drum kit) and **makes it the sound the steps edit**, like tapping a drum pad on Move. Sounds 13–16 and other banks: hold DRUM (lowest C) and use the pads / page keys; the drum keys then follow that bank.
+- **CLEAR + drum key** deletes every note of that sound in the clip (Move: Delete + pad). A plain **CLEAR tap** clears the active sound on the shown page.
+- **Auto-arm**: entering Step Mode arms the sequenced track (if it was not armed) so the keys are heard; leaving disarms it again.
 
 | Function | SMK-37 key | FM-1 key |
 |---|---|---|
 | **DRUM** (hold): pads show the Drum Rack (bottom row = lowest notes); tap one to make it active; page keys change the bank of 16 | C (lowest) | F# (1st black) |
 | **Page ◀ / ▶** | D / E | G# / A# |
 | **LENGTH** (hold + a step = loop end at that step; hold + page ▶ goes one page past the end to make the clip longer) | F | C# |
-| **DOUBLE** (twice as long, contents copied, like Push's Double Loop) | G | D# |
+| **DOUBLE** (twice as long, contents copied, like Move's Double Loop) | G | D# |
 | **RESOLUTION** (1/16 → 1/8 → 1/32 → 1/16T → 1/8T, same for every page) | A | F# (2nd) |
 | **FOLLOW** on/off (page follows the playhead; off by default) | B | G# (2nd) |
-| **COPY** (hold + page ◀/▶ = copy the shown page, all drums, onto that page) | C (2nd) | A# (2nd) |
-| **CLEAR** (the active drum on the shown page) | D (2nd) | C# (2nd) |
+| **COPY** (hold + page ◀/▶ = copy the shown page, all drums, onto that page) | C# (lowest) | A# (2nd) |
+| **CLEAR** (tap: the active drum on the shown page; hold + drum key: that drum in the whole clip) | D# (lowest) | C# (2nd) |
 | **Velocity**: hold a step + a velocity key; without a held step it sets the velocity for new steps | white keys C–A of the 3rd octave: 30 / 50 / 70 / 90 / 110 / 127 | D# / F# (top): down / up |
 | **Tie / long note**: hold a step and press a later one | pads | white keys |
 
-On the SMK-37 every other key still plays notes (handy for auditioning the selected track). The screen shows the page (e.g. PAGE 2/4), the resolution, FOLLOW, and NO DRUM RACK (steps then use C1) or SELECT A MIDI TRACK.
+On the SMK-37 the remaining keys (F#, G#, A# of the lowest octave and everything above the third octave) still play notes. The screen shows the page (e.g. PAGE 2/4), the resolution, FOLLOW, and NO DRUM RACK (steps then use C1) or SELECT A MIDI TRACK.
 
 **Edge cases:** no Drum Rack → steps still work on C1; the clip or track deleted, the selection or the clip length changed with the mouse → the mode rebinds itself (deferred, never inside a Live notification). Messages go to Live's `Log.txt` as `KamoteKeys step: ...` and to the status bar.
 

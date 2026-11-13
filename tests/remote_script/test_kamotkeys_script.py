@@ -406,6 +406,21 @@ class StepTest(unittest.TestCase):
         self.assertIs(self.song.track.devices[0].view.selected_drum_pad, self.song.track.devices[0].drum_pads[38])
         self.tap(3); self.assertEqual([n.pitch for n in self.clip.notes], [38])
 
+    def test_drum_keys_clear_and_auto_arm(self):
+        """0.60, Move-style: drum keys select the sound, CLEAR + drum key
+        deletes that sound, a CLEAR tap clears the page, the track is armed."""
+        self.mode(True)
+        self.assertTrue(self.song.track.arm); self.assertEqual(self.info(103), 36)
+        deliver((0xBD, 104, 2)); self.s.update_display()                  # drum key D = 38 (snare)
+        self.assertEqual(self.info(102), 38)
+        self.tap(0); self.tap(4); deliver((0xBD, 104, 0)); self.tap(2)    # snare x2, kick x1
+        self.assertEqual(sorted(n.pitch for n in self.clip.notes), [36, 38, 38])
+        self.fn(68); deliver((0xBD, 104, 2)); self.fn(68, False)          # CLEAR + snare key
+        self.assertEqual([n.pitch for n in self.clip.notes], [36])
+        self.assertEqual(self.info(102), 36)                              # active drum unchanged
+        self.press(68); self.assertEqual(self.clip.notes, [])              # CLEAR tap = clear page
+        self.mode(False); self.assertFalse(self.song.track.arm)           # auto-arm released
+
     def test_length_double_resolution_and_follow(self):
         self.mode(True)
         self.fn(63); self.pad(7); self.pad(7, False); self.fn(63, False)  # LENGTH + step 8 = half a bar

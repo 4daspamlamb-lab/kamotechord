@@ -1,5 +1,12 @@
 # Changelog
 
+## KamoteKeys 0.60 (development snapshot)
+
+- **Step Mode laid out like Ableton Move (SMK-37):** the second octave is 12 **drum keys** (C = kick, the first 12 sounds of the Drum Rack bank): a key plays its sound and selects it for the steps. COPY and CLEAR move to C# / D# of the lowest octave, so that octave holds all the controls.
+- **CLEAR + drum key** deletes that sound from the whole clip; a CLEAR tap still clears the page (now on release).
+- The sequenced track is **armed automatically** while Step Mode is on (and disarmed after), so the drum keys are heard.
+- Needs the updated Remote Script (protocol: ch 14 CC 103 bank, CC 104 drum key).
+
 ## KamoteKeys 0.59 (development snapshot)
 
 - Maintenance: `kk_controls.c` and `screen.c` split into feature parts (`core/kamotkeys/kk_ctl_*.inc`, `kk_scr_*.inc`), which compile to exactly the same firmware; host tests split by feature; `tools/release.sh` makes the release zip and `BUILD.txt`; `CLAUDE.md` file map; docs keep each fact in one place.

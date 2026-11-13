@@ -91,6 +91,8 @@ static void source_press(unsigned id, unsigned velocity)
         hold_release();                                  /* the next key ends the held notes */
         sustained_count = 0;                             /* and a held arpeggio */
     }
+    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0)
+        kk_midi_cc(KK_CH_STEP, KK_STEP_SELECT_CC, (unsigned)kk_step_drum_key(id));   /* select it for the steps */
     engage(id);
     if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {

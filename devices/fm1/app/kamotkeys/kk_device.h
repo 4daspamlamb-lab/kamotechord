@@ -56,6 +56,9 @@ static inline int kk_step_key_function(unsigned key)
     }
 }
 
+/* No drum keys on the FM-1 (its keys are the steps). */
+static inline int kk_step_drum_key(unsigned key) { (void)key; return -1; }
+
 /* Knob labels as printed on the screen (K1-K4, SELECT, ALGORITHM, PRESETS). */
 #define KK_K1 "K1"
 #define KK_K2 "K2"

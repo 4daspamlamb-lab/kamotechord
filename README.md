@@ -170,7 +170,7 @@ The pad of Live's highlighted slot is **violet** (pulsing if it is playing or re
 
 ### Step Mode (SEQ REC, or hold CHORD)
 
-A drum step sequencer that writes straight into the selected session clip in Live: 16 pads = 16 steps per page, hold the lowest C to pick a Drum Rack sound, page / length / double / resolution / follow / copy / clear on the lowest octave's white keys and velocity on the third octave's. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
+A drum step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick, C# = rim, D = snare … B, the first 12 sounds of the Drum Rack bank): a drum key plays its sound and selects it for the steps. The **lowest octave = controls** (page, length, double, resolution, follow on the white keys; COPY on C#, CLEAR on D#: tap = clear the page, hold + drum key = delete that sound), velocity on the third octave's white keys. The sequenced track is armed while Step Mode is on so you hear the drum keys. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
 
 ### Pad Scale Mode (SCALE)
 

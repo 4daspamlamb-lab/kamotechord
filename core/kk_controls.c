@@ -119,6 +119,16 @@ static void intent(unsigned id, struct source *s)
         s->channel = KK_CH_STEP; s->notes[0] = (uint8_t)kk_step_key_function(id); s->count = 1;
         return;
     }
+    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0) {
+        /* Step Mode drum keys (0.60): play the drum's own note (the Drum Rack
+         * bank from the script, 36 until it says) on the drum channel, so
+         * the armed track and the internal drum kit both sound it. */
+        unsigned bank = kk_midi_step_info(KK_STEP_BANK_CC);
+        unsigned note = (bank ? bank : 36U) + (unsigned)kk_step_drum_key(id);
+        s->channel = KK_CH_DRUM;
+        if (note < 128) { s->notes[0] = (uint8_t)note; s->count = 1; }
+        return;
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
         (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY || id == KK_CLIP_SELECT_KEY)) {
         /* Clip Mode: the first black key held = OVERDUB, the second = DELETE,
@@ -172,6 +182,7 @@ static unsigned route_for(unsigned id, const struct source *s)
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
     if (s->channel == KK_CH_CLIP || s->channel == KK_CH_STEP) return ROUTE_DIRECT;   /* no ARP/Repeat */
+    if (kk.mode == KK_MODE_STEP && id < KK_KEYS && kk_step_drum_key(id) >= 0) return ROUTE_DIRECT;   /* drum keys */
     unsigned arp_domain = id < KK_KEYS ? !in_pad_mode() || kk_pad_scale_on_keys() : in_pad_mode() && !kk_pad_scale_on_keys();
     if (kk.arp_on && arp_domain) return ROUTE_ARP;
     if (kk.repeat_on) return ROUTE_REPEAT;

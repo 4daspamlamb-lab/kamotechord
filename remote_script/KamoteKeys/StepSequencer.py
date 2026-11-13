@@ -37,6 +37,8 @@ PADS = 16
  F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP) = range(60, 77)
 FUNCTION_NOTES = tuple(range(60, 77))
 CODE_CC, PAGE_CC, PAGES_CC, RES_CC, FOLLOW_CC, STATUS_CC, DRUMVIEW_CC, ACTIVE_CC = 80, 96, 97, 98, 99, 100, 101, 102
+BANK_CC = 103                          # host -> device: first note of the drum bank
+SELECT_CC = 104                        # device -> host: drum key 0..15 of the bank pressed (0.60)
 MODE_CC = 127
 
 # Pad colour codes (KK_STEPC_* in the firmware).
@@ -82,6 +84,8 @@ class StepSequencer(object):
         self._bind_pending = False
         self._sent = [None] * PADS
         self._info_sent = {}
+        self._armed = None             # track this mode armed (disarmed again on exit)
+        self._clear_used = False       # CLEAR held and used with a drum key
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -132,6 +136,7 @@ class StepSequencer(object):
             self.send_all()
         elif not on and self._active:
             self._active = False
+            self._disarm()
             self._unbind()
             self._held, self._fn, self._consumed = [], set(), set()
             self._log('Step Mode ended')
@@ -167,6 +172,7 @@ class StepSequencer(object):
                 self._log('selected track is not a MIDI track')
                 return
             self._track = track
+            self._arm(track)
             self._listen(track, 'devices', self._on_devices)
             self._rack = self._find_drum_rack(track)
             self._choose_drum()
@@ -184,6 +190,31 @@ class StepSequencer(object):
             self._log('bind failed: %s' % error)
             self._unbind()
             self._status = S_NO_MIDI_TRACK
+
+    @staticmethod
+    def _same(a, b):
+        return a is not None and b is not None and getattr(a, '_live_ptr', id(a)) == getattr(b, '_live_ptr', id(b))
+
+    def _arm(self, track):
+        """Like Move/Push: the sequenced track is armed so the drum keys and
+        the other keys are heard; the previous auto-armed track is released."""
+        if self._same(self._armed, track):
+            return
+        self._disarm()
+        try:
+            if track.can_be_armed and not track.arm:
+                track.arm = True
+                self._armed = track
+        except Exception as error:
+            self._log('cannot arm %s: %s' % (getattr(track, 'name', 'track'), error))
+
+    def _disarm(self):
+        if self._armed is not None:
+            try:
+                self._armed.arm = False
+            except Exception:
+                pass
+            self._armed = None
 
     def _attach_clip(self):
         self._clip = None
@@ -383,7 +414,8 @@ class StepSequencer(object):
                 self._sent[pad] = code
                 self._send(CODE_CC + pad, code)
         info = {PAGE_CC: self._page, PAGES_CC: self._pages(), RES_CC: self._res, FOLLOW_CC: int(self._follow),
-                STATUS_CC: self._status, DRUMVIEW_CC: int(F_DRUM in self._fn), ACTIVE_CC: self._pitch}
+                STATUS_CC: self._status, DRUMVIEW_CC: int(F_DRUM in self._fn), ACTIVE_CC: self._pitch,
+                BANK_CC: self._bank}
         for cc, value in info.items():
             if force or self._info_sent.get(cc) != value:
                 self._info_sent[cc] = value
@@ -420,9 +452,14 @@ class StepSequencer(object):
             return
         if not pressed:
             self._fn.discard(note)
+            if note == F_CLEAR and not self._clear_used:
+                self._clear_page()     # a plain tap clears the active drum on the page
+                self._dirty = True
             self.update()
             return
         self._fn.add(note)
+        if note == F_CLEAR:
+            self._clear_used = False
         if note in (F_PAGE_PREV, F_PAGE_NEXT):
             self._page_key(-1 if note == F_PAGE_PREV else 1)
         elif note == F_DOUBLE:
@@ -434,8 +471,6 @@ class StepSequencer(object):
         elif note == F_FOLLOW:
             self._follow = not self._follow
             self._say('follow %s' % ('on' if self._follow else 'off'))
-        elif note == F_CLEAR:
-            self._clear_page()
         elif F_VEL_1 <= note <= F_VEL_6:
             self._set_velocity(VELOCITIES[note - F_VEL_1])
         elif note in (F_VEL_DOWN, F_VEL_UP):
@@ -594,6 +629,30 @@ class StepSequencer(object):
             limit = self._pages() - 1 + (F_LENGTH in self._fn)   # one page past the end while LENGTH is held
             self._page = max(0, min(limit, self._page + delta))
             self._say('page %d/%d' % (self._page + 1, self._pages()))
+
+    def drum_key(self, index):
+        """A drum key (0..15 of the bank) was pressed: like a drum pad on
+        Move, it selects that sound for the steps (the keyboard plays it).
+        With CLEAR held it deletes every note of that sound in the clip."""
+        if not self._active or not 0 <= index < PADS:
+            return
+        note = self._bank + index
+        if F_CLEAR in self._fn:
+            self._clear_used = True
+            self._clear_drum(note)
+        else:
+            self._select_drum(note)
+        self.update()
+
+    def _clear_drum(self, note):
+        if self._clip is None:
+            return
+        try:
+            self._clip.remove_notes_extended(note, 1, -1000.0, 1e6)
+            self._say('cleared drum %d' % note)
+        except Exception as error:
+            self._log('cannot clear the drum: %s' % error)
+        self._dirty = True
 
     def _select_drum(self, note):
         self._pitch = note

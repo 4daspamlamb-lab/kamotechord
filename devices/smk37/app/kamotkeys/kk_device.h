@@ -54,8 +54,8 @@ static inline int kk_step_key_function(unsigned key)
     case 7: return KK_STEP_DOUBLE;      /* G */
     case 9: return KK_STEP_RESOLUTION;  /* A */
     case 11: return KK_STEP_FOLLOW;     /* B */
-    case 12: return KK_STEP_COPY;       /* C  hold + page = copy page */
-    case 14: return KK_STEP_CLEAR;      /* D */
+    case 1: return KK_STEP_COPY;        /* C# hold + page = copy page */
+    case 3: return KK_STEP_CLEAR;       /* D# tap: clear the page; hold + drum key: clear that drum */
     case 24: return KK_STEP_VEL_1;      /* C  velocity levels (hold a step) */
     case 26: return KK_STEP_VEL_2;
     case 28: return KK_STEP_VEL_3;
@@ -65,6 +65,11 @@ static inline int kk_step_key_function(unsigned key)
     default: return -1;
     }
 }
+
+/* Step Mode drum keys (0.60, like Move's drum pads): the second octave,
+ * C = the first drum of the bank (36 = kick). Each plays its sound and
+ * selects it for the steps. -1 = not a drum key. */
+static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key < 24 ? (int)key - 12 : -1; }
 
 /* 16 RGB pads (ripple lights, light shows). */
 #define KK_HAS_RGB_PADS 1
