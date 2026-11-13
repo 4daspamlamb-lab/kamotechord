@@ -165,7 +165,7 @@ struct tuning_entry { uint32_t key; struct groove_tuning t[GROOVE_TRACKS]; uint3
 enum { SESSION_MAGIC = 0x31534d46U, PANEL_MAGIC = 0x31504b53U, KAMOTKEYS_MAGIC = 0x314b4b53U };
 struct session_settings { uint32_t magic; uint8_t role[8], channel[8]; uint32_t crc; };
 struct panel_settings { uint32_t magic; uint8_t data[4]; uint32_t crc; };
-/* KamotKeys preferences (BPM, ARP, Note Repeat, patch, MIDI ports). Appended
+/* KamoteKeys preferences (BPM, ARP, Note Repeat, patch, MIDI ports). Appended
  * after the panel record so every earlier field keeps its offset. */
 struct kamotkeys_settings { uint32_t magic; uint8_t data[16]; uint32_t crc; };
 struct tuning_sector { uint32_t magic, version; struct tuning_entry entry[GROOVE_PROJECT_SLOTS]; struct session_settings session; struct panel_settings panel; struct kamotkeys_settings kamotkeys; };

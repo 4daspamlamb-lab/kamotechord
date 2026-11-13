@@ -1,4 +1,4 @@
-# KamotKeys MIDI mapping
+# KamoteKeys MIDI mapping
 
 All values are identical on USB and Bluetooth. Which port(s) carry them depends on **MIDI OUT** (Patch page): AUTO (default: USB when connected, else BLE), ALL, USB or BLE. Note Offs are always offered to every port; the router drops the ones a port never had a Note On for.
 
@@ -105,7 +105,7 @@ Every note has an owner count per channel. If two sources play the same note (fo
 |---|---|---|
 | Note | 36–43 (Track 1–8, Clip 1) | 44–51 (Track 1–8, Clip 2) |
 
-Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamotKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
+Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamoteKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
 
 ## Notes received from the host
 

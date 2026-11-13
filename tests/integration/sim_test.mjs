@@ -1,4 +1,4 @@
-// KamotKeys integration test against the SMK37 OPEN browser engine.
+// KamoteKeys integration test against the SMK37 OPEN browser engine.
 // Build simulator.wasm with the web toolchain (see tests/README.md), then:
 //   node tests/integration/sim_test.mjs path/to/simulator.wasm [outdir]
 // It drives physical events into the real engine port (DX7/808 synths,

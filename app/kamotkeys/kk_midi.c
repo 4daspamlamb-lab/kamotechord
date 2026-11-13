@@ -1,11 +1,11 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys central MIDI note engine. */
+ * KamoteKeys central MIDI note engine. */
 #include "kk_midi.h"
 #include "kk_config.h"
 #include "fm1.h"
 #include <string.h>
 
-/* Owner counts for the note channels KamotKeys plays: 1, 10 and 16 (Clip). */
+/* Owner counts for the note channels KamoteKeys plays: 1, 10 and 16 (Clip). */
 static uint8_t counts[3][128];
 /* Written by the MIDI routing task, read by the control task: single bytes. */
 static volatile uint8_t remote_notes[2][128];          /* host note activity */

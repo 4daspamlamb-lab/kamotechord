@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys performance core (module "kamotkeys_controls/modes/arp"). It
+ * KamoteKeys performance core (module "kamotkeys_controls/modes/arp"). It
  * replaces SMK37 OPEN's panel controls and keeps their file name, so the SDK
  * build script applies the same size-optimised flags. Control task only: every physical event, ARP
  * step, Note Repeat hit and mode change runs here, never in an interrupt. */
@@ -686,7 +686,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
 }
 void kk_perform_guard(void)
 {
-    /* KamotKeys owns arpeggiation; the engine's per-track ARP must stay off
+    /* KamoteKeys owns arpeggiation; the engine's per-track ARP must stay off
      * or it would double every note. */
     for (unsigned t = 0; t < GROOVE_TRACKS; ++t) if (groove_arp_enabled(t)) groove_arp_set(t, 0);
     if (groove_track_role(0) == GROOVE_TRACK_OFF) (void)groove_track_role_set(0, GROOVE_TRACK_NORMAL);
@@ -706,7 +706,7 @@ void kk_perform_guard(void)
         if (view.program != kk.program) groove_control_edit(0, (int)kk.program - (int)view.program, 0, 0);
         synced_program = kk.program; program_revision = groove_project_revision();
     }
-    /* The engine tempo follows the KamotKeys BPM (clock out, synced delay).
+    /* The engine tempo follows the KamoteKeys BPM (clock out, synced delay).
      * Edit once per change: never accumulate deltas against a stale view. */
     if (synced_bpm != kk.bpm || synced_revision != groove_project_revision()) {
         if (view.tempo && view.tempo != kk.bpm) groove_tempo_edit((int)kk.bpm - (int)view.tempo);

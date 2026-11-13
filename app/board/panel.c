@@ -6,7 +6,7 @@
 #include "lcd.inc"
 
 static uint16_t button_leds;
-/* KamotKeys 0.41: 320 leading zero bytes (~400 us low at the default timing)
+/* KamoteKeys 0.41: 320 leading zero bytes (~400 us low at the default timing)
  * form a valid WS2812 reset (>= 280 us) in front of every frame, so a stray
  * pulse when SPI1 is switched over can no longer prepend a bit and shift the
  * whole chain (pad 1 blinking green, colour bits spilling between pads).
@@ -20,7 +20,7 @@ static const uint8_t rgb_map[16]={0,15,14,13,12,11,10,9,1,2,3,4,5,6,7,8};
 /* PH8 is an encoder input on both boards, with no fitted TRS MIDI RX. */
 uint8_t fm1_io_trs_midi_enabled(void) {return 0;}
 void fm1_controls_init(void) {smk37_scan_init();}
-/* KamotKeys: the scanner delivers every event straight to the performance
+/* KamoteKeys: the scanner delivers every event straight to the performance
  * core (smk37_control_event). This snapshot only reports the battery ADC;
  * button/pad LEDs are produced by app/kamotkeys/kk_led.c. */
 void fm1_controls_read(struct fm1_controls *state)
@@ -48,7 +48,7 @@ static void spi_settle(unsigned microseconds)
     while((uint32_t)(fm1_device_ticks()-started)<24U*microseconds) {}
 }
 void smk37_rgb_touch(void) {rgb_dirty=0xffff;}
-/* KamotKeys 0.35: pad LED bit timing, selectable on the Diagnostics page
+/* KamoteKeys 0.35: pad LED bit timing, selectable on the Diagnostics page
  * because SMK37 OPEN's fixed timing garbled frames on real hardware. The
  * SPI clock divider sets the bit period; zero/one set each bit's pulse. */
 static const struct {uint8_t baud,zero,one;} rgb_timings[SMK37_RGB_TIMINGS]={
@@ -68,7 +68,7 @@ void smk37_rgb_timing(unsigned timing)
 volatile uint32_t smk37_rgb_frames;   /* pad frames sent (diagnostics) */
 void smk37_rgb_service(void)
 {
-    /* KamotKeys: keep >= 20 ms between frames (<= 50 fps); every frame starts
+    /* KamoteKeys: keep >= 20 ms between frames (<= 50 fps); every frame starts
      * with a full-length reset (RGB_LEAD). */
     static uint32_t rgb_sent;
     if(!rgb_dirty || fm1_screen_pending())return;
@@ -83,7 +83,7 @@ void smk37_rgb_service(void)
         for(unsigned b=0;b<24;++b)bits[b]=(uint8_t)((grb>>(23-b))&1U?one:zero);
     }
     /* One task owns SPI1: finish LCD, keep CS high during RGB DMA, restore.
-     * KamotKeys: the DMA "done" flag can precede the last bits leaving the
+     * KamoteKeys: the DMA "done" flag can precede the last bits leaving the
      * shift register. Let any LCD tail drain before routing SPI1 to the pad
      * LEDs, and let the last LED bits drain before routing it back, so no
      * stray pulses reach the LED chain (which garbles every pad). */

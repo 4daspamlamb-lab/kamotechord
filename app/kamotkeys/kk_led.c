@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys centralized pad/button LED renderer and procedural light shows.
+ * KamoteKeys centralized pad/button LED renderer and procedural light shows.
  * Pad indexes are logical pad numbers minus one (top row 1-8 left to right,
  * bottom row 9-16); app/board/panel.c maps them onto the LED chain. */
 #include "kk_led.h"

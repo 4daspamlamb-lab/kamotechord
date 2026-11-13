@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys LCD interface and control-task entry points (module
+ * KamoteKeys LCD interface and control-task entry points (module
  * "kamotkeys_display"). It keeps the file name app/screen.c because the SDK
  * build script (sdk/Build.ps1, hash-locked by sdk/manifest.json) compiles
  * this SDK entry unit natively (-fno-lto, -Oz).
@@ -528,7 +528,7 @@ static void draw_ble(void)
 extern volatile uint32_t smk37_queue_overflows, smk37_rgb_frames;
 static void draw_diag(void)
 {
-    /* Diagnostics: full screen, no KamotKeys branding, raw values only. */
+    /* Diagnostics: full screen, no KamoteKeys branding, raw values only. */
     fill(0, 0, 240, 240, BG);
     text(8, 26, "DIAGNOSTICS", 2, AMBER);
     char line[40], *p;
@@ -567,7 +567,7 @@ static void draw_diag(void)
 
 /* ------------------------------------------------------------- boot */
 /* Aurora Boot: flowing ribbons inside a fixed band (never the full screen),
- * the KamotKeys wordmark and version fading in, then a short status line. */
+ * the KamoteKeys wordmark and version fading in, then a short status line. */
 static void draw_boot(void)
 {
     const struct widget *w = &widgets[W_BOOT];
@@ -893,7 +893,7 @@ void groove_screen_init(void)
     booting = 1; shown_page = 255;
 }
 void groove_screen_tap(uint32_t now) { (void)groove_tempo_tap(now); }
-/* Workbench MMC transport: KamotKeys never runs the internal sequencer. */
+/* Workbench MMC transport: KamoteKeys never runs the internal sequencer. */
 void groove_screen_mmc(unsigned command) { (void)command; }
 
 void groove_screen_control(void)

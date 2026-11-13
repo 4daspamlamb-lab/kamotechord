@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys performance core: modes, physical sources (keys/pads), chord
+ * KamoteKeys performance core: modes, physical sources (keys/pads), chord
  * pads, ARP, Note Repeat, faders, buttons and saved preferences. */
 #ifndef KK_PERFORM_H
 #define KK_PERFORM_H

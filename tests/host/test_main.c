@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys host tests: drive the real performance/display/router code with
+ * KamoteKeys host tests: drive the real performance/display/router code with
  * synthetic physical events and check the MIDI it produces. Screenshots of
  * the LCD are written as PPM files (converted to PNG by run.sh). */
 #include "stubs.h"
@@ -599,7 +599,7 @@ static void test_031(void)
     CHECK(((host_rgb[3] >> 8) & 255) > (host_rgb[3] >> 16) * 4, "SUS4 idle teal (%06x)", host_rgb[3]);
 
     /* 0.34: playing keys and chords in Normal Mode changes no pad colour at
-     * all, so KamotKeys sends the pads no frame on a key press. */
+     * all, so KamoteKeys sends the pads no frame on a key press. */
     settle(); host_rgb_changes = 0;
     for (unsigned k = 0; k < 37; k += 3) { key(k, 100); frames(5, 3); key(k, 0); frames(5, 3); }
     pad(9, 100); frames(3, 3); unsigned after_pad = host_rgb_changes;

@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys centralized LED renderer. Each pad's logical colour and level is
+ * KamoteKeys centralized LED renderer. Each pad's logical colour and level is
  * decided once (mode colour, pressed/idle level, Fader 4 multiplier, then
  * hardware output), so modes never fight over RGB values. */
 #ifndef KK_LED_H

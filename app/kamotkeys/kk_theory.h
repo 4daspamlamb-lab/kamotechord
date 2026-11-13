@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys shared music-theory engine: scales, keyboard/pad/drum mapping,
+ * KamoteKeys shared music-theory engine: scales, keyboard/pad/drum mapping,
  * chord construction and chord naming. Pure functions, no hardware access,
  * shared by keys, pads, display and LEDs (one engine for everything). */
 #ifndef KK_THEORY_H

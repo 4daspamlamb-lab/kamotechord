@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-only
-"""KamotKeys Remote Script for Ableton Live.
+"""KamoteKeys Remote Script for Ableton Live.
 
 Protocol (must match app/kamotkeys/kk_config.h in the firmware):
 
@@ -39,7 +39,7 @@ EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
 
 
-class KamotKeys(ControlSurface):
+class KamoteKeys(ControlSurface):
 
     def __init__(self, c_instance):
         ControlSurface.__init__(self, c_instance)
@@ -61,15 +61,15 @@ class KamotKeys(ControlSurface):
                 button = ButtonElement(True, MIDI_CC_TYPE, TRANSPORT_CHANNEL, cc)
                 button.add_value_listener(self._transport_value, identify_sender=True)
                 self._transport_buttons.append(button)
-        self.log_message('KamotKeys Remote Script (protocol %d) loaded' % PROTOCOL)
-        self._status('KamotKeys Remote Script loaded')
+        self.log_message('KamoteKeys Remote Script (protocol %d) loaded' % PROTOCOL)
+        self._status('KamoteKeys Remote Script loaded')
         self._send_all()
 
     # ------------------------------------------------------------- input
     def _first_message(self):
         if not self._received:
             self._received = True
-            self.log_message('KamotKeys: first message received from the keyboard')
+            self.log_message('KamoteKeys: first message received from the keyboard')
 
     def _pad_value(self, value, sender):
         self._first_message()
@@ -79,7 +79,7 @@ class KamotKeys(ControlSurface):
     def _sync_value(self, value):
         self._first_message()
         if value:
-            self.log_message('KamotKeys: sync request from the keyboard')
+            self.log_message('KamoteKeys: sync request from the keyboard')
             self._send_all()
 
     def _transport_value(self, value, sender):
@@ -102,10 +102,10 @@ class KamotKeys(ControlSurface):
     def _launch(self, pad):
         track, slot = self._slot(pad)
         what = 'no such slot' if slot is None else 'clip' if slot.has_clip else 'empty slot'
-        self.log_message('KamotKeys: pad %d -> track %d clip %d (%s)' % (
+        self.log_message('KamoteKeys: pad %d -> track %d clip %d (%s)' % (
             pad + 1, pad % TRACKS + 1, pad // TRACKS + 1, what))
         if slot is None:
-            self._status('KamotKeys pad %d: track %d does not exist' % (pad + 1, pad % TRACKS + 1))
+            self._status('KamoteKeys pad %d: track %d does not exist' % (pad + 1, pad % TRACKS + 1))
             return
         if slot.has_clip:
             clip = slot.clip
@@ -124,11 +124,11 @@ class KamotKeys(ControlSurface):
         else:
             action = 'empty slot, track not armed: nothing to do'
         # Unarmed empty slot: nothing, so a stray press never stops a track.
-        self._status('KamotKeys pad %d: %s %d / clip %d - %s' % (
+        self._status('KamoteKeys pad %d: %s %d / clip %d - %s' % (
             pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1, action))
 
     # Lets Live preselect the keyboard's port when the script is chosen. The
-    # SMK37 OPEN / KamotKeys firmware names its USB MIDI port "SMK37 Open".
+    # SMK37 OPEN / KamoteKeys firmware names its USB MIDI port "SMK37 Open".
     def suggest_input_port(self):
         return 'SMK37 Open'
 
@@ -184,7 +184,7 @@ class KamotKeys(ControlSurface):
         self._ticks += 1
         if self._ticks >= FULL_REFRESH_TICKS:
             self._ticks = 0
-            self._send_all()             # also re-greets a reconnected KamotKeys
+            self._send_all()             # also re-greets a reconnected KamoteKeys
             return
         for pad in range(TRACKS * SCENES):
             self._send_state(pad)

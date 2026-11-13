@@ -1,6 +1,6 @@
 # Tests and verification
 
-## KamotKeys 0.37 (consolidated)
+## KamoteKeys 0.37 (consolidated)
 
 | Suite | Result |
 |---|---|
@@ -22,12 +22,12 @@ Hardware findings so far, and what changed because of them:
 
 Still open: pads not fully steady in normal play; Clip Mode launching not yet confirmed in Live.
 
-## Summary (KamotKeys 0.30 development snapshot)
+## Summary (KamoteKeys 0.30 development snapshot)
 
 | Suite | Result | What it runs |
 |---|---|---|
-| Host unit, behaviour and fuzz tests (`tests/host`) | **6669 checks, 0 failures** (AddressSanitizer + UBSan) | the real KamotKeys sources and the real `app/midi_router.c` on a PC with a stubbed SDK |
-| Integration test (`tests/integration`) | **12 checks, 0 failures** | the SMK37 OPEN engine's browser build (DX7, 808, project storage, router) plus KamotKeys, compiled with WASI SDK 27 using the same flags as `tools/Build-Web.ps1` (`-Werror`) |
+| Host unit, behaviour and fuzz tests (`tests/host`) | **6669 checks, 0 failures** (AddressSanitizer + UBSan) | the real KamoteKeys sources and the real `app/midi_router.c` on a PC with a stubbed SDK |
+| Integration test (`tests/integration`) | **12 checks, 0 failures** | the SMK37 OPEN engine's browser build (DX7, 808, project storage, router) plus KamoteKeys, compiled with WASI SDK 27 using the same flags as `tools/Build-Web.ps1` (`-Werror`) |
 | 32-bit embedded syntax check | clean (only pre-existing upstream warnings in unmodified code) | all modified app and board files, `clang --target=armv7m-none-eabi`, SDK libc headers, firmware macros (no `FM1_HOST_TEST`) |
 | pi32v2 firmware build | **not run**: the JieLi toolchain is Windows-only and was not available | |
 | Physical hardware | **not run** | |
@@ -88,7 +88,7 @@ Rendered by the host tests from the real display code: [`docs/screenshots/`](scr
 
 Do these once after flashing; each takes seconds.
 
-1. Boot shows the Aurora animation, then the main screen with `KamotKeys 0.37` top left.
+1. Boot shows the Aurora animation, then the main screen with `KamoteKeys 0.37` top left.
 2. Fader 4 at 0 before power-on → no pad lights at all during boot. Raise it → pads appear.
 3. Press each of the 18 buttons and compare with [CONTROLS.md](CONTROLS.md) (action, and LED dim/bright/off). CHORD and PARA must stay dark.
 4. Play the second C: the screen shows C4 (or the tonic in Key Scale Mode). Hold pad 2 + pad 9 and play a key → a minor 7th chord name.

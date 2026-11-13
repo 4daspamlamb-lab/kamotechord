@@ -219,7 +219,7 @@ static void buttons_read(void)
     }
 }
 static u32 ledio[2]={0xffffffff,0xffffffff};
-/* KamotKeys: LEDs that are cleared here (active low) but set in ledio are
+/* KamoteKeys: LEDs that are cleared here (active low) but set in ledio are
  * lit only on one multiplex tick in eight, a fixed-hardware "dim" level. */
 static u32 leddim[2]={0xffffffff,0xffffffff};
 static u32 ledscanio=0xffffffff;

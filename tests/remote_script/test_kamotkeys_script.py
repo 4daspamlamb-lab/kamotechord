@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-only
-"""Logic tests for remote_script/KamotKeys against a mock Live API.
+"""Logic tests for remote_script/KamoteKeys against a mock Live API.
 Run: python3 tests/remote_script/test_kamotkeys_script.py
 This checks the script's behaviour, not Ableton itself."""
 import os, sys, types, unittest
@@ -91,13 +91,13 @@ class CInstance(object):
     def handle(self): return 1
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'remote_script'))
-from KamotKeys.KamotKeys import KamotKeys, STATE_CC, HELLO_CC  # noqa: E402
+from KamoteKeys.KamoteKeys import KamoteKeys, STATE_CC, HELLO_CC  # noqa: E402
 
 class T(unittest.TestCase):
     def setUp(self):
         del registry[:]
         self.song = Song(6)                       # fewer tracks than pads on purpose
-        self.s = KamotKeys(CInstance(self.song))
+        self.s = KamoteKeys(CInstance(self.song))
     def press(self, pad, ch=15): deliver((0x90 | ch, 36 + pad, 127)); deliver((0x80 | ch, 36 + pad, 0))
     def state(self, pad): return [m[2] for m in self.s.sent if m[0] == 0xBF and m[1] == STATE_CC + pad][-1]
 
@@ -121,7 +121,7 @@ class T(unittest.TestCase):
         self.press(10); self.assertEqual(t.log[-1], 'fire')            # clip 2 on the same track: switch
 
     def test_status_bar_messages(self):
-        self.assertIn('KamotKeys Remote Script loaded', self.s.shown)
+        self.assertIn('KamoteKeys Remote Script loaded', self.s.shown)
         t = self.song.visible_tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
         self.press(2); self.assertTrue(self.s.shown[-1].endswith('launch'), self.s.shown[-1])
         self.press(0); self.assertIn('not armed', self.s.shown[-1])

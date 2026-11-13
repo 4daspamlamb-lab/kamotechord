@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys central MIDI note engine. Every note from keys, chords, pads,
+ * KamoteKeys central MIDI note engine. Every note from keys, chords, pads,
  * ARP and Note Repeat goes through here. Each (channel, note) carries an
  * owner count: Note On is transmitted on 0->1, Note Off on 1->0, so one
  * source can never cut a note still held by another and nothing hangs. */

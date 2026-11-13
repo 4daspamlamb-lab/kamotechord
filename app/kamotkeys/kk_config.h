@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys: central identity and fixed configuration.
+ * KamoteKeys: central identity and fixed configuration.
  *
  * KAMOTKEYS_VERSION is the ONLY place the user-visible version lives. Bump it
  * (0.31, 0.32, ...) for each functional release. The SMK-37 updater identity
@@ -9,8 +9,8 @@
 #ifndef KK_CONFIG_H
 #define KK_CONFIG_H
 
-#define KAMOTKEYS_NAME "KamotKeys"
-#define KAMOTKEYS_VERSION "0.45"
+#define KAMOTKEYS_NAME "KamoteKeys"
+#define KAMOTKEYS_VERSION "0.46"
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -21,7 +21,7 @@ enum {
     KK_CH_CLIP = 15      /* Clip Mode launcher and feedback (ch. 16)   */
 };
 
-/* Clip Mode protocol (channel 16), shared with remote_script/KamotKeys.
+/* Clip Mode protocol (channel 16), shared with remote_script/KamoteKeys.
  *  device -> host: Note 36+pad (pad 0..15) on press (vel 127) / Note Off
  *                  CC 127 = 127: "send me the full clip state" (sync)
  *  host -> device: CC 80+pad = clip state (enum below)

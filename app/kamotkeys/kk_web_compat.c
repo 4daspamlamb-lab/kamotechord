@@ -4,9 +4,9 @@
  * `build.bat <model> --package` embeds the firmware into the SMK37 OPEN
  * workbench page, which also compiles the browser simulator
  * (web/engine/Simulator.c) from these app sources. The simulator still calls
- * SMK37 OPEN's panel/editor hooks; KamotKeys has no such editor, so these
+ * SMK37 OPEN's panel/editor hooks; KamoteKeys has no such editor, so these
  * keep the workbench building and its update/backup pages working. The
- * browser preview of the panel is approximate, not a KamotKeys emulator. */
+ * browser preview of the panel is approximate, not a KamoteKeys emulator. */
 #ifdef FM1_OPEN_WEB
 #include "kk_perform.h"
 #include "kk_midi.h"

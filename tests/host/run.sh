@@ -1,5 +1,5 @@
 #!/bin/sh
-# Build and run the KamotKeys host tests (Linux/macOS, any C11 compiler).
+# Build and run the KamoteKeys host tests (Linux/macOS, any C11 compiler).
 # These verify logic and render LCD screenshots; they do NOT replace the
 # JieLi pi32v2 firmware build.
 set -e

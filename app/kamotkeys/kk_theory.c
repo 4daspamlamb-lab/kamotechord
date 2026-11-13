@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
- * KamotKeys shared music-theory engine. */
+ * KamoteKeys shared music-theory engine. */
 #include "kk_theory.h"
 #include "kk_config.h"
 #include <string.h>

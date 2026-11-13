@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
  * Host stand-ins for the binary SMK37 SDK and engine, used only by the
- * KamotKeys host tests. They record MIDI output and emulate the LCD. */
+ * KamoteKeys host tests. They record MIDI output and emulate the LCD. */
 #include "stubs.h"
 #include "instrument.h"
 #include "fm1_engine_control.h"
