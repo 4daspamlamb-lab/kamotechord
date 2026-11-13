@@ -8,6 +8,17 @@ TOP=$(cd "$(dirname "$0")/.." && pwd)
 OUT=$TOP/build/test; mkdir -p "$OUT"
 "$TOP/tools/sync-core.sh" all
 echo "== SMK-37 host tests"; OUT=$OUT "$TOP/tests/host/run.sh" | tail -1
+if command -v clang >/dev/null 2>&1; then
+    echo "== ARM syntax check (both devices, -Wall -Wextra)"
+    for dev in smk37 fm1; do
+        cd "$TOP/devices/$dev"
+        for f in app/*.c app/kamotkeys/*.c; do
+            clang --target=armv7m-none-eabi -std=c11 -fsyntax-only -nostdlibinc -Isdk/include/libc -Wall -Wextra -Werror \
+              -Wno-unused-parameter -Wno-missing-field-initializers -Isdk/include -Iapp/synth -Iapp -Iapp/board -Isdk/config "$f"
+        done
+    done
+    cd "$TOP"; echo "OK"
+fi
 echo "== Ableton Remote Script"; python3 "$TOP/tests/remote_script/test_kamotkeys_script.py" 2>&1 | tail -1
 if [ -n "$WASI_SDK" ]; then
     for dev in smk37 fm1; do

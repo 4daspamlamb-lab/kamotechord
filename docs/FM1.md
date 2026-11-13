@@ -112,7 +112,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.59-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-source.zip'
 .\build.bat fm1 --package
 ```
 

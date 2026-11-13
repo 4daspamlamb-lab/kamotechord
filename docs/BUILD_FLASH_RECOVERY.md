@@ -43,21 +43,7 @@ Size expectation: on an ARM Thumb `-Oz` proxy compile, KamoteKeys's UI and contr
 
 ### Copy-and-paste build in Parallels
 
-Put `KamoteKeys-0.59.zip` in the Mac's Downloads folder, then paste into Windows PowerShell (change the device in the `build.bat` line and the output path for Elite or FM-1, see the table above):
-
-```powershell
-cd $env:USERPROFILE\Desktop
-Copy-Item \\Mac\Home\Downloads\KamoteKeys-0.59.zip . -Force
-Expand-Archive .\KamoteKeys-0.59.zip . -Force
-Expand-Archive .\KamoteKeys-0.59\kamotekeys-0.59-source.zip . -Force
-cd .\kamotekeys-0.59
-$env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.59-source.zip'
-.\build.bat smk37-pro --package
-Copy-Item .\devices\smk37\build\official-web\pro\SMK37-Open-Source.html \\Mac\Home\Downloads\SMK37-KamoteKeys-0.59.html -Force
-```
-
-Add `$env:FM1_WASI_SDK = '<folder>\build\tools\wasi-sdk-27.0-x86_64-windows'` (from an earlier build) before `build.bat` to skip the 518 MB download.
+Each release zip (`build/KamoteKeys-<version>.zip`, made by `tools/release.sh`) contains `BUILD.txt` with one ready-to-paste PowerShell block per device (SMK-37 Pro, Elite, FM-1). Put the zip in the Mac's Downloads folder and paste the block for your device. The blocks start with `$v = '<version>'`, so for another version only that line changes.
 
 ## 3. Flash
 

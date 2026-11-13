@@ -45,3 +45,4 @@ id_ed25519
 /app/kamotkeys/kk_perform.h
 /app/kamotkeys/kk_theory.c
 /app/kamotkeys/kk_theory.h
+/app/kamotkeys/*.inc

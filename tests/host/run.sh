@@ -14,6 +14,6 @@ CC=${CC:-cc}
 $CC -std=c11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers \
   -DFM1_HOST_TEST -fsanitize=address,undefined \
   -I"$ROOT/sdk/include" -I"$ROOT/app/synth" -I"$ROOT/app" -I"$ROOT/app/board" -I"$ROOT/app/kamotkeys" -I"$TOP/tests/host" \
-  "$ROOT"/app/kamotkeys/*.c "$ROOT/app/screen.c" "$ROOT/app/smk37_controls.c" "$ROOT/app/midi_router.c" "$TOP/tests/host/stubs.c" "$TOP/tests/host/test_main.c" \
+  "$ROOT"/app/kamotkeys/*.c "$ROOT/app/screen.c" "$ROOT/app/smk37_controls.c" "$ROOT/app/midi_router.c" "$TOP/tests/host/stubs.c" "$TOP"/tests/host/test_*.c \
   -o "$OUT/kk_tests"
 cd "$OUT" && ./kk_tests "$@"

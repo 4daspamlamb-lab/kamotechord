@@ -2,6 +2,8 @@
 
 ## KamoteKeys 0.59 (development snapshot)
 
+- Maintenance: `kk_controls.c` and `screen.c` split into feature parts (`core/kamotkeys/kk_ctl_*.inc`, `kk_scr_*.inc`), which compile to exactly the same firmware; host tests split by feature; `tools/release.sh` makes the release zip and `BUILD.txt`; `CLAUDE.md` file map; docs keep each fact in one place.
+
 - **SEQ REC = Step Mode** on/off (holding CHORD still works too).
 - **Light show moved to KNOB BANK + FADER BANK held together**: each new press = next pattern, Fader 1 = speed. **Hold the pair 3 s = ripple lights on/off** (replaces the SEQ REC triple tap).
 - KNOB BANK (Session Record) and FADER BANK (Capture MIDI) now send on release, so pressing them together never records.
