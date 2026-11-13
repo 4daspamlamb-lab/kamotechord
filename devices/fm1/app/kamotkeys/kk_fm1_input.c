@@ -7,8 +7,9 @@
  *  - Normal and Key Scale Mode: the lowest nine keys, white and black
  *    (F..C#), are the chord keys MAJ MIN DIM SUS4 7 MAJ7 6 9 LOCK; keys
  *    9..26 (D..G) play.
- *  - Pad Scale and Drum Mode: white keys 01..16 are pads 1..16, black keys
- *    are silent.
+ *  - Pad Scale Mode (0.52): the chord keys stay; keys 9..26, white and
+ *    black, play consecutive scale notes (with chords). Root keys stay lit.
+ *  - Drum Mode: white keys 01..16 are pads 1..16, black keys are silent.
  *  - Clip Mode: white keys 01..16 are clips; the first black key (F#) held
  *    = OVERDUB, the second (G#) = DELETE (handled by the core as keys).
  * A key's release always goes to whatever its press went to, even if the
@@ -57,7 +58,7 @@ static int white_of(unsigned key)
 static unsigned classify(unsigned key, unsigned *id)
 {
     int white = white_of(key);
-    if (kk.mode == KK_MODE_PAD_SCALE || kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP) {
+    if (kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP) {
         if (white >= 0) { *id = (unsigned)white; return AS_PAD; }
         if (kk.mode == KK_MODE_CLIP && (key == KK_CLIP_OVERDUB_KEY || key == KK_CLIP_DELETE_KEY)) { *id = key; return AS_KEY; }
         return AS_NONE;
@@ -159,13 +160,7 @@ static unsigned pad_led(unsigned pad)
         default: return 0;
         }
     }
-    if (kk_pad_lit(pad)) return 1;
-    if (kk.mode == KK_MODE_PAD_SCALE) {          /* roots stay lit as a guide */
-        unsigned channel;
-        int note = kk_pad_note(pad, &channel);
-        return note >= 0 && (unsigned)(note % 12) == kk.scale.root % 12;
-    }
-    return 0;
+    return kk_pad_lit(pad);   /* chord keys: held / latched; drum pads: sounding */
 }
 unsigned kk_fm1_key_led(unsigned key, uint32_t boot_ms)
 {
@@ -177,6 +172,11 @@ unsigned kk_fm1_key_led(unsigned key, uint32_t boot_ms)
     }
     unsigned id = 0, as = classify(key, &id);
     if (as == AS_PAD) return pad_led(id);
+    if (as == AS_KEY && kk.mode == KK_MODE_PAD_SCALE) {   /* held or sounding; roots lit as a guide */
+        int note = kk_pad_scale_note(key - KK_SPLIT_KEY, kk.pad_octave, &kk.scale);
+        if ((kk.keys >> key) & 1U) return 1;
+        return note >= 0 && ((unsigned)(note % 12) == kk.scale.root % 12 || kk_midi_count(KK_CH_MELODIC, (unsigned)note));
+    }
     if (as == AS_KEY) return (unsigned)((kk.keys >> key) & 1U);
     return 0;
 }

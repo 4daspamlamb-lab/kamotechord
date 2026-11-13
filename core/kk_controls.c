@@ -78,8 +78,19 @@ unsigned kk_velocity(unsigned natural)
 /* ----------------------------------------------------------- note intent */
 /* Pad Scale and Drum: musical pads that ARP/Repeat and the pad octave act on. */
 static unsigned in_pad_mode(void) { return kk.mode == KK_MODE_PAD_SCALE || kk.mode == KK_MODE_DRUM; }
+/* Devices with KK_PAD_SCALE_ON_KEYS (FM-1, 0.52): Pad Scale is played on the
+ * keys above KK_SPLIT_KEY (every key, white and black, is the next scale
+ * note) and the chord pads stay chord pads, so chords work in Pad Scale. */
+unsigned kk_pad_scale_on_keys(void)
+{
+#ifdef KK_PAD_SCALE_ON_KEYS
+    return kk.mode == KK_MODE_PAD_SCALE;
+#else
+    return 0;
+#endif
+}
 /* Every mode in which the pads are not chord/spare pads. */
-static unsigned pads_reassigned(void) { return in_pad_mode() || kk.mode == KK_MODE_CLIP; }
+static unsigned pads_reassigned(void) { return (in_pad_mode() && !kk_pad_scale_on_keys()) || kk.mode == KK_MODE_CLIP; }
 int kk_pad_note(unsigned pad, unsigned *channel)
 {
     *channel = KK_CH_MELODIC;
@@ -100,8 +111,14 @@ static void intent(unsigned id, struct source *s)
         return;
     }
     if (id < KK_KEYS) {
-        int note = kk.mode == KK_MODE_KEY_SCALE ? kk_key_scale_note(id, kk.octave, &kk.scale)
-                                                : kk_key_note(id, kk.octave);
+        int note;
+#ifdef KK_PAD_SCALE_ON_KEYS
+        if (kk_pad_scale_on_keys())
+            note = id >= KK_SPLIT_KEY ? kk_pad_scale_note(id - KK_SPLIT_KEY, kk.pad_octave, &kk.scale) : -1;
+        else
+#endif
+        note = kk.mode == KK_MODE_KEY_SCALE ? kk_key_scale_note(id, kk.octave, &kk.scale)
+                                            : kk_key_note(id, kk.octave);
         unsigned mods = pads_reassigned() ? 0 : kk.chord_mods;
         s->count = (uint8_t)kk_chord_build(note, mods, &kk.scale, s->notes);
         return;
@@ -131,7 +148,7 @@ static unsigned route_for(unsigned id, const struct source *s)
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
     if (s->channel == KK_CH_CLIP) return ROUTE_DIRECT;     /* clip launches: no ARP/Repeat */
-    unsigned arp_domain = id < KK_KEYS ? !in_pad_mode() : in_pad_mode();
+    unsigned arp_domain = id < KK_KEYS ? !in_pad_mode() || kk_pad_scale_on_keys() : in_pad_mode() && !kk_pad_scale_on_keys();
     if (kk.arp_on && arp_domain) return ROUTE_ARP;
     if (kk.repeat_on) return ROUTE_REPEAT;
     return ROUTE_DIRECT;
@@ -364,6 +381,9 @@ void kk_set_mode(unsigned mode)
     if (mode == kk.mode) mode = KK_MODE_NORMAL;     /* same button again: normal */
     kk.chord_lock = 0; kk.latched_mods = 0;
     unsigned keys_change = (mode == KK_MODE_KEY_SCALE) != (kk.mode == KK_MODE_KEY_SCALE);
+#ifdef KK_PAD_SCALE_ON_KEYS
+    keys_change |= (mode == KK_MODE_PAD_SCALE) != (kk.mode == KK_MODE_PAD_SCALE);   /* keys change meaning */
+#endif
     consume(PAD_SOURCE, SOURCES);                      /* pads change meaning */
     if (keys_change) consume(0, KK_KEYS);
     kk.mode = (uint8_t)mode;
@@ -692,7 +712,7 @@ unsigned kk_pad_lit(unsigned pad)
     if (pad >= KK_PADS) return 0;
     const struct source *s = &sources[PAD_SOURCE + pad];
     if (s->held && s->route != ROUTE_NONE) return 1;
-    if (!in_pad_mode()) {
+    if (!in_pad_mode() || kk_pad_scale_on_keys()) {
         /* Spare/clip pads light only for their own source (incl. Note Repeat
          * hits): a chord from the keys that reaches 84-90 must not light them. */
         if (s->sounding) return 1;

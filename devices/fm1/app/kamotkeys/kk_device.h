@@ -18,6 +18,10 @@ enum { KK_KEYS = 27 };
  * black) are the chord keys; keys 9..26 (D..G) play. Key 19 (C) sounds
  * middle C at octave 0. */
 enum { KK_SPLIT_KEY = 9, KK_KEY_BASE_NOTE = 41, KK_ANCHOR_KEY = 19, KK_ANCHOR_NOTE = 60 };
+/* Pad Scale is played on the keys (0.52): the chord keys stay, and keys
+ * 9..26, white and black, play consecutive scale notes (key 9 = the root,
+ * C3 for root C at pad octave 0). */
+#define KK_PAD_SCALE_ON_KEYS 1
 /* The playing zone is one octave, so the keyboard starts at octave 0. */
 enum { KK_KEY_OCTAVE_DEFAULT = 0 };
 /* Keys only switch: every note uses this fixed, saved velocity (PRESETS). */

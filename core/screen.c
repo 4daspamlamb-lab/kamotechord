@@ -230,7 +230,7 @@ static void draw_piano(void)
     fill(0, w->y, 240, w->h, BG);
     fill(0, PIANO_TOP - 2, 240, 1, PANEL2);
     int offset = piano_offset;
-    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE;
+    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys();
     for (int y = clip_y0; y < clip_y1; ++y) {
         if (y < PIANO_TOP || y >= PIANO_TOP + WHITE_H) continue;
         int ky = y - PIANO_TOP;
@@ -660,7 +660,7 @@ static void draw_widget(unsigned id)
     case W_INFO: draw_info(); break;
     case W_BIG: draw_big(); break;
     case W_SCALE: draw_scale(); break;
-    case W_PIANO: if (kk.mode >= KK_MODE_PAD_SCALE) draw_pads(); else draw_piano(); break;   /* incl. Clip */
+    case W_PIANO: if (kk.mode >= KK_MODE_PAD_SCALE && !kk_pad_scale_on_keys()) draw_pads(); else draw_piano(); break;   /* incl. Clip */
     case W_STATUS: draw_status(); break;
     case W_BOOT: draw_boot(); break;
     case W_BOOT_TEXT: draw_boot_text(); break;
@@ -913,7 +913,7 @@ static void follow_notes(void)
         }
         return;
     }
-    if (kk.mode == KK_MODE_PAD_SCALE && kk.last_note >= 0) {
+    if (kk.mode == KK_MODE_PAD_SCALE && kk.last_note >= 0 && !kk_pad_scale_on_keys()) {
         unsigned channel; int note = kk_pad_note(kk.last_pad, &channel);
         if (note >= 0) { kk_note_label(big_name, note); big_kind = 3; }
         if (sounding_n) piano_target(now_ms);

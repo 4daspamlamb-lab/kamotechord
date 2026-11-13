@@ -4,11 +4,11 @@ KamoteKeys runs on the M-VAVE **FM-1** from the same code as the SMK-37 edition 
 
 The FM-1 has no pads and no faders, so **everything the SMK-37 pads did is on the keys**, and the SMK-37 fader settings are set with knobs.
 
-> **Status:** flashed and running on an FM-1 (0.49). 0.50 changes the key and button layout as described below; it has been checked in the FM1 OPEN browser simulator (45 integration checks with the real engine, MIDI router and LED path). Back up first (the updater offers it).
+> **Status:** flashed and running on an FM-1 (0.49). 0.50–0.52 change the key and button layout as described below; they have been checked in the FM1 OPEN browser simulator (52 integration checks with the real engine, MIDI router and LED path). Back up first (the updater offers it).
 
 ## The keyboard (27 keys, F to G)
 
-### Normal and Key Scale Mode: compact chord keys
+### Normal, Key Scale and Pad Scale Mode: compact chord keys
 
 ```
  keys:  F    F#   G    G#   A    A#   B    C    C#  | D ........................ G
@@ -19,14 +19,17 @@ The FM-1 has no pads and no faders, so **everything the SMK-37 pads did is on th
 - **Chord keys** (the lowest nine keys, white and black):
   - Hold **MAJ / MIN / DIM / SUS4** and/or **7 / MAJ7 / 6 / 9** while playing in the playing zone: every note becomes that chord. Combine a type and an extension (e.g. MIN + 7 = m7).
   - **LOCK** (C#): latches the chord keys, so you don't have to hold them. While locked, tapping a key switches within its group; tap LOCK again to release.
-- **Playing zone** (the 18 keys from D to G, an octave and a half): plays notes on **channel 1**. In **Key Scale Mode** the white keys play the scale (the C key = scale root) and black keys are silent.
+- **Playing zone** (the 18 keys from D to G, an octave and a half): plays notes on **channel 1**.
+  - **Normal Mode:** every key plays its own note.
+  - **Key Scale Mode (SEQ):** the white keys play the scale (the C key = scale root); black keys are silent.
+  - **Pad Scale Mode (ENV):** **every key, white and black, plays the next scale note**, like the SMK-37's scale pads: the lowest playing key (D) is the root (C3 for root C), then up the scale for 18 notes. Root keys stay lit. OCT −/+ moves it by an octave.
+  - The chord keys work in all three.
 - Every note uses the fixed **velocity** (SAVE + K1; FM-1 keys have no velocity).
 
-### Pad Scale, Drum and Clip Mode: white keys = pads 1–16
+### Drum and Clip Mode: white keys = pads 1–16
 
 White keys 01–08 are pads 1–8 and 09–16 are pads 9–16.
 
-- **Pad Scale (ENV):** consecutive scale notes from pad 1 (C3 for root C), channel 1. Root keys stay lit. Black keys silent.
 - **Drum (ARP button):** drum notes on **channel 10**: pad 1 = 36, pad 9 = 37, pad 2 = 38, … OCT −/+ transposes by 12. Black keys silent.
 - **Clip Mode (LFO):** pads launch clip 1 (pads 1–8) and clip 2 (pads 9–16) of Live tracks 1–8. Needs the [KamoteKeys Remote Script](ABLETON_REMOTE_SCRIPT.md).
   - Hold the **first black key (F#)** and press a clip: **overdub** into it (an empty slot: arm and record a new clip). The same again stops overdubbing.
@@ -51,7 +54,7 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 
 | FM-1 button | KamoteKeys | Light |
 |---|---|---|
-| OCT − / OCT + | octave of the playing zone (or of the pads in Pad Scale / Drum) | while pressed |
+| OCT − / OCT + | octave of the playing zone (Pad Scale and Drum keep their own octave) | while pressed |
 | FX | tap: **ARP** on/off; hold 0.6 s: ARP settings | while ARP is on |
 | SEL | **Sustain** on/off (CC 64 on channel 1, latching) | while sustain is on |
 | ENV | **Pad Scale** Mode on/off | in Pad Scale |
@@ -102,7 +105,7 @@ From the repository root (same toolchain as the SMK-37: JieLi 2.5.3, `C:\JL\pi32
 
 ```powershell
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.51-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.52-source.zip'
 .\build.bat fm1 --package
 ```
 

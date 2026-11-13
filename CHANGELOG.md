@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.52 (development snapshot)
+
+- **FM-1 Pad Scale keeps the chord keys:** the lowest nine keys stay MAJ…LOCK, and the 18 keys above (white and black) play consecutive scale notes from the root, with chords. The screen shows the piano and chord names. SMK-37 unchanged.
+
 ## KamoteKeys 0.51 (development snapshot)
 
 - **PARA = Ableton Play/Pause** (CC 23: stops, or continues from where it stopped). FM-1: tap SAVE (same position).

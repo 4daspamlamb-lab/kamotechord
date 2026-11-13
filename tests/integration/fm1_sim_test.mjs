@@ -143,14 +143,22 @@ key(WHITE[2], 1); ms(30); shot('fm1_02_drum'); key(WHITE[2], 0);
 midi = []; key(WHITE[0], 1); tap(B.ARP); key(WHITE[0], 0); ms(30);
 check(out(USB, 0x89, 36).length === 1, 'mode change releases the held drum pad');
 
-// Pad Scale (ENV): white 01 = C3, roots lit.
+// Pad Scale (ENV, 0.52): chord keys stay; keys 9..26 (white and black) play
+// consecutive scale notes: key 9 = C3, key 10 = D3, ... key 16 = C4.
 tap(B.ENV); check(leds()[B.ENV] === 1, 'ENV LED on in Pad Scale');
-midi = []; key(WHITE[0], 1); key(WHITE[0], 0); key(WHITE[1], 1); key(WHITE[1], 0);
-check(out(USB, 0x90, 48).length === 1 && out(USB, 0x90, 50).length === 1, 'Pad Scale white 01 -> C3, 02 -> D3');
+midi = []; key(9, 1); key(9, 0); key(10, 1); key(10, 0); key(11, 1); key(11, 0);
+check(out(USB, 0x90).map(m => m.d[1]).join(',') === '48,50,52', 'Pad Scale keys 9, 10 (black), 11 -> C3 D3 E3: ' + out(USB, 0x90).map(m => m.d[1]));
 ms(200);
-check(keyLed(WHITE[0]) === 1 && keyLed(WHITE[7]) === 1 && keyLed(WHITE[1]) === 0, 'root pads (01, 08) lit at rest');
-key(WHITE[4], 1); ms(30); shot('fm1_03_pad_scale'); key(WHITE[4], 0);
-tap(B.ENV);
+check(keyLed(9) === 1 && keyLed(16) === 1 && keyLed(10) === 0, 'root keys (C3, C4) lit at rest');
+midi = []; key(1, 1); key(9, 1);
+check(out(USB, 0x90).map(m => m.d[1]).join(',') === '48,51,55', 'MIN chord key + key 9 -> C minor in Pad Scale: ' + out(USB, 0x90).map(m => m.d[1]));
+check(keyLed(1) === 1, 'chord key lit while held');
+ms(30); shot('fm1_03_pad_scale');
+key(9, 0); key(1, 0);
+check(out(USB, 0x80).length === 3, 'chord released');
+tap(B.OCTU); midi = []; key(9, 1); key(9, 0); check(out(USB, 0x90, 60).length === 1, 'OCT + moves Pad Scale up (C4)'); tap(B.OCTD);
+midi = []; key(12, 1); tap(B.ENV); key(12, 0); ms(30);
+check(out(USB, 0x80, 53).length === 1, 'leaving Pad Scale releases the held key (F3)');
 
 // Clip Mode (LFO): white keys launch clips; F# held = OVERDUB, G# held = DELETE.
 tap(B.LFO); check(leds()[B.LFO] === 1, 'LFO LED on in Clip Mode'); midi = [];
