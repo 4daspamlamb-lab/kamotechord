@@ -18,6 +18,10 @@ enum { KK_KEY_OCTAVE_DEFAULT = -2 };
 /* Real velocity: Fader 1 can override it (0-10 % = natural). */
 enum { KK_VELOCITY_DEFAULT = 100 };
 
+/* Clip Mode action keys (key indexes): the first black key (C#) held
+ * while pressing a clip = OVERDUB, the second (D#) = DELETE. */
+enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
+
 /* Knob labels as printed on the screen (E1..E7). */
 #define KK_K1 "E1"
 #define KK_K2 "E2"

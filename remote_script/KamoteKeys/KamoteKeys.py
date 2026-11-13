@@ -1,9 +1,11 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """KamoteKeys Remote Script for Ableton Live.
 
-Protocol (must match app/kamotkeys/kk_config.h in the firmware):
+Protocol (must match core/kamotkeys/kk_config.h in the firmware):
 
   device -> Live   ch 16  Note 36..51        Clip Mode pads 1..16 (press / release)
+                   ch 16  Note 52..67        pads 1..16 with OVERDUB held (1st black key)
+                   ch 16  Note 68..83        pads 1..16 with DELETE held (2nd black key)
                    ch 16  CC 127 = 127       "send the full state" (sync request)
                    ch 15  CC 20/21/22/24/25/27  Start, Stop, Capture MIDI, Undo,
                                              Session Record, Redo (127 press, 0 release)
@@ -27,6 +29,8 @@ PROTOCOL = 1
 CLIP_CHANNEL = 15            # MIDI channel 16 (zero based)
 TRANSPORT_CHANNEL = 14       # MIDI channel 15
 NOTE_BASE = 36
+OVERDUB_BASE = NOTE_BASE + 16
+DELETE_BASE = NOTE_BASE + 32
 STATE_CC = 80
 HELLO_CC = 126
 SYNC_CC = 127
@@ -50,10 +54,11 @@ class KamoteKeys(ControlSurface):
         # scripts): Live registers them and delivers their messages here.
         with self.component_guard():
             self._pads = []
-            for pad in range(TRACKS * SCENES):
-                button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, NOTE_BASE + pad)
-                button.add_value_listener(self._pad_value, identify_sender=True)
-                self._pads.append(button)
+            for base in (NOTE_BASE, OVERDUB_BASE, DELETE_BASE):
+                for pad in range(TRACKS * SCENES):
+                    button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, base + pad)
+                    button.add_value_listener(self._pad_value, identify_sender=True)
+                    self._pads.append(button)
             self._sync = ButtonElement(True, MIDI_CC_TYPE, CLIP_CHANNEL, SYNC_CC)
             self._sync.add_value_listener(self._sync_value)
             self._transport_buttons = []
@@ -73,8 +78,15 @@ class KamoteKeys(ControlSurface):
 
     def _pad_value(self, value, sender):
         self._first_message()
-        if value:                        # note on: one action per physical press
-            self._launch(sender.message_identifier() - NOTE_BASE)
+        if not value:                    # note on: one action per physical press
+            return
+        note = sender.message_identifier()
+        if note >= DELETE_BASE:
+            self._delete(note - DELETE_BASE)
+        elif note >= OVERDUB_BASE:
+            self._overdub(note - OVERDUB_BASE)
+        else:
+            self._launch(note - NOTE_BASE)
 
     def _sync_value(self, value):
         self._first_message()
@@ -126,6 +138,44 @@ class KamoteKeys(ControlSurface):
         # Unarmed empty slot: nothing, so a stray press never stops a track.
         self._status('KamoteKeys pad %d: %s %d / clip %d - %s' % (
             pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1, action))
+
+    def _overdub(self, pad):
+        """OVERDUB key + pad: record into that clip (Session Record overdub),
+        or record a new clip in an empty slot (arming the track)."""
+        track, slot = self._slot(pad)
+        if slot is None:
+            self._status('KamoteKeys pad %d: track %d does not exist' % (pad + 1, pad % TRACKS + 1))
+            return
+        song = self.song()
+        if slot.has_clip:
+            clip = slot.clip
+            if clip.is_recording or (song.session_record and (clip.is_playing or clip.is_triggered)):
+                song.session_record = False      # same gesture again: stop overdubbing
+                action = 'overdub off'
+            else:
+                if not (clip.is_playing or clip.is_triggered):
+                    slot.fire()
+                song.session_record = True       # overdub the playing clip
+                action = 'overdub'
+        elif getattr(track, 'can_be_armed', False):
+            if not track.arm:
+                track.arm = True
+            slot.fire()                          # empty slot on an armed track: record
+            action = 'record new clip'
+        else:
+            action = 'track cannot record'
+        self._status('KamoteKeys pad %d: %s %d / clip %d - %s' % (
+            pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1, action))
+
+    def _delete(self, pad):
+        """DELETE key + pad: delete that clip."""
+        track, slot = self._slot(pad)
+        if slot is None or not slot.has_clip:
+            self._status('KamoteKeys pad %d: no clip to delete' % (pad + 1))
+            return
+        slot.delete_clip()
+        self._status('KamoteKeys pad %d: %s %d / clip %d - deleted' % (
+            pad + 1, track.name, pad % TRACKS + 1, pad // TRACKS + 1))
 
     # Lets Live preselect the keyboard's port when the script is chosen. The
     # SMK37 OPEN / KamoteKeys firmware names its USB MIDI port "SMK37 Open".

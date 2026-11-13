@@ -16,7 +16,9 @@ struct kk_state kk;
 /* One source per key (0..36) and pad (37..52). A source remembers exactly
  * the notes it started, so its release always stops those notes even if the
  * octave, scale, root or mode has changed while it was held. */
-enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC };
+enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC, ROUTE_CLIPMOD };
+/* Clip Mode action keys (0.50): source modifiers of the OVERDUB / DELETE keys. */
+enum { CLIPMOD_OVERDUB = 0x2000U, CLIPMOD_DELETE = 0x1000U };
 enum { SOURCES = KK_KEYS + KK_PADS, PAD_SOURCE = KK_KEYS };
 struct source {
     uint8_t held, route, channel, velocity, count, sounding;
@@ -91,6 +93,12 @@ int kk_active_octave(void) { return in_pad_mode() ? kk.pad_octave : kk.octave; }
 static void intent(unsigned id, struct source *s)
 {
     s->count = 0; s->channel = KK_CH_MELODIC; s->modifier = 0;
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY)) {
+        /* Clip Mode: the first black key held = OVERDUB, the second = DELETE
+         * for the clips pressed meanwhile; they play no note. */
+        s->modifier = (uint16_t)(id == KK_CLIP_OVERDUB_KEY ? CLIPMOD_OVERDUB : CLIPMOD_DELETE);
+        return;
+    }
     if (id < KK_KEYS) {
         int note = kk.mode == KK_MODE_KEY_SCALE ? kk_key_scale_note(id, kk.octave, &kk.scale)
                                                 : kk_key_note(id, kk.octave);
@@ -109,12 +117,17 @@ static void intent(unsigned id, struct source *s)
     }
     int note = kk_pad_note(pad, &channel);
     s->channel = (uint8_t)channel;
+    /* A clip pressed while DELETE / OVERDUB is held sends its action note. */
+    if (channel == KK_CH_CLIP && note >= 0)
+        note += kk.clip_action == 2 ? KK_CLIP_DELETE_BASE - KK_CLIP_NOTE_BASE
+              : kk.clip_action == 1 ? KK_CLIP_OVERDUB_BASE - KK_CLIP_NOTE_BASE : 0;
     if (note >= 0) { s->notes[0] = (uint8_t)note; s->count = 1; }
 }
 static unsigned route_for(unsigned id, const struct source *s)
 {
     if (s->modifier == 0x8000U) return ROUTE_LOCK;
     if (s->modifier == 0x4000U) return ROUTE_CC;
+    if (s->modifier == CLIPMOD_OVERDUB || s->modifier == CLIPMOD_DELETE) return ROUTE_CLIPMOD;
     if (s->modifier) return ROUTE_MOD;
     if (!s->count) return ROUTE_NONE;
     if (s->channel == KK_CH_CLIP) return ROUTE_DIRECT;     /* clip launches: no ARP/Repeat */
@@ -339,7 +352,7 @@ static void reroute_all(void)
     for (unsigned i = 0; i < SOURCES; ++i) {
         struct source *s = &sources[i];
         if (!s->held || s->route == ROUTE_NONE || s->route == ROUTE_MOD || s->route == ROUTE_LOCK ||
-            s->route == ROUTE_CC) continue;
+            s->route == ROUTE_CC || s->route == ROUTE_CLIPMOD) continue;
         disengage(s); engage(i);
     }
 }
@@ -471,9 +484,6 @@ static unsigned animation_speed(void)
 static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLETON, controller, value); }
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
-#ifdef KK_DEVICE_FM1
-static uint8_t home_combo, save_cc = KK_CC_CAPTURE;
-#endif
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -495,28 +505,12 @@ static void button(unsigned id, unsigned down, uint32_t now)
     case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
     case KK_BTN_FADER_BANK: ableton(KK_CC_CAPTURE, down ? 127 : 0); return;
-#ifdef KK_DEVICE_FM1
-    /* FM-1 HOME (LEFT): leaves any page; on the main screen it is Undo,
-     * sent on release unless SAVE was pressed while HOME was held. */
-    case KK_BTN_LEFT:
-        if (menu || kk.page == KK_PAGE_DIAG) { if (down) { menu_owned |= bit; kk_ui_bt_key(0); } return; }
-        if (kk.page != KK_PAGE_MAIN) { if (down) { menu_owned |= bit; open_page(KK_PAGE_MAIN); } return; }
-        if (down) home_combo = 0;
-        else if (!home_combo) { ableton(KK_CC_UNDO, 127); ableton(KK_CC_UNDO, 0); }
-        return;
-    /* FM-1 SAVE (RIGHT): Capture MIDI; HOME + SAVE = Redo. */
-    case KK_BTN_RIGHT:
-        if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
-        if (down) { save_cc = (kk.buttons & (1U << KK_BTN_LEFT)) ? KK_CC_REDO : KK_CC_CAPTURE; home_combo |= save_cc == KK_CC_REDO; }
-        ableton(save_cc, down ? 127 : 0); return;
-#else
     case KK_BTN_LEFT:
         if (menu || kk.page == KK_PAGE_DIAG) { if (down) { menu_owned |= bit; kk_ui_bt_key(0); } return; }
         ableton(KK_CC_UNDO, down ? 127 : 0); return;
     case KK_BTN_RIGHT:
         if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
         ableton(KK_CC_REDO, down ? 127 : 0); return;
-#endif
     case KK_BTN_KNOB_BANK:   /* Session Record: momentary; the Remote Script acts on press */
         ableton(KK_CC_RECORD, down ? 127 : 0); return;
     case KK_BTN_OCT_DOWN: if (down) kk_set_octave(kk_active_octave() - 1); return;
@@ -580,6 +574,18 @@ unsigned kk_pad_curve(unsigned v)
     int out = (int)v + k[s - 1] * (int)v * (127 - (int)v) / (127 * 100);
     return out < 1 ? 1 : out > 127 ? 127 : (unsigned)out;
 }
+/* Clip Mode action from the held OVERDUB / DELETE keys (DELETE wins). */
+static void clip_action_refresh(void)
+{
+    unsigned action = 0;
+    for (unsigned id = 0; id < KK_KEYS; ++id) {
+        const struct source *k = &sources[id];
+        if (!k->held || k->route != ROUTE_CLIPMOD) continue;
+        if (k->modifier == CLIPMOD_DELETE) action = 2;
+        else if (!action) action = 1;
+    }
+    if (action != kk.clip_action) { kk.clip_action = (uint8_t)action; ++kk.edit_revision; }
+}
 static void source_press(unsigned id, unsigned velocity)
 {
     if (id >= PAD_SOURCE) velocity = kk_pad_curve(velocity);
@@ -589,6 +595,7 @@ static void source_press(unsigned id, unsigned velocity)
     intent(id, s);
     if (id >= PAD_SOURCE && kk.anim_active) { s->count = 0; s->modifier = 0; s->route = ROUTE_NONE; return; }
     engage(id);
+    if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {
         kk.chord_lock = !kk.chord_lock;
         /* Locking keeps whatever is held now; unlocking releases the latch. */
@@ -623,10 +630,11 @@ static void source_release(unsigned id)
 {
     struct source *s = &sources[id];
     if (!s->held) return;
-    unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK;
+    unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK, was_clip = s->route == ROUTE_CLIPMOD;
     disengage(s);
     s->held = 0; s->route = ROUTE_NONE; s->count = 0; s->modifier = 0;
     if (was_mod) mods_refresh();
+    if (was_clip) clip_action_refresh();
 }
 void kk_control_event(unsigned kind, unsigned id, int value)
 {
@@ -665,7 +673,7 @@ void kk_controls_panic(void)
     for (unsigned i = 0; i < SOURCES; ++i) { disengage(&sources[i]); sources[i].held = 0; sources[i].route = ROUTE_NONE; }
     arp_stop();
     kk_midi_all_off();
-    kk.keys = 0; kk.pads = 0; kk.buttons = 0; kk.chord_mods = 0; kk.anim_active = 0;
+    kk.keys = 0; kk.pads = 0; kk.buttons = 0; kk.chord_mods = 0; kk.anim_active = 0; kk.clip_action = 0; kk.knob_shift = 0;
     pedal_down = 0; kk.sustain_on = 0; sustain_update();
     ++kk.edit_revision;
 }
@@ -785,7 +793,6 @@ void kk_perform_init(void)
     kk.bpm = 120; kk.pad_sensitivity = 3; kk.velocity = KK_VELOCITY_DEFAULT;
 #ifdef KK_DEVICE_FM1
     kk.brightness = 256; kk.fader_known = 8;   /* no Fader 4: full brightness */
-    home_combo = 0; save_cc = KK_CC_CAPTURE;
 #endif
     /* Octaves are never restored from flash: keys start at -2, pads at 0. */
     kk.octave = KK_KEY_OCTAVE_DEFAULT; kk.pad_octave = KK_PAD_OCTAVE_DEFAULT;

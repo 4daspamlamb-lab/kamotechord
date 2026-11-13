@@ -1,17 +1,26 @@
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
  * KamoteKeys FM-1 input adapter: turns the FM-1 panel state (27 keys F..G,
  * 14 buttons, 7 encoders; fm1_controls_read) into KamoteKeys events, and
- * decides the on/off key and button LEDs.
+ * decides the on/off key and button LEDs. See docs/FM1.md.
  *
- * Keys (see docs/CONTROLS_FM1.md):
- *  - Normal and Key Scale Mode, split keyboard: the lowest nine white keys
- *    are the chord pads MAJ MIN DIM SUS4 | 7 MAJ7 6 9 | LOCK, the six black
- *    keys between them are the spare CC pads (CC 102-107), and keys 15..26
- *    (G#..G) play notes.
- *  - Pad Scale, Drum and Clip Mode: white keys 01..16 are pads 1..16 and the
- *    black keys are silent.
+ * Keys:
+ *  - Normal and Key Scale Mode: the lowest nine keys, white and black
+ *    (F..C#), are the chord keys MAJ MIN DIM SUS4 7 MAJ7 6 9 LOCK; keys
+ *    9..26 (D..G) play.
+ *  - Pad Scale and Drum Mode: white keys 01..16 are pads 1..16, black keys
+ *    are silent.
+ *  - Clip Mode: white keys 01..16 are clips; the first black key (F#) held
+ *    = OVERDUB, the second (G#) = DELETE (handled by the core as keys).
  * A key's release always goes to whatever its press went to, even if the
- * mode changed while it was held. */
+ * mode changed while it was held.
+ *
+ * Buttons sit where their SMK-37 counterparts sit (right block, 2 x 6):
+ *   FX=ARP  SEL=SUSTAIN  ENV=PAD SCALE  LFO=CLIP  EDIT=STOP  GLO=BT menu
+ *   HOME    SAVE         ARP=DRUM       SEQ=KEY SCALE  PLAY=START  REC=RECORD
+ * HOME tap = settings page (or back to the main screen); HOME + OCT- / OCT+
+ * = Undo / Redo; HOME + REC = Capture MIDI. SAVE held: K1-K3 set velocity,
+ * scale and root (the SMK-37 faders). In the Bluetooth menu HOME and SAVE
+ * are its back / confirm keys. */
 #include "kk_perform.h"
 #include "kk_midi.h"
 #include "kk_led.h"
@@ -21,55 +30,45 @@
 
 /* White keys of the FM-1 keyboard (key indexes), labelled 01..16. */
 static const uint8_t white_keys[16] = {0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26};
-/* Split zone: white keys 01..09 -> chord pads, black keys -> spare pads. */
-static const uint8_t chord_pad_of_white[9] = {0, 1, 2, 3, 8, 9, 10, 11, 12};
-static const uint8_t zone_black_keys[6] = {1, 3, 5, 8, 10, 13};
-static const uint8_t spare_pad_of_black[6] = {4, 5, 6, 7, 13, 14};
+/* Chord keys 0..8 (F F# G G# A A# B C C#) -> chord pads. */
+static const uint8_t chord_pad_of_key[KK_SPLIT_KEY] = {0, 1, 2, 3, 8, 9, 10, 11, 12};
 
-/* FM-1 buttons: OCT-, OCT+, FX, SEL, ENV, LFO, EDIT, GLO, HOME, SAVE, ARP,
- * SEQ, PLAY, REC -> KamoteKeys functions. LFO is special (tap = settings,
- * hold = Bluetooth menu, longer = diagnostics). */
-enum { FM1_LFO = 5, FM1_BUTTONS = 14, LFO_HOLD_MS = 600 };
+enum { FM1_OCT_DOWN = 0, FM1_OCT_UP = 1, FM1_HOME = 8, FM1_SAVE = 9, FM1_REC = 13, FM1_BUTTONS = 14, NONE = 255 };
 static const uint8_t button_map[FM1_BUTTONS] = {
-    KK_BTN_OCT_DOWN, KK_BTN_OCT_UP, KK_BTN_FX, KK_BTN_SCALE, KK_BTN_NOTE_REPEAT, KK_BTN_PATCH,
-    KK_BTN_CHORD, KK_BTN_GLOBE, KK_BTN_LEFT, KK_BTN_RIGHT, KK_BTN_ARP, KK_BTN_SEQ,
-    KK_BTN_PLAY, KK_BTN_KNOB_BANK};
+    KK_BTN_OCT_DOWN, KK_BTN_OCT_UP,
+    KK_BTN_ARP, KK_BTN_NOTE_REPEAT, KK_BTN_SCALE, KK_BTN_CHORD, KK_BTN_GLOBE, KK_BTN_BT,   /* FX SEL ENV LFO EDIT GLO */
+    NONE, NONE, KK_BTN_FX, KK_BTN_SEQ, KK_BTN_PLAY, KK_BTN_KNOB_BANK};                    /* HOME SAVE ARP SEQ PLAY REC */
 /* fm1_controls encoders: SELECT, ALGORITHM, K1..K4, PRESETS -> E5, E6,
  * E1..E4, E7 (index into kk.encoder). */
 static const uint8_t encoder_map[7] = {4, 5, 0, 1, 2, 3, 6};
 
 enum { AS_NONE, AS_KEY, AS_PAD };
-static uint8_t key_as[KK_KEYS], key_id[KK_KEYS];
-static uint32_t keys_seen, buttons_seen, lfo_at;
-static uint8_t lfo_bt;
+static uint8_t key_as[KK_KEYS], key_id[KK_KEYS], sent[FM1_BUTTONS];
+static uint32_t keys_seen, buttons_seen;
+static uint8_t home_down, home_used;
 
 static int white_of(unsigned key)
 {
     for (unsigned i = 0; i < 16; ++i) if (white_keys[i] == key) return (int)i;
     return -1;
 }
-static unsigned pad_mode(void)
-{
-    return kk.mode == KK_MODE_PAD_SCALE || kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP;
-}
 /* What a key is right now: AS_KEY with key id, AS_PAD with pad index, or none. */
 static unsigned classify(unsigned key, unsigned *id)
 {
     int white = white_of(key);
-    if (pad_mode()) {
-        if (white < 0) return AS_NONE;
-        *id = (unsigned)white; return AS_PAD;
+    if (kk.mode == KK_MODE_PAD_SCALE || kk.mode == KK_MODE_DRUM || kk.mode == KK_MODE_CLIP) {
+        if (white >= 0) { *id = (unsigned)white; return AS_PAD; }
+        if (kk.mode == KK_MODE_CLIP && (key == KK_CLIP_OVERDUB_KEY || key == KK_CLIP_DELETE_KEY)) { *id = key; return AS_KEY; }
+        return AS_NONE;
     }
-    if (key >= KK_SPLIT_KEY) { *id = key; return AS_KEY; }
-    if (white >= 0) { *id = chord_pad_of_white[white]; return AS_PAD; }
-    for (unsigned i = 0; i < 6; ++i) if (zone_black_keys[i] == key) { *id = spare_pad_of_black[i]; return AS_PAD; }
-    return AS_NONE;
+    if (key < KK_SPLIT_KEY) { *id = chord_pad_of_key[key]; return AS_PAD; }
+    *id = key; return AS_KEY;
 }
 
 void kk_fm1_input_reset(void)
 {
-    memset(key_as, 0, sizeof key_as); memset(key_id, 0, sizeof key_id);
-    keys_seen = buttons_seen = 0; lfo_at = 0; lfo_bt = 0;
+    memset(key_as, 0, sizeof key_as); memset(key_id, 0, sizeof key_id); memset(sent, NONE, sizeof sent);
+    keys_seen = buttons_seen = 0; home_down = home_used = 0;
 }
 
 static void key_change(unsigned key, unsigned down)
@@ -86,25 +85,40 @@ static void key_change(unsigned key, unsigned down)
     }
 }
 
-static void button_change(unsigned b, unsigned down, uint32_t now)
+static void tap(unsigned id) { kk_control_event(KK_EV_BUTTON, id, 1); kk_control_event(KK_EV_BUTTON, id, 0); }
+static unsigned menu_page(void) { return kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG; }
+static void button_change(unsigned b, unsigned down)
 {
-    if (b == FM1_LFO) {
-        if (down) { lfo_at = now ? now : 1; lfo_bt = 0; return; }
-        if (lfo_bt) kk_control_event(KK_EV_BUTTON, KK_BTN_BT, 0);
-        else {
-            /* A tap closes the Bluetooth menu / diagnostics, else toggles settings. */
-            unsigned id = kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG ? KK_BTN_BT : KK_BTN_PATCH;
-            kk_control_event(KK_EV_BUTTON, id, 1); kk_control_event(KK_EV_BUTTON, id, 0);
+    if (!down) {                         /* a release goes where its press went */
+        if (b == FM1_HOME && sent[b] == NONE) {
+            if (home_down && !home_used) {
+                if (kk.page == KK_PAGE_MAIN) tap(KK_BTN_PATCH);          /* settings */
+                else { kk.page = KK_PAGE_MAIN; ++kk.edit_revision; }    /* back */
+            }
+            home_down = 0;
         }
-        lfo_at = 0; lfo_bt = 0;
+        if (b == FM1_SAVE && sent[b] == NONE) { kk.knob_shift = 0; ++kk.edit_revision; }
+        if (sent[b] != NONE) kk_control_event(KK_EV_BUTTON, sent[b], 0);
+        sent[b] = NONE;
         return;
     }
-    kk_control_event(KK_EV_BUTTON, button_map[b], (int)down);
+    unsigned id = button_map[b];
+    if (b == FM1_HOME) {
+        if (menu_page()) id = KK_BTN_LEFT;                               /* menu back key */
+        else { home_down = 1; home_used = 0; id = NONE; }
+    } else if (b == FM1_SAVE) {
+        if (kk.page == KK_PAGE_BT) id = KK_BTN_RIGHT;                    /* menu confirm key */
+        else { kk.knob_shift = 1; ++kk.edit_revision; id = NONE; }
+    } else if (home_down && (b == FM1_OCT_DOWN || b == FM1_OCT_UP || b == FM1_REC)) {
+        id = b == FM1_OCT_DOWN ? KK_BTN_LEFT : b == FM1_OCT_UP ? KK_BTN_RIGHT : KK_BTN_FADER_BANK;   /* Undo / Redo / Capture */
+        home_used = 1;
+    }
+    sent[b] = (uint8_t)id;
+    if (id != NONE) kk_control_event(KK_EV_BUTTON, id, 1);
 }
 
 void kk_fm1_input(const struct fm1_controls *c)
 {
-    uint32_t now = fm1_millis();
     uint32_t keys = c->keys & ((1U << KK_KEYS) - 1U), changed = keys ^ keys_seen;
     /* Releases first, so a key moving between roles never overlaps. */
     for (unsigned k = 0; k < KK_KEYS; ++k)
@@ -113,12 +127,11 @@ void kk_fm1_input(const struct fm1_controls *c)
         if ((changed >> k) & 1U && ((keys >> k) & 1U)) key_change(k, 1);
     keys_seen = keys;
     uint32_t buttons = c->buttons & ((1U << FM1_BUTTONS) - 1U), bchanged = buttons ^ buttons_seen;
+    for (unsigned b = 0; b < FM1_BUTTONS; ++b)          /* releases first here too */
+        if ((bchanged >> b) & 1U && !((buttons >> b) & 1U)) button_change(b, 0);
     for (unsigned b = 0; b < FM1_BUTTONS; ++b)
-        if ((bchanged >> b) & 1U) button_change(b, (buttons >> b) & 1U, now);
+        if ((bchanged >> b) & 1U && ((buttons >> b) & 1U)) button_change(b, 1);
     buttons_seen = buttons;
-    /* LFO held: open the Bluetooth menu (as a held BT button, so holding on
-     * reaches diagnostics like a long BT press on the SMK-37). */
-    if (lfo_at && !lfo_bt && now - lfo_at >= LFO_HOLD_MS) { lfo_bt = 1; kk_control_event(KK_EV_BUTTON, KK_BTN_BT, 1); }
     for (unsigned e = 0; e < 7; ++e)
         if (c->encoders[e]) kk_control_event(KK_EV_ENCODER, encoder_map[e], c->encoders[e]);
 }
@@ -160,8 +173,10 @@ unsigned kk_fm1_key_led(unsigned key, uint32_t boot_ms)
 unsigned kk_fm1_button_led(unsigned b)
 {
     if (b >= FM1_BUTTONS) return 0;
-    if (b == FM1_LFO)
-        return kk.page == KK_PAGE_PATCH || kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG || ((buttons_seen >> b) & 1U);
+    unsigned pressed = (buttons_seen >> b) & 1U;
+    if (b == FM1_HOME) return pressed || kk.page == KK_PAGE_PATCH;
+    if (b == FM1_SAVE) return pressed;
+    if (sent[b] != NONE && sent[b] != button_map[b]) return 1;   /* HOME combo held */
     return kk_led_button(button_map[b]) == 2;
 }
 

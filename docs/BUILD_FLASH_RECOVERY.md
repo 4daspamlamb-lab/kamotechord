@@ -43,18 +43,18 @@ Size expectation: on an ARM Thumb `-Oz` proxy compile, KamoteKeys's UI and contr
 
 ### Copy-and-paste build in Parallels
 
-Put `KamoteKeys-0.49.zip` in the Mac's Downloads folder, then paste into Windows PowerShell (change the device in the `build.bat` line and the output path for Elite or FM-1, see the table above):
+Put `KamoteKeys-0.50.zip` in the Mac's Downloads folder, then paste into Windows PowerShell (change the device in the `build.bat` line and the output path for Elite or FM-1, see the table above):
 
 ```powershell
 cd $env:USERPROFILE\Desktop
-Copy-Item \\Mac\Home\Downloads\KamoteKeys-0.49.zip . -Force
-Expand-Archive .\KamoteKeys-0.49.zip . -Force
-Expand-Archive .\KamoteKeys-0.49\kamotekeys-0.49-source.zip . -Force
-cd .\kamotekeys-0.49
+Copy-Item \\Mac\Home\Downloads\KamoteKeys-0.50.zip . -Force
+Expand-Archive .\KamoteKeys-0.50.zip . -Force
+Expand-Archive .\KamoteKeys-0.50\kamotekeys-0.50-source.zip . -Force
+cd .\kamotekeys-0.50
 $env:FM1_PI32_TOOLCHAIN = 'C:\JL\pi32'
-$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.49-source.zip'
+$env:FM1_SOURCE_URL = 'https://localhost/kamotekeys-0.50-source.zip'
 .\build.bat smk37-pro --package
-Copy-Item .\devices\smk37\build\official-web\pro\SMK37-Open-Source.html \\Mac\Home\Downloads\SMK37-KamoteKeys-0.49.html -Force
+Copy-Item .\devices\smk37\build\official-web\pro\SMK37-Open-Source.html \\Mac\Home\Downloads\SMK37-KamoteKeys-0.50.html -Force
 ```
 
 Add `$env:FM1_WASI_SDK = '<folder>\build\tools\wasi-sdk-27.0-x86_64-windows'` (from an earlier build) before `build.bat` to skip the 518 MB download.

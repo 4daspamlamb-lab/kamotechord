@@ -14,16 +14,19 @@
  * MASTER knob. No pads, no faders: pads are keys (kk_fm1_input.c) and the
  * fader settings are knobs. */
 enum { KK_KEYS = 27 };
-/* Split keyboard (Normal and Key Scale Mode): keys 0..14 (F..G, the lowest
- * nine white keys and the six black keys between them) are the chord pads
- * and spare CC pads; keys 15..26 (G#..G) play. Key 19 is the C of the
- * playing zone and sounds middle C at octave 0. */
-enum { KK_SPLIT_KEY = 15, KK_KEY_BASE_NOTE = 41, KK_ANCHOR_KEY = 19, KK_ANCHOR_NOTE = 60 };
+/* Split keyboard (Normal and Key Scale Mode): keys 0..8 (F..C#, white and
+ * black) are the chord keys; keys 9..26 (D..G) play. Key 19 (C) sounds
+ * middle C at octave 0. */
+enum { KK_SPLIT_KEY = 9, KK_KEY_BASE_NOTE = 41, KK_ANCHOR_KEY = 19, KK_ANCHOR_NOTE = 60 };
 /* The playing zone is one octave, so the keyboard starts at octave 0. */
 enum { KK_KEY_OCTAVE_DEFAULT = 0 };
 /* Keys only switch: every note uses this fixed, saved velocity (PRESETS). */
 #define KK_FIXED_VELOCITY 1
 enum { KK_VELOCITY_DEFAULT = 100 };
+
+/* Clip Mode action keys (key indexes): the first black key (F#) held
+ * while pressing a clip = OVERDUB, the second (G#) = DELETE. */
+enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
 
 /* Knob labels as printed on the screen (K1-K4, SELECT, ALGORITHM, PRESETS). */
 #define KK_K1 "K1"
@@ -34,10 +37,10 @@ enum { KK_VELOCITY_DEFAULT = 100 };
 #define KK_K6 "ALG"
 #define KK_K7 "PRE"
 /* Navigation hints. */
-#define KK_TXT_PATCH_BACK "LFO OR HOME: BACK"
+#define KK_TXT_PATCH_BACK "HOME: BACK"
 #define KK_TXT_BT_FORGET "FORGET MIDI PAIRS? SAVE YES HOME NO"
-#define KK_TXT_BT_FOOTER "PRE ACTION SAVE OK HOME BACK LFO EXIT"
-#define KK_TXT_DIAG_EXIT "HOME / LFO EXIT"
+#define KK_TXT_BT_FOOTER "PRE ACTION SAVE OK HOME BACK GLO EXIT"
+#define KK_TXT_DIAG_EXIT "HOME / GLO EXIT"
 /* Last BLE error code this SDK reports. */
 #define KK_BLE_LAST_ERROR FM1_BLE_LINK_LOST
 

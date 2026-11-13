@@ -14,7 +14,9 @@ const c = instance.exports;
 const mem = () => new Uint8Array(c.memory.buffer);
 let checks = 0, failures = 0;
 const check = (ok, msg) => { ++checks; if (!ok) { ++failures; console.log('FAIL ' + msg); } };
-// FM-1 buttons (fm1_controls.buttons bit order) and encoders.
+// FM-1 buttons (fm1_controls.buttons bit order) and encoders. Functions as
+// on the SMK-37 at the same position: FX=ARP, SEL=SUSTAIN, ENV=PAD SCALE,
+// LFO=CLIP, EDIT=STOP, GLO=BT, ARP=DRUM, SEQ=KEY SCALE, PLAY, REC=RECORD.
 const B = { OCTD: 0, OCTU: 1, FX: 2, SEL: 3, ENV: 4, LFO: 5, EDIT: 6, GLO: 7, HOME: 8, SAVE: 9, ARP: 10, SEQ: 11, PLAY: 12, REC: 13 };
 const E = { SELECT: 0, ALGORITHM: 1, K1: 2, K2: 3, K3: 4, K4: 5, PRESETS: 6 };
 const WHITE = [0, 2, 4, 6, 7, 9, 11, 12, 14, 16, 18, 19, 21, 23, 24, 26];   // white keys 01..16
@@ -55,7 +57,7 @@ ms(1700);
 check(!((c.sim_arp(0) >> 8) & 1) && !((c.sim_arp(7) >> 8) & 1), 'engine ARP disabled on tracks 1 and 8');
 shot('fm1_01_main');
 
-// Playing zone: key 19 (C) = middle C at the fixed velocity 100.
+// Playing zone (keys 9..26): key 19 (C) = middle C at the fixed velocity 100.
 midi = []; energy = 0;
 key(19, 1); ms(300);
 check(out(USB, 0x90, 60).length === 1 && out(USB, 0x90, 60)[0].d[2] === 100, 'key 19 -> C4 (60) velocity 100 on USB');
@@ -63,121 +65,123 @@ check(energy > 0.01, 'internal DX7 sounds (energy ' + energy.toFixed(3) + ')');
 check(keyLed(19) === 1, 'held playing key lights its LED');
 key(19, 0); ms(50);
 check(out(USB, 0x80, 60).length === 1 && keyLed(19) === 0, 'note off, LED off');
+midi = []; key(9, 1); key(9, 0);
+check(out(USB, 0x90, 50).length === 1, 'key 9 (D) is the lowest playing key');
 
-// Chord zone: white 01 = MAJ held + key 19 -> C major triad.
+// Compact chord keys 0..8 (white and black): MAJ MIN DIM SUS4 7 MAJ7 6 9 LOCK.
 midi = [];
-key(WHITE[0], 1); check(midi.length === 0, 'chord key alone sends nothing');
+key(0, 1); check(midi.length === 0, 'chord key alone sends nothing');
 key(19, 1);
-check(out(USB, 0x90).map(m => m.d[1]).join(',') === '60,64,67', 'MAJ + C -> C E G: ' + out(USB, 0x90).map(m => m.d[1]));
-check(keyLed(WHITE[0]) === 1, 'held chord key lit');
-key(19, 0); key(WHITE[0], 0);
+check(out(USB, 0x90).map(m => m.d[1]).join(',') === '60,64,67', 'MAJ (F) + C -> C E G: ' + out(USB, 0x90).map(m => m.d[1]));
+check(keyLed(0) === 1, 'held chord key lit');
+key(19, 0); key(0, 0);
 check(out(USB, 0x80).length === 3, 'chord released');
-// MIN (white 02) + 7 (white 05) -> Cm7.
 midi = [];
-key(WHITE[1], 1); key(WHITE[4], 1); key(19, 1);
-check(out(USB, 0x90).map(m => m.d[1]).join(',') === '60,63,67,70', 'MIN + 7 -> Cm7: ' + out(USB, 0x90).map(m => m.d[1]));
-key(19, 0); key(WHITE[4], 0); key(WHITE[1], 0);
-// LOCK (white 09) keeps MAJ latched.
+key(1, 1); key(4, 1); key(19, 1);
+check(out(USB, 0x90).map(m => m.d[1]).join(',') === '60,63,67,70', 'MIN (F#, black) + 7 (A) -> Cm7: ' + out(USB, 0x90).map(m => m.d[1]));
+key(19, 0); key(4, 0); key(1, 0);
 midi = [];
-key(WHITE[8], 1); key(WHITE[8], 0); key(WHITE[0], 1); key(WHITE[0], 0);
+key(8, 1); key(8, 0); key(0, 1); key(0, 0);       // LOCK (C#), then MAJ
 key(19, 1);
 check(out(USB, 0x90).length === 3, 'LOCK + MAJ latched -> triad without holding');
-check(keyLed(WHITE[8]) === 1 && keyLed(WHITE[0]) === 1, 'LOCK and MAJ LEDs stay lit');
-key(19, 0); key(WHITE[8], 0 + 1); key(WHITE[8], 0); ms(20);
-check(keyLed(WHITE[8]) === 0, 'LOCK off');
+check(keyLed(8) === 1 && keyLed(0) === 1, 'LOCK and MAJ LEDs stay lit');
+key(19, 0); key(8, 1); key(8, 0); ms(20);
+check(keyLed(8) === 0, 'LOCK off');
 
-// Spare CC pads: black keys in the chord zone (key 1 = CC 102 on channel 15).
-midi = [];
-key(1, 1); key(1, 0); key(13, 1); key(13, 0);
-const spare = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
-check(spare === '102:127 102:0 107:127 107:0', 'black chord-zone keys -> CC 102 / 107: ' + spare);
-
-// Ableton buttons on channel 15.
-midi = [];
-tap(B.PLAY); tap(B.GLO); tap(B.SAVE); tap(B.HOME); tap(B.REC);
-btn(B.HOME, 1); tap(B.SAVE); btn(B.HOME, 0);
+// Ableton buttons: PLAY start, EDIT stop, REC record, HOME+REC capture,
+// HOME+OCT- undo, HOME+OCT+ redo (no octave change, no settings page).
+midi = []; const octave = () => { midi = []; key(19, 1); key(19, 0); return out(USB, 0x90)[0].d[1]; };
+const before = octave(); midi = [];
+tap(B.PLAY); tap(B.EDIT); tap(B.REC);
+btn(B.HOME, 1); tap(B.REC); tap(B.OCTD); tap(B.OCTU); btn(B.HOME, 0); ms(30);
 const cc = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
-check(cc === '20:127 20:0 21:127 21:0 22:127 22:0 24:127 24:0 25:127 25:0 27:127 27:0',
-      'PLAY start, GLO stop, SAVE capture, HOME undo, REC record, HOME+SAVE redo (no undo): ' + cc);
+check(cc === '20:127 20:0 21:127 21:0 25:127 25:0 22:127 22:0 24:127 24:0 27:127 27:0', 'PLAY, EDIT=STOP, REC, HOME+REC/OCT-/OCT+: ' + cc);
+check(leds()[B.HOME] === 0 && octave() === before, 'HOME combos open no page and leave the octave alone');
 
-// Sustain (ENV).
+// Sustain (SEL, where the SMK-37 has SUSTAIN).
 midi = [];
-tap(B.ENV); check(out(USB, 0xb0, 64).length === 1 && out(USB, 0xb0, 64)[0].d[2] === 127 && leds()[B.ENV] === 1, 'ENV -> sustain on, LED on');
-tap(B.ENV); check(out(USB, 0xb0, 64).length === 2 && out(USB, 0xb0, 64)[1].d[2] === 0 && leds()[B.ENV] === 0, 'ENV again -> sustain off');
+tap(B.SEL); check(out(USB, 0xb0, 64).length === 1 && out(USB, 0xb0, 64)[0].d[2] === 127 && leds()[B.SEL] === 1, 'SEL -> sustain on, LED on');
+tap(B.SEL); check(out(USB, 0xb0, 64).length === 2 && out(USB, 0xb0, 64)[1].d[2] === 0 && leds()[B.SEL] === 0, 'SEL again -> sustain off');
 
-// Velocity (PRESETS knob) and octave.
-knob(E.PRESETS, -20); midi = [];
-key(19, 1); key(19, 0);
-check(out(USB, 0x90, 60).length === 1 && out(USB, 0x90, 60)[0].d[2] === 80, 'PRESETS -20 -> velocity 80');
-knob(E.PRESETS, 20);
+// Knobs: K1 = tempo; with SAVE held K1-K3 = velocity, scale, root.
+btn(B.SAVE, 1); knob(E.K1, -20); btn(B.SAVE, 0);
+midi = []; key(19, 1); key(19, 0);
+check(out(USB, 0x90, 60).length === 1 && out(USB, 0x90, 60)[0].d[2] === 80, 'SAVE + K1 -20 -> velocity 80');
+btn(B.SAVE, 1); knob(E.K1, 20); btn(B.SAVE, 0);
 tap(B.OCTU); midi = []; key(19, 1); key(19, 0);
 check(out(USB, 0x90, 72).length === 1, 'OCT + -> C5');
 tap(B.OCTD);
 
-// Key Scale (SEQ): A minor pentatonic via SELECT/ALGORITHM knobs.
-knob(E.SELECT, 10); knob(E.ALGORITHM, 9);
+// Key Scale (SEQ): A minor pentatonic via SAVE + K2 (scale) / K3 (root).
+btn(B.SAVE, 1); knob(E.K2, 10); knob(E.K3, 9); btn(B.SAVE, 0);
 tap(B.SEQ); check(leds()[B.SEQ] === 1, 'SEQ LED on in Key Scale');
 midi = []; key(19, 1); key(19, 0);
 check(out(USB, 0x90, 69).length === 1, 'Key Scale: C key -> A (scale root) ' + out(USB, 0x90).map(m => m.d[1]));
 midi = []; key(20, 1); key(20, 0);
 check(midi.length === 0, 'Key Scale: black key silent');
 tap(B.SEQ);
-knob(E.SELECT, -10); knob(E.ALGORITHM, -9);
+btn(B.SAVE, 1); knob(E.K2, -10); knob(E.K3, -9); btn(B.SAVE, 0);
 
-// Drum Mode (FX): white keys 01..16 are pads; black keys silent.
-tap(B.FX); check(leds()[B.FX] === 1, 'FX LED on in Drum Mode');
+// Drum Mode (ARP button, where the SMK-37 has FX): white keys 01..16 are pads.
+tap(B.ARP); check(leds()[B.ARP] === 1, 'ARP-button LED on in Drum Mode');
 midi = []; energy = 0;
 key(WHITE[0], 1); ms(150); key(WHITE[0], 0);
 key(WHITE[1], 1); key(WHITE[1], 0);
 check(out(USB, 0x99, 36).length === 1 && out(USB, 0x99, 38).length === 1 && out(USB, 0x90).length === 0, 'white 01 -> 36, white 02 -> 38 on channel 10');
 check(energy > 0.0005, 'drum engine sounds (' + energy.toFixed(4) + ')');
-midi = []; key(1, 1); key(1, 0); key(19, 1); key(19, 0);
-check(out(USB, 0x99).length === 1 && out(USB, 0xbe).length === 0, 'black key silent in Drum Mode; key 19 is white 12 (pad 12)');
+midi = []; key(1, 1); key(1, 0);
+check(midi.length === 0, 'black key silent in Drum Mode');
 key(WHITE[2], 1); ms(30); shot('fm1_02_drum'); key(WHITE[2], 0);
-// Mode change while a pad is held: its note still stops.
-midi = []; key(WHITE[0], 1); tap(B.FX); key(WHITE[0], 0); ms(30);
+midi = []; key(WHITE[0], 1); tap(B.ARP); key(WHITE[0], 0); ms(30);
 check(out(USB, 0x89, 36).length === 1, 'mode change releases the held drum pad');
 
-// Pad Scale (SEL): white 01 = C3, roots lit.
-tap(B.SEL); check(leds()[B.SEL] === 1, 'SEL LED on in Pad Scale');
+// Pad Scale (ENV): white 01 = C3, roots lit.
+tap(B.ENV); check(leds()[B.ENV] === 1, 'ENV LED on in Pad Scale');
 midi = []; key(WHITE[0], 1); key(WHITE[0], 0); key(WHITE[1], 1); key(WHITE[1], 0);
 check(out(USB, 0x90, 48).length === 1 && out(USB, 0x90, 50).length === 1, 'Pad Scale white 01 -> C3, 02 -> D3');
 ms(200);
 check(keyLed(WHITE[0]) === 1 && keyLed(WHITE[7]) === 1 && keyLed(WHITE[1]) === 0, 'root pads (01, 08) lit at rest');
 key(WHITE[4], 1); ms(30); shot('fm1_03_pad_scale'); key(WHITE[4], 0);
-tap(B.SEL);
+tap(B.ENV);
 
-// Clip Mode (EDIT): white keys launch clips on channel 16.
-tap(B.EDIT); midi = [];
+// Clip Mode (LFO): white keys launch clips; F# held = OVERDUB, G# held = DELETE.
+tap(B.LFO); check(leds()[B.LFO] === 1, 'LFO LED on in Clip Mode'); midi = [];
 key(WHITE[3], 1); key(WHITE[3], 0);
 check(out(USB, 0x9f, 39).length === 1, 'Clip Mode white 04 -> note 39 channel 16');
+midi = []; key(1, 1); ms(30); shot('fm1_07_overdub'); key(WHITE[3], 1); key(WHITE[3], 0); key(1, 0);
+check(out(USB, 0x9f, 55).length === 1 && out(USB, 0x9f, 39).length === 0 && out(USB, 0x90).length === 0, 'F# + white 04 -> overdub note 55, F# plays nothing');
+midi = []; key(3, 1); key(WHITE[9], 1); key(WHITE[9], 0); key(3, 0);
+check(out(USB, 0x9f, 68 + 9).length === 1, 'G# + white 10 -> delete note 77');
 const hostIn = (bytes) => { mem().set(bytes, c.sim_file()); return c.sim_midi_from(1, bytes.length); };
 hostIn([0xbf, 126, 1]); hostIn([0xbf, 80 + 3, 2]); ms(100);
 check(keyLed(WHITE[3]) === 1, 'playing clip lights its key');
 hostIn([0xbf, 80 + 3, 1]); ms(100);
 check(keyLed(WHITE[3]) === 0, 'stopped clip unlit');
 ms(30); shot('fm1_04_clip');
-tap(B.EDIT);
+tap(B.LFO);
 
-// LFO: tap = settings page, hold = Bluetooth menu; HOME returns.
-tap(B.LFO); ms(50); check(leds()[B.LFO] === 1, 'LFO tap opens settings (LED on)'); shot('fm1_05_settings');
-tap(B.HOME); ms(50); check(leds()[B.LFO] === 0, 'HOME leaves settings');
-midi = []; btn(B.LFO, 1); ms(800); btn(B.LFO, 0); ms(50);
-check(leds()[B.LFO] === 1 && out(USB, 0xbe).length === 0, 'LFO hold -> Bluetooth menu'); shot('fm1_06_bluetooth');
-tap(B.LFO); ms(50); check(leds()[B.LFO] === 0, 'LFO tap closes the menu');
+// HOME: settings page, and back; GLO: Bluetooth menu.
+tap(B.HOME); ms(50); check(leds()[B.HOME] === 1, 'HOME tap opens settings (LED on)'); shot('fm1_05_settings');
+tap(B.HOME); ms(50); check(leds()[B.HOME] === 0, 'HOME again: back');
+midi = []; tap(B.GLO); ms(50);
+check(leds()[B.GLO] === 1 && out(USB, 0xbe).length === 0, 'GLO -> Bluetooth menu'); shot('fm1_06_bluetooth');
+tap(B.GLO); ms(50); check(leds()[B.GLO] === 0, 'GLO again closes the menu');
 
-// ARP: tap toggles, steps follow the BPM.
-tap(B.ARP); midi = [];
+// ARP (FX button, where the SMK-37 has ARP): steps follow the BPM.
+tap(B.FX); check(leds()[B.FX] === 1, 'FX LED on with ARP'); midi = [];
 key(19, 1); key(23, 1); ms(1000); key(19, 0); key(23, 0); ms(300);
 const on = out(USB, 0x90).length, off = out(USB, 0x80).length;
 check(on >= 3 && on <= 5 && on === off, `ARP 1/8 @120 in 1 s: ${on} on / ${off} off`);
-tap(B.ARP);
-// Chord-zone keys pressed with a melodic chord, then everything released: nothing stuck.
+tap(B.FX);
+// Random play across modes: nothing stuck.
 for (let i = 0; i < 200; ++i) {
-  const k = (i * 7) % 27; key(k, 1); if (i % 3 === 0) tap([B.FX, B.SEL, B.SEQ, B.EDIT][i % 4]); key(k, 0);
+  const k = (i * 7) % 27; key(k, 1); if (i % 3 === 0) tap([B.ARP, B.ENV, B.SEQ, B.LFO][i % 4]); key(k, 0);
 }
 c.sim_release(); ms(300);
 const ons = midi.filter(m => (m.d[0] & 0xf0) === 0x90 && m.d[2]).length, offs = midi.filter(m => (m.d[0] & 0xf0) === 0x80 || ((m.d[0] & 0xf0) === 0x90 && !m.d[2])).length;
+check(ons === offs, `random play balanced: ${ons} on / ${offs} off`);
+
+midi.filter(m => (m.d[0] & 0xf0) === 0x80 || ((m.d[0] & 0xf0) === 0x90 && !m.d[2])).length;
 check(ons === offs, `random play balanced: ${ons} on / ${offs} off`);
 
 console.log(`${checks} FM-1 integration checks, ${failures} failures`);

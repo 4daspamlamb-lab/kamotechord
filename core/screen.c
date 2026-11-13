@@ -343,6 +343,12 @@ static void draw_big(void)
     const struct widget *w = &widgets[W_BIG];
     fill(0, w->y, 240, w->h, BG);
     char buf[24];
+    if (kk.mode == KK_MODE_CLIP && kk.clip_action) {
+        /* 0.50: OVERDUB (first black key) / DELETE (second) held. */
+        text_center(120, w->y + 14, kk.clip_action == 2 ? "DELETE" : "OVERDUB", 3, kk.clip_action == 2 ? RED : AMBER);
+        text_center(120, w->y + 50, "PRESS A CLIP", 1, TEXT);
+        return;
+    }
     if (kk.mode == KK_MODE_CLIP) {
         static const char *const states[] = {"EMPTY", "STOPPED", "PLAYING", "QUEUED", "RECORDING", "QUEUED REC", "EMPTY (ARMED)"};
         unsigned st = kk_midi_clip_state(kk.clip_pad);
@@ -352,7 +358,7 @@ static void draw_big(void)
                     kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
         char *p = append(buf, "TRACK "); p = decimal(p, kk.clip_pad % 8 + 1);
         p = append(p, "  CLIP "); decimal(p, kk.clip_pad / 8 + 1);
-        text_center(120, w->y + 50, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTKEYS REMOTE SCRIPT", 1, DIM);
+        text_center(120, w->y + 50, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
         return;
     }
     const char *name = big_name[0] ? big_name : "--";
@@ -684,7 +690,7 @@ static void signatures(void)
     h = mixsig(h, kk_midi_host_protocol());
     wanted[W_INFO] = h;
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
-    if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8);
+    if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8), kk.clip_action);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
@@ -827,20 +833,26 @@ static void main_input(void)
 {
     char v[12], *p;
     int d;
+    /* Knob shift (FM-1 SAVE held): K1-K3 do what the SMK-37 faders do. */
+    static uint8_t shift_shown;
+    if (kk.knob_shift != shift_shown) {
+        shift_shown = kk.knob_shift;
+        if (shift_shown) say("K1 VEL  K2 SCALE  K3 ROOT", 1500);
+    }
+    if (kk.knob_shift) {
+        if ((d = take(0))) { kk_edit_velocity(d); decimal(v, kk.velocity); popup_value("VELOCITY", v); }
+        if ((d = take(1))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
+        if ((d = take(2))) { kk_edit_root(d); popup_value("ROOT", kk_note_name(kk.scale.root)); }
+        for (unsigned i = 3; i < 7; ++i) (void)take(i);
+        return;
+    }
     if ((d = take(0))) { kk_edit_bpm(d > 2 || d < -2 ? d * 2 : d); decimal(v, kk.bpm); popup_value("TEMPO", v); }
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
     if ((d = take(3))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
-#ifdef KK_DEVICE_FM1
-    /* FM-1: SELECT scale, ALGORITHM root, PRESETS velocity (the SMK-37 faders). */
-    if ((d = take(4))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
-    if ((d = take(5))) { kk_edit_root(d); popup_value("ROOT", kk_note_name(kk.scale.root)); }
-    if ((d = take(6))) { kk_edit_velocity(d); decimal(v, kk.velocity); popup_value("VELOCITY", v); }
-#else
     if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
     if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
     (void)take(6);   /* E7: free (Note Repeat was replaced by SUSTAIN in 0.45) */
-#endif
 }
 static void page_input(void)
 {

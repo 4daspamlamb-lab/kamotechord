@@ -640,6 +640,21 @@ static void test_031(void)
     host_clear(); host_ready_ports = 4; frames(5, 2);
     CHECK(out_count(BLE, 0xBF, KK_CLIP_SYNC_CC) == 1, "reconnect (BLE) re-requests the state");
     host_ready_ports = 6; frames(5, 2);
+    /* 0.50: first black key (C#) held + clip = OVERDUB (note 52+), second
+     * (D#) = DELETE (note 68+); the keys themselves play nothing. */
+    host_clear(); key(1, 100);
+    CHECK(host_out_n == 0 && host_local_n == 0 && kk.clip_action == 1, "C# in Clip Mode: OVERDUB held, no note");
+    frames(20, 5); shot("17_clip_overdub");
+    pad(3, 100); pad(3, 0);
+    CHECK(out_count(USB, 0x9F, 52 + 2) == 1 && out_count(USB, 0x8F, 52 + 2) == 1 && out_count(USB, 0x9F, 38) == 0, "OVERDUB + pad 3 -> note 54");
+    host_clear(); key(3, 100); pad(10, 100); key(1, 0); pad(10, 0);
+    CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "DELETE wins + pad 10 -> note 77, its own off");
+    key(3, 0); CHECK(kk.clip_action == 0, "keys released: launch again");
+    host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 38) == 1, "plain launch after release");
+    host_clear(); key(1, 100); tap(KK_BTN_CHORD); key(1, 0);
+    CHECK(host_out_n == 0 || out_count(USB, 0x90, -1) == 0, "OVERDUB key held across leaving Clip Mode stays silent");
+    key(1, 100); key(1, 0); CHECK(out_count(USB, 0x90, 49) == 1, "outside Clip Mode C# plays its note");
+    tap(KK_BTN_CHORD);
     tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_NORMAL, "CHORD again -> Normal");
 
     /* Move-style: host notes light Pad Scale / Drum pads. */

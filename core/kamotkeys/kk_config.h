@@ -13,7 +13,7 @@
 #include "kk_device.h"
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.49" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.50" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -26,11 +26,14 @@ enum {
 
 /* Clip Mode protocol (channel 16), shared with remote_script/KamoteKeys.
  *  device -> host: Note 36+pad (pad 0..15) on press (vel 127) / Note Off
+ *                  Note 52+pad: the same with OVERDUB held (first black key,
+ *                  KK_CLIP_OVERDUB_KEY): overdub / record into that clip
+ *                  Note 68+pad: with DELETE held (second black key): delete it
  *                  CC 127 = 127: "send me the full clip state" (sync)
  *  host -> device: CC 80+pad = clip state (enum below)
  *                  CC 126 = protocol version: Remote Script is connected */
 enum {
-    KK_CLIP_NOTE_BASE = 36, KK_CLIP_STATE_CC = 80, KK_CLIP_HELLO_CC = 126,
+    KK_CLIP_NOTE_BASE = 36, KK_CLIP_OVERDUB_BASE = 52, KK_CLIP_DELETE_BASE = 68, KK_CLIP_STATE_CC = 80, KK_CLIP_HELLO_CC = 126,
     KK_CLIP_SYNC_CC = 127, KK_CLIP_PROTOCOL = 1
 };
 enum {

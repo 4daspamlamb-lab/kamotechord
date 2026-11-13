@@ -74,6 +74,7 @@ class Slot(object):
         if self.clip: self.clip.fire()
         else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record')
     def stop(self): self.track.log.append('stop')
+    def delete_clip(self): self.clip = None; self.track.log.append('delete')
 
 class Track(object):
     def __init__(self): self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
@@ -107,7 +108,7 @@ class T(unittest.TestCase):
 
     def test_controls_claim_only_protocol_messages(self):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0)
-        self.assertEqual(notes, list(range(36, 52)))
+        self.assertEqual(notes, list(range(36, 84)))      # launch, overdub, delete
         self.assertTrue(all(b.channel in (14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
@@ -151,6 +152,26 @@ class T(unittest.TestCase):
         self.assertEqual(self.song.calls, ['start', 'stop', 'capture', 'undo'])   # redo not possible
         deliver((0xBE, 25, 127)); deliver((0xBE, 25, 0)); self.assertTrue(self.song.session_record)
         deliver((0xBE, 25, 127)); deliver((0xBE, 25, 0)); self.assertFalse(self.song.session_record)
+
+    def tap(self, note): deliver((0x9F, note, 127)); deliver((0x8F, note, 0))
+
+    def test_overdub_clip(self):
+        t = self.song.visible_tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
+        self.tap(52 + 1)                                   # stopped clip: launch + overdub
+        self.assertEqual(t.log, ['fire']); self.assertTrue(self.song.session_record)
+        slot.clip.is_triggered = False; slot.clip.is_playing = True
+        self.tap(52 + 1); self.assertFalse(self.song.session_record)   # again: overdub off
+        self.assertIn('overdub off', self.s.shown[-1])
+
+    def test_overdub_empty_slot_arms_and_records(self):
+        t = self.song.visible_tracks[3]
+        self.tap(52 + 3); self.assertTrue(t.arm); self.assertEqual(t.log, ['record'])
+
+    def test_delete_clip(self):
+        t = self.song.visible_tracks[2]; slot = t.clip_slots[1]; slot.clip = Clip(slot)
+        self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete']); self.assertIsNone(slot.clip)
+        self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete'])       # nothing left: no action
+        self.assertIn('no clip', self.s.shown[-1])
 
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))

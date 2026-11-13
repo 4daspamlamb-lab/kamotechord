@@ -1,5 +1,16 @@
 # Changelog
 
+## KamoteKeys 0.50 (development snapshot)
+
+### Both devices
+- **Clip Mode overdub and delete:** hold the first black key (SMK-37 C#, FM-1 F#) and press a clip to overdub into it (an empty slot: arm and record); hold the second black key (D#, G#) and press a clip to delete it. The screen shows OVERDUB / DELETE. New channel 16 notes 52-67 / 68-83; the Remote Script handles them (update its folder).
+
+### FM-1
+- **Compact chord keys:** MAJ MIN DIM SUS4 7 MAJ7 6 9 LOCK on the lowest nine keys, white and black (F..C#); the playing zone grows to 18 keys (D..G). The chord-zone CC keys are gone.
+- **Buttons match the SMK-37 by position:** FX = ARP, SEL = Sustain, ENV = Pad Scale, LFO = Clip, EDIT = Stop, GLO = Bluetooth (hold: diagnostics), HOME = settings / back, ARP = Drum, SEQ = Key Scale, PLAY = Start, REC = Session Record (record / overdub).
+- **HOME combinations:** HOME + REC = Capture MIDI, HOME + OCT- = Undo, HOME + OCT+ = Redo.
+- **SAVE held:** K1 velocity, K2 scale, K3 root (the SMK-37 faders). Without SAVE the main-screen knobs work as on the SMK-37 (tempo, patch, ARP division, gate, direction, swing).
+
 ## KamoteKeys 0.49 (development snapshot)
 
 - **One codebase for the SMK-37 Pro, SMK-37 Elite and FM-1.** Shared KamoteKeys code in `core/`; SMK37 OPEN in `devices/smk37`, FM1 OPEN in `devices/fm1`, each with its device glue and a `kk_device.h` describing the hardware. `build.bat smk37-pro | smk37-elite | fm1 [--package]` copies the core into the device tree and runs its own SDK build. `tools/test-all.sh` runs every test for every device.

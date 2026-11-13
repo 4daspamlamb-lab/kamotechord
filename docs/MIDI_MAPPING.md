@@ -104,6 +104,8 @@ Every note has an owner count per channel. If two sources play the same note (fo
 | Pad | 1–8 | 9–16 |
 |---|---|---|
 | Note | 36–43 (Track 1–8, Clip 1) | 44–51 (Track 1–8, Clip 2) |
+| with OVERDUB held (1st black key) | 52–59 | 60–67 |
+| with DELETE held (2nd black key) | 68–75 | 76–83 |
 
 Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamoteKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
 
