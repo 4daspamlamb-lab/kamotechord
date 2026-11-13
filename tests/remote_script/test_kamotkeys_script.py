@@ -86,9 +86,17 @@ class Scene(object):
 class View(object):
     selected_track = None; selected_scene = None; highlighted_clip_slot = None
 
+class TrackProxy(object):
+    """Like Live: every access returns a new object for the same track."""
+    def __init__(self, track): object.__setattr__(self, '_t', track)
+    def __getattr__(self, name): return getattr(self._t, name)
+    def __setattr__(self, name, value): setattr(self._t, name, value)
+
 class Song(object):
+    @property
+    def visible_tracks(self): return [TrackProxy(t) for t in self._tracks]
     def __init__(self, n):
-        self.visible_tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
+        self._tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
         self.scenes = [Scene(self) for _ in range(4)]; self.view = View(); self.view.selected_scene = self.scenes[0]
     is_playing = False; metronome = False; tempo = 120.0
     def continue_playing(self): self.calls.append('continue'); self.is_playing = True
@@ -124,7 +132,7 @@ class T(unittest.TestCase):
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
     def test_launch_stop_switch(self):
-        t = self.song.visible_tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0]); t.clip_slots[1].clip = Clip(t.clip_slots[1])
+        t = self.song._tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0]); t.clip_slots[1].clip = Clip(t.clip_slots[1])
         self.press(2); self.assertEqual(t.log, ['fire'])
         self.s.update_display(); self.assertEqual(self.state(2), 3)   # queued
         t.clip_slots[0].clip.is_triggered = False; t.clip_slots[0].clip.is_playing = True
@@ -134,13 +142,13 @@ class T(unittest.TestCase):
 
     def test_status_bar_messages(self):
         self.assertIn('KamoteKeys Remote Script loaded', self.s.shown)
-        t = self.song.visible_tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
+        t = self.song._tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
         self.press(2); self.assertTrue(self.s.shown[-1].endswith('launch'), self.s.shown[-1])
         self.press(0); self.assertIn('not armed', self.s.shown[-1])
         self.press(7); self.assertIn('does not exist', self.s.shown[-1])
 
     def test_record_empty_armed_only(self):
-        t = self.song.visible_tracks[0]
+        t = self.song._tracks[0]
         self.press(0); self.assertEqual(t.log, [])                     # unarmed empty: nothing
         t.arm = True; self.s.update_display(); self.assertEqual(self.state(0), 6)
         self.press(0); self.assertEqual(t.log, ['record'])
@@ -154,7 +162,7 @@ class T(unittest.TestCase):
         self.s.update_display(); self.assertEqual(self.state(7), 0)
 
     def test_one_action_per_press(self):
-        t = self.song.visible_tracks[1]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
+        t = self.song._tracks[1]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
         deliver((0x9F, 37, 127)); deliver((0x8F, 37, 0))
         self.assertEqual(t.log, ['fire'])
 
@@ -167,7 +175,7 @@ class T(unittest.TestCase):
     def tap(self, note): deliver((0x9F, note, 127)); deliver((0x8F, note, 0))
 
     def test_overdub_clip(self):
-        t = self.song.visible_tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
+        t = self.song._tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
         self.tap(52 + 1)                                   # stopped clip: launch + overdub
         self.assertEqual(t.log, ['fire']); self.assertTrue(self.song.session_record)
         slot.clip.is_triggered = False; slot.clip.is_playing = True
@@ -175,7 +183,7 @@ class T(unittest.TestCase):
         self.assertIn('overdub off', self.s.shown[-1])
 
     def test_plain_press_ends_overdub(self):
-        t = self.song.visible_tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
+        t = self.song._tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
         self.tap(52 + 1); slot.clip.is_triggered = False; slot.clip.is_playing = True
         self.assertTrue(self.song.session_record)
         self.press(1)                                     # plain launch note
@@ -184,11 +192,11 @@ class T(unittest.TestCase):
         self.press(1); self.assertEqual(t.log[-1], 'stop')   # next plain press stops as before
 
     def test_overdub_empty_slot_arms_and_records(self):
-        t = self.song.visible_tracks[3]
+        t = self.song._tracks[3]
         self.tap(52 + 3); self.assertTrue(t.arm); self.assertEqual(t.log, ['record'])
 
     def test_delete_clip(self):
-        t = self.song.visible_tracks[2]; slot = t.clip_slots[1]; slot.clip = Clip(slot)
+        t = self.song._tracks[2]; slot = t.clip_slots[1]; slot.clip = Clip(slot)
         self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete']); self.assertIsNone(slot.clip)
         self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete'])       # nothing left: no action
         self.assertIn('no clip', self.s.shown[-1])
@@ -203,15 +211,15 @@ class T(unittest.TestCase):
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 
     def test_select_arms_only_that_track(self):
-        a, b = self.song.visible_tracks[0], self.song.visible_tracks[2]; a.arm = True
+        a, b = self.song._tracks[0], self.song._tracks[2]; a.arm = True
         self.tap(84 + 8 + 2)                               # select: track 3, scene 2
         v = self.song.view
-        self.assertIs(v.selected_track, b); self.assertIs(v.selected_scene, self.song.scenes[1])
+        self.assertIs(v.selected_track._t, b); self.assertIs(v.selected_scene, self.song.scenes[1])
         self.assertIs(v.highlighted_clip_slot, b.clip_slots[1]); self.assertTrue(b.arm); self.assertFalse(a.arm)
         self.assertIn('armed', self.s.shown[-1])
 
     def test_scene_scroll_and_launch(self):
-        t = self.song.visible_tracks[0]; t.clip_slots[2].clip = Clip(t.clip_slots[2])
+        t = self.song._tracks[0]; t.clip_slots[2].clip = Clip(t.clip_slots[2])
         self.s.sent.clear(); deliver((0xBE, 28, 127)); deliver((0xBE, 28, 0))   # scene down
         self.assertIn((0xBF, 104, 1), self.s.sent); self.assertIs(self.song.view.selected_scene, self.song.scenes[1])
         self.press(8)                                       # pad 9 = track 1, scene 3 now
@@ -234,7 +242,7 @@ class T(unittest.TestCase):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])
 
     def test_mouse_changes_are_reflected(self):
-        t = self.song.visible_tracks[4]; t.clip_slots[1].clip = Clip(t.clip_slots[1]); t.clip_slots[1].clip.is_playing = True
+        t = self.song._tracks[4]; t.clip_slots[1].clip = Clip(t.clip_slots[1]); t.clip_slots[1].clip.is_playing = True
         self.s.update_display(); self.assertEqual(self.state(12), 2)
 
 if __name__ == '__main__':

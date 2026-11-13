@@ -205,11 +205,16 @@ class KamoteKeys(ControlSurface):
             view.highlighted_clip_slot = slot
         except Exception:
             pass
+        # Compare by position: Live hands out a new Python object for a track
+        # on every access, so identity ('is') never matches.
         armed = False
-        for other in song.visible_tracks:
-            if getattr(other, 'can_be_armed', False):
-                other.arm = other is track
-                armed = armed or other is track
+        for index, other in enumerate(list(song.visible_tracks)):
+            if not getattr(other, 'can_be_armed', False):
+                continue
+            mine = index == pad % TRACKS
+            if bool(other.arm) != mine:
+                other.arm = mine
+            armed = armed or mine
         self._status('KamoteKeys: selected %s %d / scene %d%s' % (
             track.name, pad % TRACKS + 1, self._scene + pad // TRACKS + 1,
             ' (armed: press Session Record to record)' if armed else ' (track cannot record)'))
