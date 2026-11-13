@@ -518,8 +518,17 @@ static void long_presses(uint32_t now)
 
 /* ------------------------------------------------------- physical events */
 static uint8_t pedal_down, wheel_sent[2] = {64, 0};
+unsigned kk_pad_curve(unsigned v)
+{
+    static const int8_t k[5] = {-50, -25, 0, 50, 100};
+    unsigned s = kk.pad_sensitivity >= 1 && kk.pad_sensitivity <= 5 ? kk.pad_sensitivity : 3;
+    if (v > 127) v = 127;
+    int out = (int)v + k[s - 1] * (int)v * (127 - (int)v) / (127 * 100);
+    return out < 1 ? 1 : out > 127 ? 127 : (unsigned)out;
+}
 static void source_press(unsigned id, unsigned velocity)
 {
+    if (id >= PAD_SOURCE) velocity = kk_pad_curve(velocity);
     struct source *s = &sources[id];
     if (s->held) { disengage(s); }
     s->held = 1; s->velocity = (uint8_t)velocity; s->order = ++press_order;
@@ -645,20 +654,21 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     d[3] = kk.arp_on; d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
     d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = kk.arp.octaves; d[10] = kk.repeat_division;
     d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)kk_midi_local();
-    d[14] = kk.rgb_timing;
+    d[14] = kk.rgb_timing; d[15] = kk.pad_sensitivity;
 }
 int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
 {
     unsigned bpm = d[1] | (unsigned)d[2] << 8;
     if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || d[3] > 1 || d[4] >= KK_ARP_MODES ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
-        d[9] < 1 || d[9] > 4 || d[10] >= KK_DIVS || d[11] > 127 || d[12] >= KK_PORTS_MODES || d[13] > 1 || d[14] >= SMK37_RGB_TIMINGS)
+        d[9] < 1 || d[9] > 4 || d[10] >= KK_DIVS || d[11] > 127 || d[12] >= KK_PORTS_MODES || d[13] > 1 || d[14] >= SMK37_RGB_TIMINGS || d[15] > 5)
         return -1;
     kk.bpm = (uint16_t)bpm;
     kk.arp = (struct kk_arp_settings){d[4], d[5], d[6], d[7], d[8], d[9]};
     kk.repeat_division = d[10]; kk.program = d[11];
     kk_midi_set_ports(d[12]); kk_midi_set_local(d[13]);
     kk.rgb_timing = d[14]; smk37_rgb_timing(kk.rgb_timing);
+    kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
     if (kk.arp_on != d[3]) { kk.arp_on = d[3]; reroute_all(); }
     kk_perform_guard();
     ++kk.edit_revision;
@@ -698,7 +708,7 @@ void kk_perform_init(void)
 {
     memset(&kk, 0, sizeof kk);
     memset(sources, 0, sizeof sources);
-    kk.bpm = 120;
+    kk.bpm = 120; kk.pad_sensitivity = 3;
     /* Octaves are never restored from flash: keys start at -2, pads at 0. */
     kk.octave = KK_KEY_OCTAVE_DEFAULT; kk.pad_octave = KK_PAD_OCTAVE_DEFAULT;
     kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, KK_DIR_UP, KK_DIV_8, 75, 0, 1};

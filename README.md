@@ -1,4 +1,4 @@
-# KamotKeys 0.43 for M-VAVE SMK-37 Pro / Elite
+# KamotKeys 0.44 for M-VAVE SMK-37 Pro / Elite
 
 KamotKeys is a performance firmware for the M-VAVE SMK-37 Pro and SMK-37 Elite, built on **SMK37 OPEN V01**. It keeps SMK37 OPEN's hardware drivers, native USB MIDI, Bluetooth LE MIDI, Bluetooth audio, flash storage and the official browser updater. It replaces the sequencer/editor application with KamotKeys: chord pads, a scale-remapped keyboard, 16-pad scale and drum modes, ARP and Note Repeat, four dedicated faders, Ableton Live transport buttons, an animated piano display, RGB pad lighting and an Aurora boot.
 
@@ -161,7 +161,7 @@ Encoders are numbered E1–E8, left to right; SMK37 OPEN calls them K1–K4, SEL
 | E1 | BPM (30–300) | Mode | Patch | Bluetooth on/off |
 | E2 | Patch (DX7 1–128) | Direction | Internal synth on/off | BT audio on/off |
 | E3 | ARP division | Division | MIDI OUT ports | BLE role DEVICE/HOST |
-| E4 | ARP gate | Gate | | Clock INT/MIDI |
+| E4 | ARP gate | Gate | Pad sensitivity 1–5 | Clock INT/MIDI |
 | E5 | ARP direction | Swing | | Host list: device |
 | E6 | ARP swing | Octaves | | |
 | E7 | Note Repeat division | | | Action |
@@ -246,7 +246,7 @@ Note Offs always go to every port, so a port change between Note On and Note Off
 
 ## Saved settings
 
-Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, ARP on/off, mode, direction, division, gate, swing, octaves, Note Repeat division, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Scale, root, velocity and brightness come from the physical faders. Bluetooth settings are stored by SMK37 OPEN as before.
+Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, ARP on/off, mode, direction, division, gate, swing, octaves, Note Repeat division, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing, pad sensitivity**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Scale, root, velocity and brightness come from the physical faders. Bluetooth settings are stored by SMK37 OPEN as before.
 
 ## Build
 

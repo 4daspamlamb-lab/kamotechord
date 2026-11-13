@@ -1,5 +1,9 @@
 # Changelog
 
+## KamotKeys 0.44 (development snapshot)
+
+- **Pad sensitivity** (Patch page, E4, saved): 1 = harder ... 3 = linear (as before) ... 5 = light hits give high velocity. A velocity curve on the pads only; keys are unaffected and the pad trigger threshold (factory calibration) is unchanged. Fader 1 above 10 % still overrides velocity.
+
 ## KamotKeys 0.43 (development snapshot)
 
 - **Spare pads 5-8 and 14-16 are mappable buttons:** CC 102-108 on channel 15 (127 press, 0 release) instead of notes 84-90. They light while held, never use ARP or Note Repeat, and are released cleanly on mode changes.

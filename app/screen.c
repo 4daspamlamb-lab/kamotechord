@@ -440,8 +440,10 @@ static void draw_patch(void)
     row(3, "E2 INTERNAL SYNTH", kk_midi_local() ? "ON" : "OFF", 0);
     static const char *const ports[KK_PORTS_MODES] = {"AUTO", "ALL", "USB", "BLE"};
     row(4, "E3 MIDI OUT", ports[kk_midi_ports_mode()], 0);
-    text(12, 186, "E1 PATCH   AUTO = USB WHEN CONNECTED,", 1, DIM);
-    text(12, 198, "ELSE BLE (NO DUPLICATES IN ABLETON)", 1, DIM);
+    static const char *const curves[5] = {"1 HARD", "2", "3 NORMAL", "4", "5 SOFT"};
+    row(5, "E4 PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1], 0);
+    text(12, 198, "E1 PATCH   MIDI OUT AUTO = USB WHEN", 1, DIM);
+    text(12, 208, "CONNECTED, ELSE BLE", 1, DIM);
     text(12, 222, "PATCH: BACK", 1, FAINT);
 }
 static void draw_arp(void)
@@ -673,7 +675,7 @@ static void signatures(void)
     wanted[W_STATUS] = h;
     /* Page body: hash everything shown on the open page. */
     h = mixsig(base, kk.page); h = mixsig(h, kk.program); h = strsig(h, patch_name);
-    h = mixsig(h, kk_midi_local() * 8U + kk_midi_ports_mode());
+    h = mixsig(h, kk_midi_local() * 8U + kk_midi_ports_mode() + kk.pad_sensitivity * 64U);
     h = mixsig(h, kk.arp.mode | kk.arp.direction << 2 | kk.arp.division << 5 | (uint32_t)kk.arp.gate << 8 |
                   (uint32_t)kk.arp.swing << 16 | (uint32_t)kk.arp.octaves << 24);
     h = mixsig(h, kk.arp_on * 2U + kk.repeat_on); h = mixsig(h, kk.repeat_division); h = mixsig(h, kk.bpm);
@@ -811,7 +813,8 @@ static void page_input(void)
         if ((d = take(0))) kk_edit_program(d);
         if ((d = take(1))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
         if ((d = take(2))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
-        for (unsigned i = 3; i < 7; ++i) (void)take(i);
+        if ((d = take(3))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, 5); kk_settings_touch(); }
+        for (unsigned i = 4; i < 7; ++i) (void)take(i);
         break;
     case KK_PAGE_ARP:
         for (unsigned i = 0; i < 6; ++i) if ((d = take(i))) kk_edit_arp(i, d);

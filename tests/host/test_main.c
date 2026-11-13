@@ -436,6 +436,31 @@ static void test_arp_keys_and_persistence(void)
     saved[14] = 0; CHECK(kamotkeys_settings_apply(saved) == 0, "older records (byte 14 = 0) still load");
     saved[14] = 99; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid timing rejected");
     saved[14] = 0;
+    /* 0.44: pad sensitivity (Patch page E4), saved; older records = 3. */
+    CHECK(kk.pad_sensitivity == 3 && kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "default linear");
+    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 3, 2); frames(3, 2); tap(KK_BTN_PATCH);
+    CHECK(kk.pad_sensitivity == 5, "E4 raises sensitivity (%u)", kk.pad_sensitivity);
+    CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
+    {
+        unsigned mono = 1;
+        for (unsigned lvl = 1; lvl <= 5; ++lvl) {
+            kk.pad_sensitivity = (uint8_t)lvl;
+            for (unsigned v = 2; v <= 127; ++v) mono &= kk_pad_curve(v) >= kk_pad_curve(v - 1);
+        }
+        kk.pad_sensitivity = 5;
+        CHECK(mono, "every curve is monotonic");
+    }
+    if (kk.arp_on) tap(KK_BTN_ARP);
+    frames(100, 3);
+    host_clear(); tap(KK_BTN_FX); pad(1, 40); pad(1, 0); tap(KK_BTN_FX);
+    CHECK(last_out(USB, ON10, 0) >> 8 == (int)kk_pad_curve(40), "pad velocity follows the curve (%d)", last_out(USB, ON10, 0) >> 8);
+    host_clear(); key(0, 40); key(0, 0);
+    CHECK(last_out(USB, ON1, 0) >> 8 == 40, "keys are not affected");
+    kamotkeys_settings_read(saved); groove_screen_init();
+    CHECK(kamotkeys_settings_apply(saved) == 0 && kk.pad_sensitivity == 5, "pad sensitivity restored after restart");
+    saved[15] = 0; CHECK(kamotkeys_settings_apply(saved) == 0 && kk.pad_sensitivity == 3, "pre-0.44 record -> linear");
+    saved[15] = 9; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid sensitivity rejected");
+    saved[15] = 3;
     saved[1] = 5; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid record rejected");
 }
 

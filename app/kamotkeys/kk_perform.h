@@ -25,6 +25,7 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
     uint8_t rgb_timing;                      /* pad LED timing preset (saved)  */
+    uint8_t pad_sensitivity;                 /* pad velocity curve 1..5, 3 = linear (saved) */
     struct kk_scale_ctx scale;
     uint16_t bpm;
     uint8_t arp_on, repeat_on, repeat_division, program;
@@ -60,6 +61,9 @@ const char *kk_mode_name(unsigned mode);
 /* Velocity after the Fader 1 override (natural = physical velocity). */
 unsigned kk_velocity(unsigned natural);
 unsigned kk_velocity_override(void);   /* 0 = natural, else 1..127 */
+/* Pad velocity curve: 1 = harder (needs more force) .. 3 = linear .. 5 =
+ * most sensitive (light hits give high velocity). Endpoints are kept. */
+unsigned kk_pad_curve(unsigned velocity);
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);
 unsigned kk_pad_lit(unsigned pad);     /* held, or its note is sounding */
