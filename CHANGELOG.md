@@ -6,6 +6,7 @@
 - Hardware report (0.40): colours correct, but pressing chord pads made other pads flicker, pads 1-4 and 9-12 were miscoloured and pad 1 blinked green, while spare pads were fine. Those pads sit at the start and end of the LED chain.
 - Cause: the reset gap before each pad frame was ~45 us (SMK37 OPEN's 36 zero bytes); these LEDs need ~280 us. A stray pulse when SPI1 is switched from the LCD to the pads therefore became an extra leading bit, shifting the frame (first LED's green MSB = pad 1 green; low bits spilling into the next channel's top bit = "crazy" colours, hidden by the multiple-of-4 rounding).
 - Fix: clock a zero byte with the LCD deselected before switching SPI1 to the pads, and lead every frame with 320 zero bytes (~400 us). Multiple-of-4 rounding stays as a safety margin.
+- **Verified on hardware:** pad behaviour correct on an SMK-37 Pro.
 
 ## KamotKeys 0.40 (clean rebuild)
 

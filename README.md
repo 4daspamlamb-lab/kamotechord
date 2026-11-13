@@ -283,7 +283,7 @@ PC-side tests (no toolchain needed): `tests/host/run.sh`; see [docs/TESTING.md](
 | Flashing via the workbench (Force flash from stock V16; Start update afterwards) | ✅ on an SMK-37 Pro |
 | Music logic, MIDI ownership (no stuck notes), routing | ✅ PC tests and fuzz; ✅ engine integration |
 | LCD screens, font, boot | ✅ on hardware |
-| **Pad LEDs** | ✅ data path verified (BIT TEST, test bars). Calm with multiple-of-4 values (0.38); 0.40 combines that with the 160 peak; to be confirmed |
+| **Pad LEDs** | ✅ **verified on an SMK-37 Pro (0.41):** steady, correct colours in every mode after the full-length LED reset fix |
 | **Clip Mode in Live** | ⚠️ the keyboard sends the clip notes and receives clip states; launching in Live not yet confirmed. The Remote Script reports every pad in Live's status bar |
 | Remote Script inside Ableton | loads and sends clip states (pads show green/blinking); actions not yet confirmed |
 | Button map, faders, octave, LOCK | used on hardware; no issues reported |
