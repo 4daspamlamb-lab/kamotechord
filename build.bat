@@ -13,5 +13,10 @@ exit /b 2
 :build
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\Sync-Core.ps1" -Device %DEV%
 if errorlevel 1 exit /b %errorlevel%
-call "%~dp0devices\%DEV%\build.bat" %MODEL% %2
-exit /b %errorlevel%
+rem Run the device build from its own folder: a .bat called by a quoted full
+rem path can see the wrong %~dp0 (cmd quirk), so change directory first.
+pushd "%~dp0devices\%DEV%" || exit /b 1
+call build.bat %MODEL% %2
+set "RESULT=%errorlevel%"
+popd
+exit /b %RESULT%
