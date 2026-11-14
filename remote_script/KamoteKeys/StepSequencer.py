@@ -30,6 +30,8 @@ import math
 
 import Live
 
+from .CopyPaste import CopyPaste
+
 STEP_CHANNEL = 13                      # MIDI channel 14
 PAD_NOTE = 36
 PADS = 16
@@ -92,7 +94,8 @@ class StepSequencer(object):
         self._info_sent = {}
         self._armed = None             # track this mode armed (disarmed again on exit)
         self._used = set()             # COPY / PASTE / CLEAR held and already used with another key
-        self._clipboard = None         # (lane pitch or None, [(pitch, offset, duration, velocity, mute)])
+        self._clipboard = None         # {'kind': step / sound / bar, 'notes': [(pitch, offset, ...)], 'a', 'b'}
+        self._cp = CopyPaste()
         self._prefs = {}               # track -> [key-zone octave, scale keys] (0.62)
         self._chord = []               # pitches written by a step (a locked chord), root first (0.63)
         self._zone_held, self._zone_pick = set(), []   # key-zone notes arriving as one pick
@@ -160,6 +163,7 @@ class StepSequencer(object):
             self._disarm()
             self._unbind()
             self._held, self._fn, self._consumed, self._used = [], set(), set(), set()
+            self._cp.reset()
             self._log('Step Mode ended')
 
     def _unbind(self):
@@ -528,6 +532,13 @@ class StepSequencer(object):
             if pressed:
                 self._select_drum(self._drum_pad_note(index))
             return
+        if pressed and self._cp.target():
+            if self._bars_view:
+                self._target('bar', index + 1)               # the bar view stays open for more
+            else:
+                self._target('step', index)
+            self.update()
+            return
         if pressed:
             if F_LENGTH in self._fn:
                 self._set_bars(index + 1)                       # 0.62: LENGTH + pad n = n bars
@@ -572,20 +583,23 @@ class StepSequencer(object):
             return
         if not pressed:
             self._fn.discard(note)
-            if note not in self._used:          # plain taps act on release
-                if note == F_CLEAR:
-                    self._clear_page()
-                elif note == F_COPY:
-                    self._copy(None)
-                elif note == F_PASTE:
-                    self._paste(None)
+            if note == F_CLEAR and note not in self._used:   # a plain tap acts on release
+                self._clear_page()
+            elif note == F_COPY:
+                self._cp.copy_key(False); self._send_clipboard()
+            elif note == F_PASTE:
+                self._cp.paste_key(False); self._send_clipboard()
             self._used.discard(note)
             self._dirty = True
             self.update()
             return
         self._fn.add(note)
         self._used.discard(note)
-        if note in (F_PAGE_PREV, F_PAGE_NEXT):
+        if note == F_COPY:
+            self._cp.copy_key(True); self._send_clipboard()
+        elif note == F_PASTE:
+            self._cp.paste_key(True); self._send_clipboard()
+        elif note in (F_PAGE_PREV, F_PAGE_NEXT):
             self._page_key(-1 if note == F_PAGE_PREV else 1)
         elif note == F_DOUBLE:
             self._double()
@@ -737,33 +751,10 @@ class StepSequencer(object):
             self._log('cannot clear: %s' % error)
         self._dirty = True
 
-    def _copy_page(self, target):
-        """Copy every note of the shown page (all drums) onto another page."""
-        if self._clip is None or target < 0 or target == self._page:
-            return
-        span, start = self._span(), self._start()
-        src, dst = start + self._page * span, start + target * span
-        try:
-            notes = list(self._clip.get_notes_extended(0, 128, src - EPS, span))
-            if dst + span > self._clip.loop_end + EPS:
-                self._set_length(dst + span - start)
-            self._clip.remove_notes_extended(0, 128, dst - EPS, span)
-            if notes:
-                self._clip.add_new_notes(tuple(self._spec(n.pitch, n.start_time - src + dst, n.duration, n.velocity, n.mute)
-                                               for n in notes))
-            self._say('copied page %d to %d' % (self._page + 1, target + 1))
-            self._page = target
-        except Exception as error:
-            self._log('cannot copy the page: %s' % error)
-        self._dirty = True
-
     def _page_key(self, delta):
         if F_DRUM in self._fn:
             self._bank = max(0, min(112, self._bank + 16 * delta))
             self._say('drum bank %d-%d' % (self._bank, self._bank + 15))
-        elif F_COPY in self._fn:
-            self._used.add(F_COPY)
-            self._copy_page(self._page + delta)
         else:
             limit = self._pages() - 1 + (F_LENGTH in self._fn)   # one page past the end while LENGTH is held
             self._page = max(0, min(limit, self._page + delta))
@@ -793,12 +784,8 @@ class StepSequencer(object):
         if F_CLEAR in self._fn:
             self._used.add(F_CLEAR)
             self._clear_drum(note)
-        elif F_COPY in self._fn:
-            self._used.add(F_COPY)
-            self._copy(note)
-        elif F_PASTE in self._fn:
-            self._used.add(F_PASTE)
-            self._paste(note)
+        elif self._cp.target():
+            self._target('sound', note)
         else:
             self._select_drum(note)
             self._chord = list(chord) if chord and len(chord) > 1 else []
@@ -812,49 +799,65 @@ class StepSequencer(object):
     def _duration(self):
         return self._note_len * self._bar() / 16.0
 
-    # Copy / paste (0.61, like Move's Copy button): COPY copies the shown page
-    # (all drums) or, with a drum key, that drum's lane on the page; PASTE
-    # puts it on the shown page (a lane goes to the drum key held, else to the
-    # active drum).
-    def _copy(self, lane):
-        if self._clip is None:
-            return
-        span, src = self._span(), self._step_time(0)
-        try:
-            if lane is None:
-                notes = self._clip.get_notes_extended(0, 128, src - EPS, span)
-            else:
-                notes = self._clip.get_notes_extended(lane, 1, src - EPS, span)
-            self._clipboard = (lane, [(n.pitch, n.start_time - src, n.duration, n.velocity, n.mute) for n in notes])
-            self._say('copied %s of page %d' % ('all drums' if lane is None else 'drum %d' % lane, self._page + 1))
-        except Exception as error:
-            self._log('cannot copy: %s' % error)
+    # Copy / paste (0.65): COPY tap or hold, then a step pad (that step, all
+    # sounds), a key (that sound on the shown page) or, in the bar view, a bar.
+    # PASTE tap = the next target, PASTE held = every target pressed.
+    def _grab(self, start, length, pitch=None):
+        notes = self._clip.get_notes_extended(0 if pitch is None else pitch, 128 if pitch is None else 1, start - EPS, length)
+        return [(n.pitch, n.start_time - start, n.duration, n.velocity, n.mute) for n in notes]
 
-    def _paste(self, target):
-        if self._clipboard is None:
-            self._say('nothing copied yet')
+    def _put(self, start, length, notes, pitch=None):
+        if start + length > self._clip.loop_end + EPS:
+            self._set_length(start + length - self._start())
+        self._clip.remove_notes_extended(0 if pitch is None else pitch, 128 if pitch is None else 1, start - EPS, length)
+        specs = [self._spec(p if pitch is None else pitch, start + o, d, v, m) for p, o, d, v, m in notes]
+        if specs:
+            self._clip.add_new_notes(tuple(specs))
+
+    def _target(self, kind, index):
+        """kind: 'step' (pad index), 'bar' (bar number) or 'sound' (pitch)."""
+        action = self._cp.target()
+        if self._clip is None and not self._ensure_clip():
             return
-        if not self._ensure_clip():
-            return
-        lane, notes = self._clipboard
-        span, dst = self._span(), self._step_time(0)
         try:
-            if lane is None and target is None:
-                self._clip.remove_notes_extended(0, 128, dst - EPS, span)
-                specs = [self._spec(p, dst + o, d, v, m) for p, o, d, v, m in notes]
+            if action == 'copy':
+                if kind == 'step':
+                    self._clipboard = {'kind': 'step', 'notes': self._grab(self._step_time(index), self._step()),
+                                       'a': self._page * PADS + index + 1, 'b': self._page + 1}
+                elif kind == 'bar':
+                    self._clipboard = {'kind': 'bar', 'notes': self._grab(self._start() + (index - 1) * self._bar(), self._bar()),
+                                       'a': index, 'b': 0}
+                else:
+                    self._clipboard = {'kind': 'sound', 'notes': self._grab(self._step_time(0), self._span(), index),
+                                       'a': index, 'b': self._page + 1}
+                self._say('copied %s %d' % (self._clipboard['kind'], self._clipboard['a']))
             else:
-                pitch = target if target is not None else (self._pitch if lane is not None else None)
-                source = [n for n in notes if lane is not None or n[0] == self._pitch]
-                self._clip.remove_notes_extended(pitch, 1, dst - EPS, span)
-                specs = [self._spec(pitch, dst + o, d, v, m) for p, o, d, v, m in source]
-            if dst + span > self._clip.loop_end + EPS:
-                self._set_length(dst + span - self._start())
-            if specs:
-                self._clip.add_new_notes(tuple(specs))
-            self._say('pasted onto page %d' % (self._page + 1))
+                board = self._clipboard
+                if board is None:
+                    self._say('nothing copied yet')
+                elif board['kind'] != kind:
+                    self._say({'step': 'copied a step: press a step pad to paste',
+                               'bar': 'copied a bar: paste in the bar view (BARS)',
+                               'sound': 'copied a sound: press a key to paste'}[board['kind']])
+                    return
+                elif kind == 'step':
+                    self._put(self._step_time(index), self._step(), board['notes'])
+                elif kind == 'bar':
+                    self._put(self._start() + (index - 1) * self._bar(), self._bar(), board['notes'])
+                else:
+                    self._put(self._step_time(0), self._span(), board['notes'], index)
+                if board is not None:
+                    self._say('pasted')
+            self._cp.done(action)
         except Exception as error:
-            self._log('cannot paste: %s' % error)
+            self._log('cannot %s: %s' % (action, error))
         self._dirty = True
+        self._send_clipboard()
+
+    def _send_clipboard(self):
+        board, kinds = self._clipboard, {'step': 2, 'sound': 3, 'bar': 4}
+        kind = kinds[board['kind']] if board else 0
+        self._surface._send_clipboard(kind | self._cp.flags(), board['a'] if board else 0, board['b'] if board else 0)
 
     # ---------------------------------------------------- bars and repeats
     def _set_bars(self, bars):

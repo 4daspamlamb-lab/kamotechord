@@ -35,6 +35,7 @@ from _Framework.ControlSurface import ControlSurface
 from _Framework.ButtonElement import ButtonElement
 from _Framework.InputControlElement import MIDI_NOTE_TYPE, MIDI_CC_TYPE
 
+from .CopyPaste import CopyPaste
 from .StepSequencer import StepSequencer, STEP_CHANNEL, PAD_NOTE as STEP_PAD_NOTE, PADS as STEP_PADS, \
     FUNCTION_NOTES as STEP_FUNCTION_NOTES, MODE_CC as STEP_MODE_CC, SELECT_CHANNEL as STEP_SELECT_CHANNEL
 
@@ -46,6 +47,9 @@ OVERDUB_BASE = NOTE_BASE + 16
 DELETE_BASE = NOTE_BASE + 32
 SELECT_BASE = NOTE_BASE + 48
 SCENE_CC = 104
+COPY_NOTE, PASTE_NOTE = 100, 101           # 0.65: Clip Mode COPY / PASTE keys
+COPY_KIND_CC, COPY_A_CC, COPY_B_CC = 106, 107, 108   # clipboard shown on the keyboard's screen
+COPY_CLIP = 1
 HIGHLIGHT_CC = 105
 STATE_CC = 80
 HELLO_CC = 126
@@ -73,6 +77,9 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._ticks = 0
         self._received = False
+        self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
+        self._clip_copy = None           # (track index, scene index) of the copied clip
+        self._board_sent = None
         self._step = StepSequencer(self)
         # Standard _Framework controls (as in Ableton's own controller
         # scripts): Live registers them and delivers their messages here.
@@ -83,6 +90,11 @@ class KamoteKeys(ControlSurface):
                     button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, base + pad)
                     button.add_value_listener(self._pad_value, identify_sender=True)
                     self._pads.append(button)
+            self._copy_keys = []
+            for note in (COPY_NOTE, PASTE_NOTE):
+                button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, note)
+                button.add_value_listener(self._copy_key_value, identify_sender=True)
+                self._copy_keys.append(button)
             self._sync = ButtonElement(True, MIDI_CC_TYPE, CLIP_CHANNEL, SYNC_CC)
             self._sync.add_value_listener(self._sync_value)
             # Step Mode (channel 14): step pads, function keys, mode on/off.
@@ -119,6 +131,9 @@ class KamoteKeys(ControlSurface):
         if not value:                    # note on: one action per physical press
             return
         note = sender.message_identifier()
+        if self._cp.target():
+            self._clip_target((note - NOTE_BASE) % (TRACKS * SCENES))   # COPY / PASTE armed: this clip
+            return
         if note >= SELECT_BASE:
             self._select(note - SELECT_BASE)
         elif note >= DELETE_BASE:
@@ -127,6 +142,56 @@ class KamoteKeys(ControlSurface):
             self._overdub(note - OVERDUB_BASE)
         else:
             self._launch(note - NOTE_BASE)
+
+    def _copy_key_value(self, value, sender):
+        self._first_message()
+        if sender.message_identifier() == COPY_NOTE:
+            self._cp.copy_key(bool(value))
+        else:
+            self._cp.paste_key(bool(value))
+        self._refresh_clipboard()
+
+    def _clip_target(self, pad):
+        """Copy this clip (replacing the clipboard) or paste the copied clip here."""
+        action = self._cp.target()
+        track, slot = self._slot(pad)
+        if slot is None:
+            self._status('KamoteKeys: no slot there')
+            return
+        if action == 'copy':
+            if not slot.has_clip:
+                self._status('KamoteKeys: empty slot, nothing to copy')
+                return
+            self._clip_copy = (pad % TRACKS, self._scene + pad // TRACKS)
+            self._status('KamoteKeys: copied %s scene %d' % (track.name, self._clip_copy[1] + 1))
+        else:
+            if self._clip_copy is None:
+                self._status('KamoteKeys: nothing copied yet')
+            else:
+                try:
+                    source = list(list(self.song().visible_tracks)[self._clip_copy[0]].clip_slots)[self._clip_copy[1]]
+                    if (self._clip_copy[0], self._clip_copy[1]) != (pad % TRACKS, self._scene + pad // TRACKS):
+                        source.duplicate_clip_to(slot)
+                        self._status('KamoteKeys: pasted into %s scene %d' % (track.name, self._scene + pad // TRACKS + 1))
+                except Exception as error:
+                    self._status('KamoteKeys: cannot paste there (%s)' % error)
+        self._cp.done(action)
+        self._refresh_clipboard()
+
+    def _send_clipboard(self, kind, a, b):
+        board = (kind, min(127, a), min(127, b))
+        if board != self._board_sent:
+            self._board_sent = board
+            for cc, value in zip((COPY_KIND_CC, COPY_A_CC, COPY_B_CC), board):
+                self._send_midi((0xB0 | CLIP_CHANNEL, cc, value))
+
+    def _refresh_clipboard(self):
+        if self._step.active:
+            self._step._send_clipboard()
+        elif self._clip_copy is not None:
+            self._send_clipboard(COPY_CLIP | self._cp.flags(), self._clip_copy[0] + 1, self._clip_copy[1] + 1)
+        else:
+            self._send_clipboard(self._cp.flags(), 0, 0)
 
     def _step_value(self, value, sender):
         self._first_message()
@@ -144,6 +209,8 @@ class KamoteKeys(ControlSurface):
         self._first_message()
         # 127 = start; leaving: 0 = and play the clip, 64 = quietly (PATCH held).
         self._step.set_active(value == 127, play=value == 0)
+        self._cp.reset()
+        self._refresh_clipboard()
 
     def _sync_value(self, value):
         self._first_message()
@@ -385,6 +452,8 @@ class KamoteKeys(ControlSurface):
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
         self._step.send_all()
+        self._board_sent = None
+        self._refresh_clipboard()
 
     def update_display(self):
         ControlSurface.update_display(self)

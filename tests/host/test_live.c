@@ -70,11 +70,18 @@ void test_031(void)
     host_clear(); tap(KK_BTN_CHORD);
     CHECK(kk.mode == KK_MODE_CLIP && kk_led_button(KK_BTN_CHORD) == 2, "CHORD -> Clip Mode");
     CHECK(out_count(USB, 0xBF, KK_CLIP_SYNC_CC) == 1, "entering Clip Mode asks Live for the state");
+    /* 0.65: a plain press selects (note 84+) until F# toggles pads to play (36+). */
     host_clear(); pad(3, 110);
-    CHECK(out_count(USB, 0x9F, 38) == 1 && host_local_n == 0, "pad 3 -> note 38 ch16, never the synth");
-    pad(3, 0); CHECK(out_count(USB, 0x8F, 38) == 1, "release -> note off");
+    CHECK(out_count(USB, 0x9F, 84 + 2) == 1 && host_local_n == 0, "pad 3 -> select note 86 ch16 (default), never the synth");
+    pad(3, 0); CHECK(out_count(USB, 0x8F, 84 + 2) == 1, "release -> note off");
+    host_clear(); key(6, 100); key(6, 0); pad(3, 110); pad(3, 0);
+    CHECK(kk.clip_play && host_out_n == 2 && out_count(USB, 0x9F, 38) == 1, "F# toggles pads to play (silent key): pad 3 -> launch note 38");
     host_clear(); tap(KK_BTN_ARP); pad(3, 100); frames(300, 2); pad(3, 0); tap(KK_BTN_ARP);
     CHECK(out_count(USB, 0x9F, 38) == 1, "ARP does not touch clip launches");
+    {
+        uint8_t d[16]; kamotkeys_settings_read(d); kk.clip_play = 0;
+        CHECK(kamotkeys_settings_apply(d) == 0 && kk.clip_play == 1, "select / play is saved");
+    }
     host_in(0xBF, KK_CLIP_HELLO_CC, 1);
     host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_RECORDING);
     host_in(0xBF, KK_CLIP_STATE_CC + 2, KK_CLIP_STOPPED); host_in(0xBF, KK_CLIP_STATE_CC + 3, KK_CLIP_QUEUED);
@@ -94,25 +101,25 @@ void test_031(void)
     host_clear(); host_ready_ports = 4; frames(5, 2);
     CHECK(out_count(BLE, 0xBF, KK_CLIP_SYNC_CC) == 1, "reconnect (BLE) re-requests the state");
     host_ready_ports = 6; frames(5, 2);
-    /* 0.50: first black key (C#) held + clip = OVERDUB (note 52+), second
-     * (D#) = DELETE (note 68+); the keys themselves play nothing. */
-    host_clear(); key(1, 100);
-    CHECK(host_out_n == 0 && host_local_n == 0 && kk.clip_action == 1, "C# in Clip Mode: OVERDUB held, no note");
-    frames(20, 5); shot("17_clip_overdub");
-    pad(3, 100); pad(3, 0);
-    CHECK(out_count(USB, 0x9F, 52 + 2) == 1 && out_count(USB, 0x8F, 52 + 2) == 1 && out_count(USB, 0x9F, 38) == 0, "OVERDUB + pad 3 -> note 54");
-    host_clear(); key(3, 100); pad(10, 100); key(1, 0); pad(10, 0);
-    CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "DELETE wins + pad 10 -> note 77, its own off");
-    key(3, 0); CHECK(kk.clip_action == 0, "keys released: launch again");
-    /* 0.55/0.56: third black key (F#) held = SELECT (note 84+); fourth (G#) =
-     * launch scene; top G# / A# = scene up / down (ch 15 CC 30 / 29 / 28). */
-    host_clear(); key(6, 100); pad(5, 100); pad(5, 0); key(6, 0);
-    CHECK(out_count(USB, 0x9F, 84 + 4) == 1 && out_count(USB, 0x90, -1) == 0, "F# + pad 5 -> select note 88, F# silent");
-    host_clear(); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(8, 100); key(8, 0);
+    /* 0.65 keys: C# COPY / D# PASTE = ch 16 notes 100 / 101 (press + release);
+     * A# held = DELETE (note 68+); G# silent; top F# / G# / A# = scene launch / up / down. */
+    host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0);
+    CHECK(out_count(USB, 0x9F, KK_CLIP_COPY_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_COPY_NOTE) == 1 &&
+          out_count(USB, 0x9F, KK_CLIP_PASTE_NOTE) == 1 && host_local_n == 0, "C# / D# -> COPY / PASTE notes");
+    host_clear(); key(10, 100); pad(10, 100); pad(10, 0);
+    CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "A# + pad 10 -> delete note 77");
+    frames(20, 5); shot("17_clip_delete");
+    key(10, 0); CHECK(kk.clip_action == 0, "key released: back to the plain press");
+    host_clear(); key(8, 100); key(8, 0);
+    CHECK(host_out_n == 0, "G# does nothing in Clip Mode");
+    host_clear(); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(30, 100); key(30, 0);
     CHECK(out_count(USB, CC15, KK_CC_SCENE_DOWN) == 2 && out_count(USB, CC15, KK_CC_SCENE_UP) == 2 &&
-          out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top A# / G# and low G# -> scene down / up / launch, no notes");
-    host_clear(); key(30, 100); key(30, 0);
-    CHECK(out_count(USB, 0x90, 48 + 30) == 1, "top F# plays its note again in Clip Mode");
+          out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top A# / G# / F# -> scene down / up / launch, no notes");
+    host_in(0xBF, KK_COPY_KIND_CC, KK_COPY_CLIP | 64); host_in(0xBF, KK_COPY_A_CC, 3); host_in(0xBF, KK_COPY_B_CC, 2);
+    { unsigned ca, cb; CHECK(kk_midi_copy(&ca, &cb) == (KK_COPY_CLIP | 64) && ca == 3 && cb == 2, "clipboard from the script"); }
+    frames(40, 5); shot("17b_clip_paste");
+    host_in(0xBF, KK_COPY_KIND_CC, 0);
+    key(6, 100); key(6, 0);                                     /* back to select */
     /* 0.57: Live's highlighted slot shows violet (not amber/yellow). */
     host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 5, KK_CLIP_STOPPED); host_in(0xBF, KK_HOST_HIGHLIGHT_CC, 5);
     settle();
@@ -124,7 +131,7 @@ void test_031(void)
     CHECK(kk_midi_host_scene() == 4, "grid follows the script's scene offset");
     frames(20, 5); shot("18_clip_scene5");
     host_in(0xBF, KK_HOST_SCENE_CC, 0);
-    host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 38) == 1, "plain launch after release");
+    host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 84 + 2) == 1, "plain press after release: select");
     host_clear(); key(1, 100); tap(KK_BTN_CHORD); key(1, 0);
     CHECK(host_out_n == 0 || out_count(USB, 0x90, -1) == 0, "OVERDUB key held across leaving Clip Mode stays silent");
     key(1, 100); key(1, 0); CHECK(out_count(USB, 0x90, 49) == 1, "outside Clip Mode C# plays its note");

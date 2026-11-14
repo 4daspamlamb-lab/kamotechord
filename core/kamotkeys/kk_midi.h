@@ -52,6 +52,7 @@ int kk_midi_host_highlight(void);
  * colour codes (KK_STEPC_*) and info (KK_STEP_*_CC) from the script. */
 void kk_midi_step_mode(unsigned on);
 unsigned kk_midi_step_code(unsigned pad);
+unsigned kk_midi_copy(unsigned *a, unsigned *b);
 unsigned kk_midi_step_info(unsigned cc);
 uint32_t kk_midi_input_revision(void);
 void kk_midi_clip_sync_request(void);

@@ -87,6 +87,7 @@ class Slot(object):
         else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record')
     def stop(self): self.track.log.append('stop')
     def delete_clip(self): self.clip = None; self.track.log.append('delete')
+    def duplicate_clip_to(self, other): other.clip = self.clip; self.track.log.append('duplicate')
 
 class Track(object):
     def __init__(self): self._live_ptr = id(self); self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
@@ -139,7 +140,7 @@ class T(unittest.TestCase):
 
     def test_controls_claim_only_protocol_messages(self):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
-        self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
+        self.assertEqual(notes, list(range(36, 102)))     # launch, overdub, delete, select, COPY, PASTE
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
         self.assertEqual(steps, list(range(36, 52)) + list(range(60, 86)))   # step pads, step functions
         self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
@@ -258,9 +259,21 @@ class T(unittest.TestCase):
         self.assertEqual(self.s.sent, [(0xBF, 102, 985 >> 7), (0xBF, 103, 985 & 127)])
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])   # only changes
 
+    def test_clip_copy_paste_and_clipboard(self):
+        """0.65 Clip Mode: COPY tap + clip, PASTE tap + slot duplicates the clip there."""
+        t = self.song._tracks[0]; src = t.clip_slots[0]; src.clip = Clip(src)
+        deliver((0x9F, 100, 127)); deliver((0x8F, 100, 0))                  # COPY tap
+        self.assertEqual([v for st, c, v in self.s.sent if st == 0xBF and c == 106][-1], 32)
+        self.press(0)                                                      # copy track 1 scene 1
+        self.assertEqual([v for st, c, v in self.s.sent if st == 0xBF and c in (106, 107, 108)][-3:], [1, 1, 1])
+        deliver((0x9F, 101, 127)); deliver((0x8F, 101, 0)); self.press(1 + 8)   # PASTE tap, track 2 scene 2
+        self.assertIs(self.song._tracks[1].clip_slots[1].clip, src.clip)
+        self.assertEqual([v for st, c, v in self.s.sent if st == 0xBF and c == 106][-1], 1)   # paste done, clip kept
+        self.assertNotIn('duplicate', self.song._tracks[2].log)
+
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 21)   # hello, scene, tempo x2, highlight, 16 states
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 24)   # hello, scene, tempo x2, highlight, 16 states, clipboard x3
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])
@@ -431,16 +444,30 @@ class StepTest(unittest.TestCase):
         self.press(68); self.assertEqual(self.clip.notes, [])              # CLEAR tap = clear page
         self.mode(False); self.assertFalse(self.song.track.arm)           # auto-arm released
 
+    def clipboard(self):
+        return tuple([v for st, c, v in self.s.sent if st == 0xBF and c == cc][-1] for cc in (106, 107, 108))
+
     def test_copy_paste(self):
+        """0.65: COPY tap, then what to copy; PASTE tap = once, PASTE held = several."""
         self.mode(True); self.tap(0); self.drum(2); self.tap(4)            # kick step 1, snare step 5
-        self.press(67)                                                     # COPY tap = whole page
-        self.fn(63); self.pad(1); self.pad(1, False); self.fn(63, False)   # 2 bars (pattern repeated)
-        self.press(62); self.press(77)                                     # page 2, PASTE
-        self.assertEqual(self.pitches(), [(36, 0.0), (36, 4.0), (38, 1.0), (38, 5.0)])
-        self.fn(67); self.drum(2); self.fn(67, False)                      # COPY + snare key = snare lane
-        self.fn(77); self.drum(6); self.fn(77, False)                      # PASTE + key 6 (42) = onto the hat
-        self.assertIn((42, 5.0), self.pitches())
-        self.assertEqual(len(self.clip.notes), 5)
+        self.press(67); self.assertEqual(self.clipboard()[0], 32)          # COPY armed
+        self.tap(4); self.assertEqual(self.clipboard(), (2, 5, 1))          # copied step 5 (page 1)
+        self.press(77); self.tap(8)                                        # PASTE tap, then step 9
+        self.assertEqual(self.pitches(), [(36, 0.0), (38, 1.0), (38, 2.0)])
+        self.tap(12); self.assertEqual(len(self.clip.notes), 4)            # paste ended: step 13 toggles a note
+        self.fn(77); self.tap(10); self.tap(14); self.fn(77, False)        # PASTE held: steps 11 and 15
+        self.assertIn((38, 2.5), self.pitches()); self.assertIn((38, 3.5), self.pitches())
+        self.press(67); self.drum(2)                                       # COPY + snare key = snare lane
+        self.assertEqual(self.clipboard()[:2], (3, 38))
+        self.press(77); self.drum(6)                                       # PASTE + key 6 (42) = onto the hat
+        self.assertEqual(sorted(t for p, t in self.pitches() if p == 42), sorted(t for p, t in self.pitches() if p == 38))
+        self.fn(63); self.pad(1); self.pad(1, False); self.fn(63, False)   # 2 bars
+        self.press(78)                                                     # BARS view
+        self.press(67); self.tap(0); self.assertEqual(self.clipboard()[:2], (4, 1))   # copy bar 1
+        self.clip.remove_notes_extended(0, 128, 4.0 - 1e-4, 4.0)
+        self.press(77); self.tap(1)                                        # paste onto bar 2
+        self.assertEqual(sorted(t for p, t in self.pitches() if p == 36), [0.0, 4.0])
+        self.press(77); self.press(77); self.assertEqual(self.clipboard()[0] & 64, 0)   # tap twice: cancelled
 
     def test_length_bars_double_resolution_and_follow(self):
         self.mode(True)
@@ -514,9 +541,7 @@ class StepTest(unittest.TestCase):
         self.pad(4); self.pad(7); self.pad(7, False); self.pad(4, False)  # tie steps 5-8
         tie = [n for n in self.clip.notes if n.start_time == 1.0][0]; self.assertEqual(tie.duration, 1.0)
         self.s.update_display(); self.assertEqual(self.codes().get(5), 9)   # inside the long note
-        self.fn(67); self.press(62); self.fn(67, False)                   # COPY + page next
-        self.assertEqual(self.clip.loop_end, 8.0); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 1.0, 4.0, 5.0])
-        self.press(68); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 1.0])   # CLEAR page 2
+        self.press(68); self.assertEqual(self.clip.notes, [])              # CLEAR tap = the page
 
     def test_no_drum_rack_and_deleted_clip(self):
         self.song = StepSong(rack=False); del registry[:]

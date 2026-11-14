@@ -19,6 +19,7 @@ static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
 static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
+static uint8_t copy_info[3];
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
 static uint32_t revision;
 
@@ -150,6 +151,8 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
             ++input_revision;
         } else if (type == 0xb0 && d1 == KK_CLIP_HELLO_CC) {
             host_protocol = (uint8_t)d2; if (!d2) host_tempo = 0; ++input_revision;
+        } else if (type == 0xb0 && d1 >= KK_COPY_KIND_CC && d1 <= KK_COPY_B_CC) {
+            copy_info[d1 - KK_COPY_KIND_CC] = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_HIGHLIGHT_CC) {
             host_highlight = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_SCENE_CC) {
@@ -199,6 +202,8 @@ uint32_t kk_midi_input_revision(void) { return input_revision; }
 void kk_midi_clip_sync_request(void) { kk_midi_cc(KK_CH_CLIP, KK_CLIP_SYNC_CC, 127); }
 /* 1 = entering (127); leaving: 0 = and play the clip (0), 2 = quietly (64, PATCH held). */
 void kk_midi_step_mode(unsigned on) { kk_midi_cc(KK_CH_STEP, KK_STEP_SYNC_CC, on == 1 ? 127 : on == 2 ? 64 : 0); }
+/* The script's clipboard (0.65): kind (KK_COPY_*, +32 copy armed, +64 paste armed). */
+unsigned kk_midi_copy(unsigned *a, unsigned *b) { *a = copy_info[1]; *b = copy_info[2]; return copy_info[0]; }
 unsigned kk_midi_step_code(unsigned pad) { return pad < 16 ? step_codes[pad] : KK_STEPC_OUTSIDE; }
 unsigned kk_midi_step_info(unsigned cc)
 {

@@ -1,5 +1,14 @@
 # Changelog
 
+## KamoteKeys 0.65 (development snapshot)
+
+Clip Mode (CHORD), SMK-37:
+- Lowest black keys: **C# COPY, D# PASTE, F# select ↔ play, G# nothing, A# DELETE**; scenes moved to the top: **F# launch, G# up, A# down**. Overdub-by-key is gone on the SMK-37 (select + KNOB BANK records).
+- **A plain pad press selects** (slot + arm) by default; F# toggles pads to play, saved across power-off.
+- **Copy / paste clips** (Live's Duplicate into another slot).
+
+Copy / paste everywhere (Clip and Step Mode): tap or hold COPY, then press what to copy (replaces the clipboard); tap PASTE = the next target, hold PASTE = several. Step Mode targets: a step pad (all its notes), a key (that sound on the page) or a bar in the BARS view. **The screen shows the clipboard.**
+
 ## KamoteKeys 0.64 (development snapshot)
 
 Step Mode (SEQ REC), SMK-37 lowest octave rearranged: white C = CLEAR, D = chord toggle, F = LENGTH, G = DRUM, A = RESOLUTION, B = FOLLOW; black C# COPY, D# PASTE, F# BARS, G# / A# = page ◀ / ▶. DOUBLE removed from the keyboard.

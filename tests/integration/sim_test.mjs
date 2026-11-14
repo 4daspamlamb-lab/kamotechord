@@ -83,7 +83,7 @@ tap(B.CHORD); ms(4000);                            // let earlier synth tails di
 energy = 0; ms(150); const baseline = energy;      // silence over the same window
 midi = []; energy = 0;
 ev(PAD, 4, 100); ms(100); ev(PAD, 4, 0); ms(50);
-check(out(1, 0x9f, 40).length === 1 && out(1, 0x8f, 40).length === 1, 'clip pad 5 -> ch16 note 40 on/off');
+check(out(1, 0x9f, 88).length === 1 && out(1, 0x8f, 88).length === 1, 'clip pad 5 -> ch16 select note 88 on/off (0.65 default: select)');
 check(energy <= baseline * 1.5 + 1e-6, `clip launches make no internal sound (${energy.toExponential(2)} vs ${baseline.toExponential(2)})`);
 check(hostIn([0xbf, 126, 1]) === 0 && hostIn([0xbf, 84, 2]) === 0, 'host feedback accepted');
 ms(300);

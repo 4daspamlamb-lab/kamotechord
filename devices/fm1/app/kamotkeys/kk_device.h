@@ -31,6 +31,7 @@ enum { KK_VELOCITY_DEFAULT = 100 };
 /* Clip Mode action keys (key indexes): the first black key (F#) held
  * while pressing a clip = OVERDUB, the second (G#) = DELETE. */
 enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
+enum { KK_CLIP_COPY_KEY = 255, KK_CLIP_PASTE_KEY = 255, KK_CLIP_TOGGLE_KEY = 255, KK_CLIP_BLANK_KEY = 255 };   /* SMK-37 only */
 /* The third black key (A#) held + clip = SELECT (select the slot, arm its
  * track); the fourth (C#) = launch the selected scene; the last two black
  * keys (top D#, F#) = scene up, scene down. */

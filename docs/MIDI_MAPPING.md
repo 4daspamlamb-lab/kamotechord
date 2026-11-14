@@ -131,6 +131,8 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 
 Channel 14 never reaches the internal synth.
 
+**Copy / paste (0.65).** Keyboard → Live: channel 16 notes 100 / 101 = Clip Mode COPY / PASTE (press / release); in Step Mode COPY / PASTE are the channel 14 function notes 67 / 77. Live → keyboard, channel 16: CC 106 = clipboard kind (0 none, 1 clip, 2 step, 3 sound, 4 bar; +32 copy waiting, +64 paste waiting), CC 107 / 108 = its numbers (clip: track, scene; step: step, page; sound: note, page; bar: bar).
+
 ## Notes received from the host
 
 Note On/Off on channels 1 and 10 coming from the computer light the matching Pad Scale/Drum pads (Move-style). They also play the internal synth unless *Internal synth* is off.

@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.64" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.65" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -39,6 +39,11 @@ enum {
 enum {
     KK_CLIP_NOTE_BASE = 36, KK_CLIP_OVERDUB_BASE = 52, KK_CLIP_DELETE_BASE = 68, KK_CLIP_SELECT_BASE = 84,
     KK_CLIP_STATE_CC = 80, KK_CLIP_HELLO_CC = 126,
+    /* 0.65: COPY / PASTE keys (notes, press / release) and the clipboard the
+     * script reports for the screen: CC 106 kind (KK_COPY_*, +64 = paste
+     * armed, +32 = copy armed), 107 / 108 its numbers. */
+    KK_CLIP_COPY_NOTE = 100, KK_CLIP_PASTE_NOTE = 101,
+    KK_COPY_KIND_CC = 106, KK_COPY_A_CC = 107, KK_COPY_B_CC = 108,
     KK_CLIP_SYNC_CC = 127, KK_CLIP_PROTOCOL = 1,
     /* host -> device (0.54): Live's tempo x 10 as two 7-bit CCs, MSB first;
      * applied when the LSB arrives. While received, ARP follows Live. */
@@ -82,6 +87,9 @@ enum {
     KK_STEP_INFO_LAST = 106,
     KK_STEP_SYNC_CC = 127
 };
+/* Clipboard kinds (0.65): clip (A = track, B = scene), step (A = step, B = page),
+ * sound (A = note, B = page), bar (A = bar). */
+enum { KK_COPY_NONE, KK_COPY_CLIP, KK_COPY_STEP, KK_COPY_SOUND, KK_COPY_BAR };
 /* Pad colour codes sent by the script (rendered by kk_led.c). */
 enum {
     KK_STEPC_OUTSIDE = 0, KK_STEPC_EMPTY = 1, KK_STEPC_EMPTY_BEAT = 2,

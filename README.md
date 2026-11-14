@@ -160,15 +160,7 @@ The **second physical C** plays the selected tonic, at octave 0 the tonic in the
 
 ### Clip Mode (CHORD)
 
-Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). Keys keep playing normally, except two:
-
-- hold the **first black key (C#)** and press a clip: **overdub** into it (an empty slot: arm and record a new clip); the same again stops overdubbing;
-- hold the **second black key (D#)** and press a clip: **delete** it;
-- hold the **third black key (F#)** and press a clip: **select** that slot and **arm its track** (other tracks are disarmed), so the next **KNOB BANK** (Session Record) records exactly there;
-- the **fourth black key (G#)**: **launch the selected scene**;
-- the **last two black keys** (top G#, A#): **scene up**, **scene down**. Scene up/down scrolls the 8 × 2 grid through Live's scenes (pads 1–8 = the selected scene, 9–16 = the next) and moves Live's selected scene.
-
-The pad of Live's highlighted slot is **violet** (pulsing if it is playing or recording). The screen shows OVERDUB / DELETE / SELECT while the key is held, and the pads are labelled track.scene (e.g. T3.5). A plain press on a clip that is being overdubbed turns overdub off.
+Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); the **F#** key toggles pads to **play** (launch / stop), remembered after power-off. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# select ↔ play, G# nothing, **A# DELETE** (hold + clip); top **F# / G# / A#** = scene launch / up / down. The screen shows what is copied. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
 
 ### Step Mode (SEQ REC, or hold CHORD)
 

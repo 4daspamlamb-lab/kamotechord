@@ -169,6 +169,24 @@ static void draw_info(void)
     text_right(206, w->y + 6, buf, 2, kk_midi_host_tempo_x10() ? GREEN : TEXT);
     text(210, w->y + 13, "BPM", 1, DIM);
 }
+/* 0.65: the script's clipboard, e.g. "COPIED T3 S2", "PASTE: PRESS A PAD (BAR 2)". */
+static void copy_line(int y)
+{
+    unsigned a, b, kind = kk_midi_copy(&a, &b), what = kind & 31U;
+    char buf[40], *p = buf;
+    if (kind & 64U) p = append(p, "PASTE: PRESS A TARGET  ");
+    else if (kind & 32U) { text_center(120, y, "COPY: PRESS WHAT TO COPY", 1, AMBER); return; }
+    else if (!what) return;
+    else p = append(p, "COPIED ");
+    switch (what) {
+    case KK_COPY_CLIP: p = append(p, "T"); p = decimal(p, (int)a); p = append(p, " S"); p = decimal(p, (int)b); break;
+    case KK_COPY_STEP: p = append(p, "STEP "); p = decimal(p, (int)a); p = append(p, " P"); p = decimal(p, (int)b); break;
+    case KK_COPY_SOUND: kk_note_label(p, (int)a); while (*p) ++p; p = append(p, " P"); p = decimal(p, (int)b); break;
+    case KK_COPY_BAR: p = append(p, "BAR "); p = decimal(p, (int)a); break;
+    default: p = append(p, "-"); break;
+    }
+    text_center(120, y, buf, 1, kind & 64U ? GREEN : CYAN);
+}
 static void draw_big(void)
 {
     const struct widget *w = &widgets[W_BIG];
@@ -201,7 +219,8 @@ static void draw_big(void)
             if (kk_midi_step_info(KK_STEP_KEYS_CC)) p = append(p, " SCALE");
             if (kk.chord_mods) p = append(p, kk.step_single ? " SINGLE" : " CHORD");
         }
-        text_center(120, w->y + 50, buf, 1, DIM);
+        text_center(120, w->y + 42, buf, 1, DIM);
+        copy_line(w->y + 55);
         return;
     }
     if (kk.mode == KK_MODE_CLIP && kk.clip_action) {
@@ -219,8 +238,12 @@ static void draw_big(void)
         text_center(120, w->y + 14, name, text_width(name, 3) <= 228 ? 3 : 2,
                     kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
         char *p = append(buf, "TRACK "); p = decimal(p, kk.clip_pad % 8 + 1);
-        p = append(p, "  SCENE "); decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
-        text_center(120, w->y + 50, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
+        p = append(p, "  SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
+#ifdef KK_CLIP_PRESS_SELECT
+        p = append(p, kk.clip_play ? "  PADS: PLAY" : "  PADS: SELECT");
+#endif
+        text_center(120, w->y + 42, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
+        copy_line(w->y + 55);
         return;
     }
     const char *name = big_name[0] ? big_name : "--";

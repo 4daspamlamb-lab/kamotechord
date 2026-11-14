@@ -140,6 +140,12 @@ static void intent(unsigned id, struct source *s)
         } else { s->notes[0] = (uint8_t)note; s->count = 1; }
         return;
     }
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_COPY_KEY || id == KK_CLIP_PASTE_KEY)) {
+        /* 0.65: COPY / PASTE go to the script as notes (it tracks taps and holds). */
+        s->channel = KK_CH_CLIP; s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : KK_CLIP_PASTE_NOTE); s->count = 1;
+        return;
+    }
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_BLANK_KEY)) return;   /* no note */
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
         (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY || id == KK_CLIP_SELECT_KEY)) {
         /* Clip Mode: the first black key held = OVERDUB, the second = DELETE,
@@ -182,7 +188,11 @@ static void intent(unsigned id, struct source *s)
     if (channel == KK_CH_CLIP && note >= 0)
         note += kk.clip_action == 2 ? KK_CLIP_DELETE_BASE - KK_CLIP_NOTE_BASE
               : kk.clip_action == 3 ? KK_CLIP_SELECT_BASE - KK_CLIP_NOTE_BASE
-              : kk.clip_action == 1 ? KK_CLIP_OVERDUB_BASE - KK_CLIP_NOTE_BASE : 0;
+              : kk.clip_action == 1 ? KK_CLIP_OVERDUB_BASE - KK_CLIP_NOTE_BASE
+#ifdef KK_CLIP_PRESS_SELECT
+              : !kk.clip_play ? KK_CLIP_SELECT_BASE - KK_CLIP_NOTE_BASE   /* 0.65: plain press selects by default */
+#endif
+              : 0;
     if (note >= 0) { s->notes[0] = (uint8_t)note; s->count = 1; }
 }
 static unsigned route_for(unsigned id, const struct source *s)

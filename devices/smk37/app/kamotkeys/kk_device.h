@@ -20,11 +20,16 @@ enum { KK_VELOCITY_DEFAULT = 100 };
 
 /* Clip Mode action keys (key indexes): the first black key (C#) held
  * while pressing a clip = OVERDUB, the second (D#) = DELETE. */
-enum { KK_CLIP_OVERDUB_KEY = 1, KK_CLIP_DELETE_KEY = 3 };
+/* 0.65 Clip Mode keys: lowest black keys C# COPY, D# PASTE, F# select <-> play,
+ * G# nothing, A# DELETE (hold + pad); top F# / G# / A# = scene launch / up / down.
+ * A plain pad press selects (slot + arm) unless toggled to play. */
+#define KK_CLIP_PRESS_SELECT 1
+enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6, KK_CLIP_BLANK_KEY = 8,
+       KK_CLIP_DELETE_KEY = 10, KK_CLIP_OVERDUB_KEY = 255 };
 /* The third black key (F#) held + clip = SELECT (select the slot, arm its
  * track); the fourth (G#) = launch the selected scene; the last two black
  * keys (top G#, A#) = scene up, scene down. */
-enum { KK_CLIP_SELECT_KEY = 6, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 32, KK_SCENE_DOWN_KEY = 34 };
+enum { KK_CLIP_SELECT_KEY = 255, KK_SCENE_LAUNCH_KEY = 30, KK_SCENE_UP_KEY = 32, KK_SCENE_DOWN_KEY = 34 };
 
 /* Knob labels as printed on the screen (E1..E7). */
 #define KK_K1 "E1"

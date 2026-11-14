@@ -51,18 +51,21 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 | an empty slot on an **armed** track | starts recording a new clip |
 | an empty slot on an unarmed track | nothing (never stops a track by accident) |
 
-**Overdub and delete (0.50).** Hold a key and press a clip:
+**SMK-37 keys (0.65)** ([diagram](diagrams/SMK37-Clip-Mode.png)):
 
-| Hold | + press a clip | Result |
-|---|---|---|
-| the **first black key** (SMK-37: C#, FM-1: F#) | a clip | **overdub**: launches it if stopped and turns on Session Record, so you record into it; the same again turns overdub off |
-| | an empty slot | arms the track and records a new clip |
-| the **second black key** (SMK-37: D#, FM-1: G#) | a clip | **deletes** it |
-| the **third black key** (SMK-37: F#, FM-1: A#) | a clip | **selects** the slot and **arms its track** (disarms the others): the next Session Record (KNOB BANK / FM-1 REC) records there |
+| Key | Does |
+|---|---|
+| plain pad press | **SELECT** (default): selects the slot and **arms its track** (disarms the others), so the next Session Record (KNOB BANK) records there. Toggled to **PLAY** it launches / stops as in the table above |
+| **F#** (3rd black) | pads: SELECT ↔ PLAY (remembered after power-off; the screen shows PADS: SELECT / PLAY) |
+| **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
+| **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
+| **A#** DELETE | hold + a clip: delete it |
+| G# | nothing |
+| top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
 
-**Scenes (0.56).** The **fourth black key** (SMK-37: G#, FM-1: C#) **launches the selected scene**; the **last two black keys** (SMK-37: top G#, A#; FM-1: top D#, F#) are **scene up** and **scene down**. Scene up/down moves Live's selected scene and scrolls the 8 × 2 grid with it (pads 1–8 = that scene, 9–16 = the next); the pads show track.scene, e.g. T3.5.
+The screen shows the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held.
 
-The screen shows OVERDUB or DELETE while the key is held; in Clip Mode these two keys play no note. A plain press on a clip that is being overdubbed turns overdub off (the clip keeps playing); the next press stops it as usual.
+**FM-1 keys** (unchanged): hold the first black key (F#) + clip = **overdub** (an empty slot: record a new clip; the same again ends it), the second (G#) = **delete**, the third (A#) = **select + arm**; C# = launch the selected scene, top D# / F# = scene up / down. A plain press launches.
 
 **Highlighted slot (0.57).** The pad of Live's highlighted (selected) slot turns violet; a playing, queued or recording clip pulses between its colour and violet. On the FM-1 its key blinks slowly.
 
@@ -127,7 +130,7 @@ Colours: see the table below.
 - **Chords**: lock a chord on the main screen (chord pads + LOCK), enter Step Mode: with scale keys (SEQ) or on a track without a Drum Rack, a key picks that chord (built on the key's note, in the scale) and a pad writes the whole chord, with the note length set on the top C. SEQ switches scale keys on / off without leaving Step Mode.
 - **Note length (hold top C)**: pads 1–16 = 1/16 … 1 bar; new steps (and chords) get that length.
 - **Repeats**: pick a sound, hold the top F# / G# / A# and press a pad: that step plays 1 / 2 / 3 times (pink).
-- **COPY / PASTE** (C# / D#): tap COPY to copy the shown page (all sounds), go to another page and tap PASTE to replace it. **COPY + key** copies just that sound's steps; **PASTE + key** pastes them onto that sound.
+- **COPY / PASTE** (C# / D#), as in Clip Mode: tap (or hold) **COPY**, then press what to copy: a **step pad** (every note in that step), a **key** (that sound's steps on the shown page) or, in the **BARS view**, a **bar**. Tap **PASTE** and the next matching target gets it (a step pad, a key, or a bar in the BARS view); **hold PASTE** to paste onto several. The screen shows the clipboard (COPIED STEP 5 P1, COPIED C1 P1, COPIED BAR 2).
 - **CLEAR** (lowest C): **+ step** clears every note in that step, **+ key** deletes that sound in the whole clip (Move: Delete + pad), a plain **tap** clears the selected sound on the shown page.
 - **Chord toggle** (lowest D): with a locked chord, key-zone keys pick the whole chord or single notes. The screen shows CHORD / SINGLE.
 - **Leaving Step Mode plays the clip** you were editing (if it is not already playing). Hold **PATCH** while you leave to leave quietly.
