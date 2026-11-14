@@ -1,5 +1,13 @@
 # Changelog
 
+## KamoteKeys 0.64 (development snapshot)
+
+Step Mode (SEQ REC), SMK-37 lowest octave rearranged: white C = CLEAR, D = chord toggle, F = LENGTH, G = DRUM, A = RESOLUTION, B = FOLLOW; black C# COPY, D# PASTE, F# BARS, G# / A# = page ◀ / ▶. DOUBLE removed from the keyboard.
+- **CLEAR + step** clears every note in that step.
+- **Chord toggle** (D): a locked chord's keys pick whole chords or single notes (screen: CHORD / SINGLE).
+- **Leaving Step Mode plays the edited clip**; hold PATCH while leaving to leave quietly.
+- New full diagrams: docs/diagrams/SMK37-Controls.png, SMK37-Clip-Mode.png, SMK37-Step-Mode.png.
+
 ## KamoteKeys 0.63 (development snapshot)
 
 Step Mode (SEQ REC), SMK-37:

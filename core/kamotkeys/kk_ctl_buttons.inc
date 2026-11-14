@@ -36,6 +36,7 @@ static void button(unsigned id, unsigned down, uint32_t now)
         ableton(para_cc, down ? 127 : 0); return;
     /* CHORD: tap = Clip Mode; hold 0.6 s = Step Mode (0.58, long_presses). */
     case KK_BTN_CHORD:
+        if (kk.buttons & (1U << KK_BTN_PATCH)) patch_combo = 1;    /* PATCH held: leave Step Mode quietly */
         if (down) chord_long = 0;
         else if (!chord_long && held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
         return;
@@ -109,6 +110,7 @@ static void button(unsigned id, unsigned down, uint32_t now)
         else if (!patch_combo) open_page(kk.page == KK_PAGE_PATCH ? KK_PAGE_MAIN : KK_PAGE_PATCH);
         return;
     case KK_BTN_REC:   /* 0.59: SEQ REC = Step Mode on / off (the light show is KNOB + FADER BANK) */
+        if (kk.buttons & (1U << KK_BTN_PATCH)) patch_combo = 1;    /* PATCH held: leave Step Mode quietly */
         if (down) kk_set_mode(KK_MODE_STEP);
         return;
     }

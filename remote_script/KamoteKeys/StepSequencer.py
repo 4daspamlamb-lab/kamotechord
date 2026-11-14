@@ -140,7 +140,9 @@ class StepSequencer(object):
         return self._active
 
     # ------------------------------------------------------- mode / binding
-    def set_active(self, on):
+    def set_active(self, on, play=False):
+        """play: leaving Step Mode launches the edited clip (0.64; not with
+        PATCH held on the keyboard)."""
         if on and not self._active:
             self._active = True
             self._log('Step Mode started')
@@ -148,6 +150,13 @@ class StepSequencer(object):
             self.send_all()
         elif not on and self._active:
             self._active = False
+            if play and self._slot is not None:
+                try:
+                    if self._slot.has_clip and not (self._clip is not None and self._clip.is_playing):
+                        self._slot.fire()
+                        self._log('Step Mode left: playing the clip')
+                except Exception as error:
+                    self._log('cannot play the clip: %s' % error)
             self._disarm()
             self._unbind()
             self._held, self._fn, self._consumed, self._used = [], set(), set(), set()
@@ -524,6 +533,11 @@ class StepSequencer(object):
                 self._set_bars(index + 1)                       # 0.62: LENGTH + pad n = n bars
                 self.update()
                 return
+            if F_CLEAR in self._fn:
+                self._used.add(F_CLEAR)
+                self._clear_step(index)                         # 0.64: CLEAR + step = every note there
+                self.update()
+                return
             if F_NOTE_LEN in self._fn:
                 self._note_len = index + 1                      # 0.63: note length in sixteenths of a bar
                 self._say('note length %d/16' % self._note_len)
@@ -888,6 +902,17 @@ class StepSequencer(object):
             self._say('step %d: %dx' % (self._page * PADS + index + 1, hits))
         except Exception as error:
             self._log('cannot repeat the step: %s' % error)
+        self._dirty = True
+
+    def _clear_step(self, index):
+        if self._clip is None:
+            return
+        t = self._step_time(index)
+        try:
+            self._clip.remove_notes_extended(0, 128, t - EPS, self._step())
+            self._say('cleared step %d' % (self._page * PADS + index + 1))
+        except Exception as error:
+            self._log('cannot clear the step: %s' % error)
         self._dirty = True
 
     def _clear_drum(self, note):

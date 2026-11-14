@@ -93,6 +93,9 @@ static void source_press(unsigned id, unsigned velocity)
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0 && s->count)
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
+    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_key_function(id) == KK_STEP_CHORD_TOGGLE) {
+        kk.step_single = !kk.step_single; s->count = 0; ++kk.edit_revision;   /* 0.64: chords <-> single notes */
+    }
     engage(id);
     if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {

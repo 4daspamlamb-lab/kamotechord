@@ -47,17 +47,19 @@ enum { KK_CLIP_SELECT_KEY = 6, KK_SCENE_LAUNCH_KEY = 8, KK_SCENE_UP_KEY = 32, KK
 static inline int kk_step_key_function(unsigned key)
 {
     switch (key) {
-    case 0: return KK_STEP_DRUM;        /* C  hold: pads = Drum Rack pads */
-    case 2: return KK_STEP_PAGE_PREV;   /* D */
-    case 4: return KK_STEP_PAGE_NEXT;   /* E */
-    case 5: return KK_STEP_LENGTH;      /* F  hold + step = loop end */
-    case 7: return KK_STEP_DOUBLE;      /* G */
+    /* 0.64 lowest octave: C CLEAR, D chord toggle, F LENGTH, G DRUM, A RES, B FOLLOW;
+     * black: C# COPY, D# PASTE, F# BARS, G# / A# page. E plays a note. */
+    case 0: return KK_STEP_CLEAR;       /* C  tap: page; + step: that step; + key: that sound */
+    case 2: return KK_STEP_CHORD_TOGGLE;/* D  locked chord keys: chords <-> single notes */
+    case 5: return KK_STEP_LENGTH;      /* F  hold + pad n = n bars */
+    case 7: return KK_STEP_DRUM;        /* G  hold: pads = Drum Rack pads */
     case 9: return KK_STEP_RESOLUTION;  /* A */
     case 11: return KK_STEP_FOLLOW;     /* B */
-    case 1: return KK_STEP_COPY;        /* C# tap: copy the page; + drum key: copy that drum */
-    case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the page; + drum key: onto that drum */
-    case 6: return KK_STEP_BARS;        /* F# hold: pads = bars, tap one to show it */
-    case 10: return KK_STEP_CLEAR;      /* A# tap: clear the page; + drum key: clear that drum */
+    case 1: return KK_STEP_COPY;        /* C# tap: copy the page; + key: copy that sound */
+    case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the page; + key: onto that sound */
+    case 6: return KK_STEP_BARS;        /* F# tap: bar view */
+    case 8: return KK_STEP_PAGE_PREV;   /* G# */
+    case 10: return KK_STEP_PAGE_NEXT;  /* A# */
     case 29: return KK_STEP_VEL_1;      /* 0.63: top F G A B = velocity 32 / 64 / 96 / 127 */
     case 31: return KK_STEP_VEL_2;
     case 33: return KK_STEP_VEL_3;

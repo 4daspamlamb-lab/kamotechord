@@ -43,6 +43,7 @@ struct kk_state {
     uint16_t pads;                           /* physical pad bitmap        */
     uint16_t chord_mods;                     /* active chord-pad modifiers */
     uint8_t anim_active, anim_pattern;
+    uint8_t step_single;                     /* Step Mode: locked chord keys pick single notes (0.64 toggle) */
     uint32_t anim_phase;                     /* 2^32 per animation cycle   */
     uint16_t anim_speed;                     /* mHz                        */
     int16_t chord_root;                      /* root of the last generated chord, -1 */

@@ -474,6 +474,15 @@ class StepTest(unittest.TestCase):
         self.press(78); self.s.update_display(); self.assertEqual(self.codes()[0], 19)   # BARS tap: bar view stays
         self.tap(0); self.s.update_display(); self.assertIn(self.codes()[0], (1, 13, 14, 15))   # bar picked: pattern again
 
+    def test_clear_step_and_play_on_exit(self):
+        self.mode(True); self.tap(0); self.drum(2); self.tap(0); self.tap(1)
+        self.fn(68); self.pad(0); self.pad(0, False); self.fn(68, False)  # CLEAR + step 1: kick and snare go
+        self.assertEqual(self.pitches(), [(38, 0.25)])
+        slot = self.song.track.clip_slots[0]; slot.fired = 0
+        slot.fire = lambda: setattr(slot, 'fired', slot.fired + 1)
+        deliver((0xBD, 127, 64)); self.assertEqual(slot.fired, 0)         # PATCH held: quiet exit
+        self.mode(True); deliver((0xBD, 127, 0)); self.assertEqual(slot.fired, 1)   # normal exit plays the clip
+
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)
         self.fn(63); self.pad(3); self.pad(3, False); self.fn(63, False)  # 4 bars

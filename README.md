@@ -66,6 +66,8 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 
 ## Controls at a glance
 
+Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [Clip Mode](docs/diagrams/SMK37-Clip-Mode.png) · [Step Mode](docs/diagrams/SMK37-Step-Mode.png)
+
 ```
  LEFT BLOCK                         RIGHT BLOCK
  ┌────────────┬────────────┐        ┌──────┬────────────┬───────┬───────┬───────┬──────┐
@@ -170,7 +172,7 @@ The pad of Live's highlighted slot is **violet** (pulsing if it is playing or re
 
 ### Step Mode (SEQ REC, or hold CHORD)
 
-A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: DRUM, page ◀ ▶, LENGTH + pad = bars, DOUBLE, RESOLUTION, FOLLOW; black: COPY, PASTE, BARS, CLEAR); the key zone runs from C2 to E3; **top F G A B = velocity 32 / 64 / 96 / 127**, **hold the top C** to set the note length on the pads, the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad). A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
+A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: CLEAR, chord toggle, LENGTH + pad = bars, DRUM, RESOLUTION, FOLLOW; black: COPY, PASTE, BARS, page ◀ ▶); leaving Step Mode plays the clip (hold PATCH to leave quietly); the key zone runs from C2 to E3; **top F G A B = velocity 32 / 64 / 96 / 127**, **hold the top C** to set the note length on the pads, the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad). A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
 
 ### Pad Scale Mode (SCALE)
 

@@ -125,7 +125,7 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 | keyboard → Live | Note 77–85 | PASTE, BARS, OCT −, OCT +, SEQ (scale keys), repeat 1× / 2× / 3×, NOTE LENGTH (hold) |
 | keyboard → Live | Notes on **channel 13** | key-zone key pressed: select that pitch, or a locked chord (all note-ons, then all note-offs) |
 | keyboard → Live | Note on channel 10 (drum keys) or 1 (scale keys) | the key's own sound, for the armed track and the internal synth |
-| keyboard → Live | CC 127 | 127 = Step Mode started, 0 = ended |
+| keyboard → Live | CC 127 | 127 = Step Mode started; leaving: 0 = and play the clip, 64 = quietly (PATCH held) |
 | Live → keyboard | CC 80–95 | pad colour code |
 | Live → keyboard | CC 96–106 | page, page count, resolution, follow, status, drum view, selected pitch, key-zone octave (64 = default), scale keys on, playing bar (0 = stopped), clip length in bars |
 

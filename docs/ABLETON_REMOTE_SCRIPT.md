@@ -111,8 +111,8 @@ Colours: see the table below.
 
 | Keys | Do |
 |---|---|
-| lowest octave, white | DRUM (hold), page ◀, page ▶, LENGTH (hold), DOUBLE, RESOLUTION, FOLLOW |
-| lowest octave, black | C# = COPY, D# = PASTE, F# = BARS (tap: bar view on / off), A# = CLEAR |
+| lowest octave, white | C = CLEAR, D = chords ↔ single notes, F = LENGTH (hold), G = DRUM (hold), A = RESOLUTION, B = FOLLOW; E plays |
+| lowest octave, black | C# = COPY, D# = PASTE, F# = BARS (tap: bar view on / off), G# / A# = page ◀ / ▶ |
 | **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
 | top F G A B | velocity 32 / 64 / 96 / 127 |
 | top C (hold) | pads = **note length** for new steps, 1–16 sixteenths of a bar (tap a pad) |
@@ -128,7 +128,9 @@ Colours: see the table below.
 - **Note length (hold top C)**: pads 1–16 = 1/16 … 1 bar; new steps (and chords) get that length.
 - **Repeats**: pick a sound, hold the top F# / G# / A# and press a pad: that step plays 1 / 2 / 3 times (pink).
 - **COPY / PASTE** (C# / D#): tap COPY to copy the shown page (all sounds), go to another page and tap PASTE to replace it. **COPY + key** copies just that sound's steps; **PASTE + key** pastes them onto that sound.
-- **CLEAR + key** (A#) deletes every note of that sound in the clip (Move: Delete + pad). A plain **CLEAR tap** clears the selected sound on the shown page.
+- **CLEAR** (lowest C): **+ step** clears every note in that step, **+ key** deletes that sound in the whole clip (Move: Delete + pad), a plain **tap** clears the selected sound on the shown page.
+- **Chord toggle** (lowest D): with a locked chord, key-zone keys pick the whole chord or single notes. The screen shows CHORD / SINGLE.
+- **Leaving Step Mode plays the clip** you were editing (if it is not already playing). Hold **PATCH** while you leave to leave quietly.
 - **Auto-arm**: entering Step Mode arms the sequenced track (if it was not armed) so the keys are heard; leaving disarms it again.
 - **Screen**: the bar the clip is playing (BAR 2/4; when stopped its length, 4 BARS), page, resolution, FOLLOW, the selected note and SCALE when the key zone is scale keys.
 

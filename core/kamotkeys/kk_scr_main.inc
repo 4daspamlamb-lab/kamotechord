@@ -173,7 +173,7 @@ static void draw_big(void)
 {
     const struct widget *w = &widgets[W_BIG];
     fill(0, w->y, 240, w->h, BG);
-    char buf[40];
+    char buf[64];
     if (kk.mode == KK_MODE_STEP) {
         /* Step Mode: page, resolution, follow, and what the script reports. */
         static const char *const res[5] = {"1/16", "1/8", "1/32", "1/16T", "1/8T"};
@@ -199,6 +199,7 @@ static void draw_big(void)
             if (kk_midi_step_info(KK_STEP_FOLLOW_CC)) p = append(p, "  FOLLOW");
             p = append(p, "  "); kk_note_label(p, (int)kk_midi_step_info(KK_STEP_ACTIVE_CC)); while (*p) ++p;
             if (kk_midi_step_info(KK_STEP_KEYS_CC)) p = append(p, " SCALE");
+            if (kk.chord_mods) p = append(p, kk.step_single ? " SINGLE" : " CHORD");
         }
         text_center(120, w->y + 50, buf, 1, DIM);
         return;

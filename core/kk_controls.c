@@ -134,7 +134,7 @@ static void intent(unsigned id, struct source *s)
         if (note < 0 || note > 127) return;
         /* 0.63: a locked chord turns melodic keys (scale keys, or any track
          * without a Drum Rack) into chord keys: the steps get the chord. */
-        if (kk.chord_mods && (kk_midi_step_info(KK_STEP_KEYS_CC) || kk_midi_step_info(KK_STEP_STATUS_CC) == 1)) {
+        if (kk.chord_mods && !kk.step_single && (kk_midi_step_info(KK_STEP_KEYS_CC) || kk_midi_step_info(KK_STEP_STATUS_CC) == 1)) {
             s->channel = KK_CH_MELODIC;
             s->count = (uint8_t)kk_chord_build(note, kk.chord_mods, &kk.scale, s->notes);
         } else { s->notes[0] = (uint8_t)note; s->count = 1; }
@@ -317,7 +317,7 @@ void kk_set_mode(unsigned mode)
     kk.chord_root = -1;
     if (mode == KK_MODE_CLIP) kk_midi_clip_sync_request();   /* fresh clip LEDs */
     if (mode == KK_MODE_STEP) kk_midi_step_mode(1);          /* the script binds the sequencer */
-    else if (step_was) kk_midi_step_mode(0);
+    else if (step_was) kk_midi_step_mode(kk.buttons & (1U << KK_BTN_PATCH) ? 2 : 0);   /* 0.64: leaving plays the clip */
     ++kk.edit_revision;
 }
 static void sustain_update(void);

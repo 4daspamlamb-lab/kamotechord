@@ -197,7 +197,8 @@ unsigned kk_midi_clip_state(unsigned pad) { return pad < 16 ? clip_states[pad] :
 unsigned kk_midi_host_protocol(void) { return host_protocol; }
 uint32_t kk_midi_input_revision(void) { return input_revision; }
 void kk_midi_clip_sync_request(void) { kk_midi_cc(KK_CH_CLIP, KK_CLIP_SYNC_CC, 127); }
-void kk_midi_step_mode(unsigned on) { kk_midi_cc(KK_CH_STEP, KK_STEP_SYNC_CC, on ? 127 : 0); }
+/* 1 = entering (127); leaving: 0 = and play the clip (0), 2 = quietly (64, PATCH held). */
+void kk_midi_step_mode(unsigned on) { kk_midi_cc(KK_CH_STEP, KK_STEP_SYNC_CC, on == 1 ? 127 : on == 2 ? 64 : 0); }
 unsigned kk_midi_step_code(unsigned pad) { return pad < 16 ? step_codes[pad] : KK_STEPC_OUTSIDE; }
 unsigned kk_midi_step_info(unsigned cc)
 {

@@ -142,7 +142,8 @@ class KamoteKeys(ControlSurface):
 
     def _step_mode_value(self, value):
         self._first_message()
-        self._step.set_active(bool(value))
+        # 127 = start; leaving: 0 = and play the clip, 64 = quietly (PATCH held).
+        self._step.set_active(value == 127, play=value == 0)
 
     def _sync_value(self, value):
         self._first_message()
