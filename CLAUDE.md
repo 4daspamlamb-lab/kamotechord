@@ -34,7 +34,7 @@ The `.inc` files are `#include`d by `kk_controls.c` / `screen.c` at their origin
 `core/` is copied into the devices by `tools/sync-core.sh` (Windows: `tools/Sync-Core.ps1`, run by `build.bat`): `core/kk_controls.c` → `app/smk37_controls.c` (SMK) / `app/kk_controls.c` (FM-1).
 
 ## Docs: one place per fact
-- SMK-37 buttons, faders, knobs, modes, LEDs, light show: `README.md` (user guide).
+- SMK-37 buttons, faders, knobs, modes, LEDs, light show: `README.md` (reference); hands-on guide: `HOW_TO_USE.md`; diagrams: `docs/diagrams/` (HTML sources are rendered with Playwright; keep them in step on "publish").
 - FM-1 differences: `docs/FM1.md`. Physical layout/indexes only: `docs/CONTROLS.md`.
 - Every CC/note: `docs/MIDI_MAPPING.md`. Ableton setup, Clip/Step Mode use: `docs/ABLETON_REMOTE_SCRIPT.md`.
 - Release notes: `CHANGELOG.md` (newest first, `## KamoteKeys <v> (development snapshot)`).

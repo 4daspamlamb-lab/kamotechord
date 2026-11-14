@@ -27,7 +27,7 @@ fi
 D=build/KamoteKeys-$V
 rm -rf "$D" "$D.zip"; mkdir -p "$D/Ableton" "$D/docs"
 cp -r remote_script/KamoteKeys "$D/Ableton/"; find "$D/Ableton" -name __pycache__ -exec rm -rf {} +
-cp README.md CHANGELOG.md "$D/"; cp docs/*.md "$D/docs/"; cp -r docs/screenshots "$D/docs/"
+cp README.md CHANGELOG.md HOW_TO_USE.md "$D/"; cp docs/*.md "$D/docs/"; cp -r docs/screenshots docs/diagrams "$D/docs/"
 git archive --format=zip --prefix="kamotekeys-$V/" -o "$D/kamotekeys-$V-source.zip" HEAD
 block() { # device, output html (relative to the source folder), name on the Mac
 cat <<PS

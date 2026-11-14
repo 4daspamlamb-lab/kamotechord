@@ -81,6 +81,8 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 
 In the Bluetooth menu, HOME and SAVE are its back / confirm keys (as in FM1 OPEN). HOME used in a combination does not open the settings page.
 
+**0.77:** the FM-1 PLAY button is now **finish & next track** (ends the recording on the selected track, then selects and arms the next one); SAVE tap (PARA) is Start / Stop like the spacebar.
+
 ## Knobs
 
 | Knob | Main screen | Main screen, **SAVE held** | ARP page | Settings (HOME) | Bluetooth menu |

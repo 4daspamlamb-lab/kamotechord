@@ -69,12 +69,14 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
 | **top A / B** (white, 3rd / 2nd from the right) | move the 8-track view one track left / right |
-| **G#** | **Scene Arrange** on / off (below) |
+| **G#** | **STOP** (0.77): hold + clips = stop them; a tap stops the selected clip |
+| **D** (white) | **Scene Arrange** on / off (below) |
 | top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
+| **SEQ PLAY** (any mode) | **finish & next track** (0.77): ends the recording on the selected track (the clip keeps playing), selects and arms the next track at the same scene |
 
 The screen shows the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held.
 
-**Scene Arrange (G#, 0.66).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
+**Scene Arrange (low D since 0.77).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
 
 **FM-1 keys** (unchanged): hold the first black key (F#) + clip = **overdub** (an empty slot: record a new clip; the same again ends it), the second (G#) = **delete**, the third (A#) = **select + arm**; C# = launch the selected scene, top D# / F# = scene up / down. A plain press launches.
 
@@ -125,7 +127,7 @@ Colours: see the table below.
 
 | Keys | Do |
 |---|---|
-| lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DRUM (hold), G = LENGTH (hold), A = BARS (tap); C, B play notes |
+| lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DRUM (hold), G = LENGTH (hold), A = BARS (tap), B = DOUBLE (0.77); C plays a note |
 | lowest octave, black | C# = COPY, D# = PASTE, F# / G# = page ◀ / ▶, A# = DELETE (tap: the page; hold + step / bar / key) |
 | **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
 | top F G A B | velocity 32 / 64 / 96 / 127 |
@@ -145,6 +147,7 @@ Colours: see the table below.
 - **COPY / PASTE** (C# / D#), as in Clip Mode: tap (or hold) **COPY**, then press what to copy: a **step pad** (every note in that step), a **key** (that sound's steps on the shown page) or, in the **BARS view**, a **bar**. Tap **PASTE** and the next matching target gets it (a step pad, a key, or a bar in the BARS view); **hold PASTE** to paste onto several. The screen shows the clipboard (COPIED STEP 5 P1, COPIED C1 P1, COPIED BAR 2).
 - **DELETE** (A#, 0.70): hold + a **step** clears every note in it, hold + a **bar** in the BARS view **deletes** that bar (the later bars move up and the clip gets one bar shorter; hold the bar pad 3 s to only **clear** it, 0.74), hold + a **key** deletes that sound in the whole clip (Move: Delete + pad); a plain **tap** clears the selected sound on the shown page.
 - **PARA** in Step Mode (0.67) plays the clip being made (making it first if the slot is empty); pressed while it plays, stops it. Leaving Step Mode does not play anything and returns to the mode you came from (e.g. Clip Mode).
+- **Existing clips** (0.77): entering Step Mode on a clip with notes selects a sound that is used in it, so the pads show the notes at once. **Empty clips** that Step Mode made are deleted again when you leave without adding notes.
 - **Auto-arm**: entering Step Mode arms the sequenced track (if it was not armed) so the keys are heard; leaving disarms it again.
 - **Screen**: the bar the clip is playing (BAR 2/4; when stopped its length, 4 BARS), page, resolution, FOLLOW, the selected note and SCALE when the key zone is scale keys.
 

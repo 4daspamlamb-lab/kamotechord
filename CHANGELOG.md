@@ -1,8 +1,22 @@
 # Changelog
 
+## KamoteKeys 0.78 (development snapshot)
+
+- **New startup colours: Jewel.** The Bubbles startup now uses ruby, amber, gold, emerald, teal, sapphire, indigo and amethyst, and the name "KamoteKeys" pops in in warm white.
+- New: **HOW_TO_USE.md**, a hands-on guide for every mode; the release zip now includes all diagrams.
+
+## KamoteKeys 0.77 (development snapshot)
+
+- **Fader 4 = master volume** (the keyboard's sound and Live's master track); **pad brightness moved to the Patch page** (E5, 16 steps, saved).
+- **PARA = Start / Stop like the spacebar.**
+- **SEQ PLAY = finish & next track:** ends the recording on the selected track, then selects and arms the next track.
+- **Ripple lights:** start the light show three times quickly (KNOB BANK + FADER BANK) to toggle them.
+- **Clip Mode:** G# = STOP (hold + clips, or tap: the selected clip); Scene Arrange moved to the low D.
+- **Step Mode:** B = DOUBLE (everything); entering on an existing clip shows its notes at once; an empty clip that Step Mode made is deleted when you leave.
+
 ## KamoteKeys 0.76 (development snapshot)
 
-- Clip Mode MOVE key moved to the **top F** (5th white key from the right): hold it + top G# / A# to move the selected clip up / down. The low G plays a note again.
+- Clip Mode MOVE key on the top F (5th white key from the right).
 
 ## KamoteKeys 0.75 (development snapshot)
 

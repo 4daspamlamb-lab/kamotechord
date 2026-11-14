@@ -8,9 +8,10 @@
 #define KK_BOOT_H
 #include <stdint.h>
 
-/* coral apricot mustard lime mint teal sky violet */
+/* 0.78 Jewel: ruby amber gold emerald teal sapphire indigo amethyst */
 static const uint32_t kk_boot_palette[8] = {
-    0xd67060, 0xdc8c50, 0xccae40, 0x96ba50, 0x4eb07c, 0x40a0b4, 0x548cce, 0x806cc4};
+    0x962846, 0xaa501e, 0xaa8214, 0x28823c, 0x14786e, 0x1e5aa0, 0x3c3caa, 0x6e3296};
+static const uint32_t kk_boot_name = 0xf6f0e8;   /* the name in warm white */
 
 /* Bubble i (also pad i): pop start in ms, position on the 240-wide screen
  * (y from the top of the boot band) and radius. */

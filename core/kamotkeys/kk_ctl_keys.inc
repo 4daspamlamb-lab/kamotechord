@@ -43,7 +43,7 @@ static void audition_tick(uint32_t now)
 static uint8_t play_used, play_cancelled;
 static unsigned play_key_held(void)
 {
-    return KK_CLIP_TOGGLE_KEY < KK_KEYS ? (unsigned)((kk.keys >> (KK_CLIP_TOGGLE_KEY % 64U)) & 1U) : 0;
+    return (unsigned)KK_CLIP_TOGGLE_KEY < (unsigned)KK_KEYS ? (unsigned)((kk.keys >> (KK_CLIP_TOGGLE_KEY % 64U)) & 1U) : 0;
 }
 /* ------------------------------------------------------- physical events */
 static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;

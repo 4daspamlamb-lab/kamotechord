@@ -184,7 +184,7 @@ static void intent(unsigned id, struct source *s)
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;
         s->notes[0] = (uint8_t)(id == KK_SCENE_LAUNCH_KEY ? KK_CC_SCENE_LAUNCH : id == KK_SCENE_UP_KEY ? KK_CC_SCENE_UP : KK_CC_SCENE_DOWN);
         /* 0.75: with the MOVE key (G) held, up / down move Live's selected clip instead. */
-        if (KK_CLIP_MOVE_KEY < KK_KEYS && ((kk.keys >> (KK_CLIP_MOVE_KEY % 64U)) & 1U) && id != KK_SCENE_LAUNCH_KEY)
+        if ((unsigned)KK_CLIP_MOVE_KEY < (unsigned)KK_KEYS && ((kk.keys >> (KK_CLIP_MOVE_KEY % 64U)) & 1U) && id != KK_SCENE_LAUNCH_KEY)
             s->notes[0] = (uint8_t)(id == KK_SCENE_UP_KEY ? KK_CC_CLIP_UP : KK_CC_CLIP_DOWN);
         return;
     }

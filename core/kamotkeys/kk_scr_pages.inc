@@ -246,7 +246,7 @@ static void draw_boot_text(void)
         if (p > 0) {
             int hop = p < 1000 ? (1000 - kk_boot_pop(p)) * 12 / 1000 + (1000 - p) * 6 / 1000 : 0;
             char ch[2] = {name[i], 0};
-            text(x, w->y + 5 + hop, ch, 3, boot565(kk_boot_palette[i % 8]));
+            text(x, w->y + 5 + hop, ch, 3, boot565(kk_boot_name));
         }
         x += 18;
     }
