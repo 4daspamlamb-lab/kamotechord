@@ -106,6 +106,12 @@ void test_031(void)
     host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0);
     CHECK(out_count(USB, 0x9F, KK_CLIP_COPY_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_COPY_NOTE) == 1 &&
           out_count(USB, 0x9F, KK_CLIP_PASTE_NOTE) == 1 && host_local_n == 0, "C# / D# -> COPY / PASTE notes");
+    /* 0.72: the lowest C held + a clip = OVERDUB (note 52+), C itself silent. */
+    host_clear(); key(0, 100); pad(3, 100); pad(3, 0);
+    CHECK(kk.clip_action == 1 && out_count(USB, 0x9F, 52 + 2) == 1 && out_count(USB, 0x8F, 52 + 2) == 1 && out_count(USB, 0x90, -1) == 0,
+          "lowest C + pad 3 -> overdub note 54, C silent");
+    frames(20, 5); shot("17_clip_overdub");
+    key(0, 0); CHECK(kk.clip_action == 0, "C released: plain press again");
     host_clear(); key(10, 100); pad(10, 100); pad(10, 0);
     CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "A# + pad 10 -> delete note 77");
     frames(20, 5); shot("17_clip_delete");

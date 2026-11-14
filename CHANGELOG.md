@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.72 (development snapshot)
+
+- **Clip Mode overdub key (SMK-37):** hold the lowest C and press a clip to overdub into it (an empty slot: arm the track and record a new clip); pressing it again ends the overdub. The screen shows OVERDUB while C is held.
+
 ## KamoteKeys 0.71 (development snapshot)
 
 - **Remote Script traffic follows the script's port:** the keyboard remembers which port (USB or Bluetooth) the KamoteKeys script greets it on and sends Clip Mode, Step Mode and Ableton messages there, whatever MIDI OUT AUTO would pick (USB and Bluetooth both connected no longer splits them).
