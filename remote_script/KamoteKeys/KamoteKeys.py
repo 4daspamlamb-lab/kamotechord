@@ -56,6 +56,8 @@ ARRANGE_NOTE = 102                     # 0.66: Scene Arrange on / off
 TRACKS_CC, ARRANGE_CC = 109, 110       # first track shown, Scene Arrange on (to the keyboard)
 CC_TRACKS_LEFT, CC_TRACKS_RIGHT = 31, 32
 CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scene up / down
+CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLAY = finish clip, next track
+STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
 ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
 STEP_TIMEOUT = 6.0                     # s without a Step Mode heartbeat: leave it
@@ -71,7 +73,7 @@ CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
-                 CC_CLIP_UP, CC_CLIP_DOWN)
+                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -92,6 +94,7 @@ class KamoteKeys(ControlSurface):
         self._ticks = 0
         self._received = False
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
+        self._stop_held = self._stop_used = False   # Clip Mode STOP key (0.77)
         self._clip_copy = None           # (track index, scene index) of the copied clip
         self._board_sent = None
         self._step = StepSequencer(self)
@@ -105,7 +108,7 @@ class KamoteKeys(ControlSurface):
                     button.add_value_listener(self._pad_value, identify_sender=True)
                     self._pads.append(button)
             self._copy_keys = []
-            for note in (COPY_NOTE, PASTE_NOTE, ARRANGE_NOTE):
+            for note in (COPY_NOTE, PASTE_NOTE, ARRANGE_NOTE, STOP_NOTE):
                 button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, note)
                 button.add_value_listener(self._copy_key_value, identify_sender=True)
                 self._copy_keys.append(button)
@@ -148,6 +151,10 @@ class KamoteKeys(ControlSurface):
         if self._arrange:
             self._arrange_toggle((note - NOTE_BASE) % (TRACKS * SCENES))   # Scene Arrange: track on / off
             return
+        if self._stop_held:
+            self._stop_used = True
+            self._stop_pad((note - NOTE_BASE) % (TRACKS * SCENES))         # STOP + clip
+            return
         if self._cp.target():
             self._clip_target((note - NOTE_BASE) % (TRACKS * SCENES))   # COPY / PASTE armed: this clip
             return
@@ -162,6 +169,14 @@ class KamoteKeys(ControlSurface):
 
     def _copy_key_value(self, value, sender):
         self._first_message()
+        if sender.message_identifier() == STOP_NOTE:
+            if value:
+                self._stop_held, self._stop_used = True, False
+            else:
+                self._stop_held = False
+                if not self._stop_used:
+                    self._stop_selected()        # a tap: stop the selected clip
+            return
         if sender.message_identifier() == ARRANGE_NOTE:
             if value:
                 self._arrange = not self._arrange
@@ -245,8 +260,11 @@ class KamoteKeys(ControlSurface):
 
     def _transport_value(self, value, sender):
         self._first_message()
-        if value:                        # act on press; release is ignored
-            self._transport(sender.message_identifier())
+        cc = sender.message_identifier()
+        if cc == CC_MASTER:
+            self._master(value)          # a fader: every value counts
+        elif value:                      # act on press; release is ignored
+            self._transport(cc)
 
     # -------------------------------------------------------------- clips
     def _slot(self, pad):
@@ -377,6 +395,68 @@ class KamoteKeys(ControlSurface):
         except Exception:
             pass
         self._status('KamoteKeys: launch scene %s' % ('?' if index is None else index + 1))
+
+    # --------------------------------------------- 0.77 transport helpers
+    def _master(self, value):
+        """Fader 4: Live's master volume (top = 0 dB)."""
+        try:
+            self.song().master_track.mixer_device.volume.value = 0.85 * value / 127.0
+        except Exception as error:
+            self.log_message('KamoteKeys: master volume: %s' % error)
+
+    def _stop_pad(self, pad):
+        track, slot = self._slot(pad)
+        if slot is None:
+            return
+        try:
+            slot.stop()
+            self._status('KamoteKeys: stop %s' % track.name)
+        except Exception as error:
+            self._status('KamoteKeys: cannot stop (%s)' % error)
+
+    def _stop_selected(self):
+        try:
+            slot = self.song().view.highlighted_clip_slot
+            if slot is not None:
+                slot.stop()
+                self._status('KamoteKeys: stop the selected clip')
+        except Exception as error:
+            self._status('KamoteKeys: cannot stop (%s)' % error)
+
+    def _finish_and_next(self):
+        """SEQ PLAY: finish the clip recording on the selected track (it keeps
+        playing), then select and arm the next track at the same scene."""
+        song = self.song()
+        view = song.view
+        tracks = list(song.visible_tracks)
+        t = next((i for i, x in enumerate(tracks) if self._same(x, view.selected_track)), None)
+        scenes = list(song.scenes)
+        s = next((i for i, x in enumerate(scenes) if self._same(x, view.selected_scene)), 0)
+        if t is None:
+            return
+        try:
+            for slot in list(tracks[t].clip_slots):
+                if slot.has_clip and (slot.clip.is_recording or (slot.clip.is_triggered and getattr(slot, 'will_record_on_start', False))):
+                    slot.fire()                       # ends the recording; the clip plays on
+            if t + 1 >= len(tracks):
+                self._status('KamoteKeys: last track')
+                return
+            nxt = tracks[t + 1]
+            for i, other in enumerate(tracks):
+                if getattr(other, 'can_be_armed', False):
+                    mine = i == t + 1
+                    if bool(other.arm) != mine:
+                        other.arm = mine
+            view.selected_track = nxt
+            slots = list(nxt.clip_slots)
+            if s < len(slots):
+                view.highlighted_clip_slot = slots[s]
+            if not (self._track <= t + 1 < self._track + TRACKS):
+                self._track = max(0, t + 1 - TRACKS + 1)
+                self._send_all()
+            self._status('KamoteKeys: finished, now %s (armed)' % nxt.name)
+        except Exception as error:
+            self._status('KamoteKeys: finish / next track: %s' % error)
 
     # ------------------------------------------------- move a clip (0.75)
     def _move_clip(self, delta):
@@ -653,12 +733,14 @@ class KamoteKeys(ControlSurface):
             if song.can_redo:
                 song.redo()
         elif cc == CC_PLAY_PAUSE:
-            # Pause keeps the position: stop when playing, continue when stopped.
+            # 0.77: like the spacebar: stop when playing, start when stopped.
             if song.is_playing:
                 song.stop_playing()
             else:
-                song.continue_playing()
-            self._status('KamoteKeys: %s' % ('pause' if not song.is_playing else 'play'))
+                song.start_playing()
+            self._status('KamoteKeys: %s' % ('stop' if not song.is_playing else 'play'))
+        elif cc == CC_FINISH:
+            self._finish_and_next()
         elif cc == CC_METRONOME:
             song.metronome = not song.metronome
             self._status('KamoteKeys: metronome %s' % ('on' if song.metronome else 'off'))

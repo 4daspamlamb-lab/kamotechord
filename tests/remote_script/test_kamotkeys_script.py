@@ -144,7 +144,7 @@ class T(unittest.TestCase):
 
     def test_controls_claim_only_protocol_messages(self):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
-        self.assertEqual(notes, list(range(36, 103)))     # launch, overdub, delete, select, COPY, PASTE, ARRANGE
+        self.assertEqual(notes, list(range(36, 104)))     # launch, overdub, delete, select, COPY, PASTE, ARRANGE, STOP
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
         self.assertEqual(steps, list(range(36, 52)) + list(range(60, 88)))   # step pads, step functions
         self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
@@ -223,7 +223,7 @@ class T(unittest.TestCase):
 
     def test_play_pause_and_metronome(self):
         deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
-        self.assertEqual(self.song.calls[-1], 'continue')
+        self.assertEqual(self.song.calls[-1], 'start')                 # 0.77: like the spacebar
         self.song.is_playing = True
         deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
         self.assertEqual(self.song.calls[-1], 'stop')
@@ -316,6 +316,24 @@ class T(unittest.TestCase):
         deliver((0xBE, 33, 127))                                         # up again
         self.assertIs(t.clip_slots[0].clip, clip); self.assertIsNone(t.clip_slots[1].clip)
 
+    def test_master_finish_next_and_stop(self):
+        """0.77: Fader 4 = Live master, SEQ PLAY = finish + next track, G# = STOP."""
+        vol = types.SimpleNamespace(value=0.0)
+        self.song.master_track = types.SimpleNamespace(mixer_device=types.SimpleNamespace(volume=vol))
+        deliver((0xBE, 35, 127)); self.assertAlmostEqual(vol.value, 0.85)
+        deliver((0xBE, 35, 0)); self.assertAlmostEqual(vol.value, 0.0)
+        a, b = self.song._tracks[0], self.song._tracks[1]
+        slot = a.clip_slots[0]; slot.clip = Clip(slot); slot.clip.is_recording = True
+        slot.fire = lambda: a.log.append('finish')
+        self.song.view.selected_track = TrackProxy(a); self.song.view.selected_scene = self.song.scenes[0]
+        deliver((0xBE, 36, 127)); deliver((0xBE, 36, 0))
+        self.assertIn('finish', a.log); self.assertTrue(b.arm); self.assertFalse(a.arm)
+        self.assertIs(self.song.view.selected_track._t, b)
+        c = self.song._tracks[2]; cs = c.clip_slots[0]; cs.clip = Clip(cs)
+        cs.stop = lambda: c.log.append('stopped')
+        deliver((0x9F, 103, 127)); self.press(2); deliver((0x8F, 103, 0))  # STOP held + clip
+        self.assertIn('stopped', c.log); self.assertIsNone(cs.clip.__dict__.get('deleted'))
+
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 26)   # hello, scene, tracks, arrange, tempo x2, highlight, 16 states, clipboard x3
@@ -380,6 +398,7 @@ class MSlot(Listened):
     @property
     def has_clip(self): return self.clip is not None
     def create_clip(self, length): self.clip = MClip(length); self.fire('has_clip')
+    def delete_clip(self): self.clip = None
 
 class DrumPad(object):
     def __init__(self, note): self.note = note; self.chains = []; self.name = 'Pad %d' % note
@@ -581,6 +600,20 @@ class StepTest(unittest.TestCase):
         self.pad(1, False); self.fn(68, False)
         self.assertEqual(self.clip.loop_end, 8.0)                          # length kept
         self.assertEqual(self.pitches(), [(36, 0.0), (38, 2.0)])          # bar 2 cleared only
+
+    def test_existing_clip_shows_its_notes_and_empty_clip_removed(self):
+        """0.77: entering on an existing clip selects a pitch that has notes;
+        an empty clip made by Step Mode is deleted on leaving."""
+        slot = self.song.track.clip_slots[0]; slot.clip = MClip(4.0)
+        slot.clip.notes = [Note(MidiNoteSpecification(42, 0.0, 0.25, 100)), Note(MidiNoteSpecification(42, 1.0, 0.25, 100))]
+        self.mode(True); self.s.update_display()
+        self.assertEqual(self.info(102), 42); self.assertTrue(3 <= self.codes()[0] <= 8)
+        self.mode(False)
+        self.assertIsNotNone(slot.clip)                                    # not ours: kept
+        other = self.song.track.clip_slots[1]
+        object.__setattr__(self.song.view, 'highlighted_clip_slot', other)
+        self.mode(True); self.assertIsNotNone(other.clip)                 # made by Step Mode
+        self.mode(False); self.assertIsNone(other.clip)                   # empty: removed
 
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)

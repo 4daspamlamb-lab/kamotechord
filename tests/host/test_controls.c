@@ -68,7 +68,7 @@ void test_buttons(void)
 {
     boot();
     static const struct { unsigned id, cc; } momentary[] = {
-        {KK_BTN_PLAY, 20}, {KK_BTN_GLOBE, 21}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
+        {KK_BTN_PLAY, KK_CC_FINISH}, {KK_BTN_GLOBE, 21}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
     /* HOME (LEFT) = Undo on release (0.51: it doubles as a shift for PARA). */
     host_clear(); btn(KK_BTN_LEFT, 1);
     CHECK(out_count(USB, CC15, 24) == 0 && kk_led_button(KK_BTN_LEFT) == 2, "HOME press: lit, Undo waits for release");
@@ -202,23 +202,29 @@ void test_velocity_faders(void)
     fader(1, 0); CHECK(kk.scale.scale == 0, "fader 2 bottom = Major");
     fader(1, 127); CHECK(kk.scale.scale == 22, "fader 2 top = Minor 6-Diminished");
     fader(2, 0); CHECK(kk.scale.root == 0, "root C"); fader(2, 127); CHECK(kk.scale.root == 11, "root B");
-    /* Fader 4 brightness. */
-    fader(3, 0); settle();
+    /* 0.77: pad brightness from the Patch page (16 steps); Fader 4 = master volume. */
+    host_clear(); fader(3, 90);
+    CHECK(kk.master == 90 && last_out(USB, CC15, 0) == (KK_CC_MASTER | 90 << 8), "Fader 4 = master volume (CC 35)");
+    fader(3, 127);
+    kk_set_brightness(0); settle();
     unsigned lit = 0; for (unsigned p = 0; p < 16; ++p) lit |= host_rgb[p];
     CHECK(lit == 0, "Fader 4 at 0: pads off");
     pad(5, 100); frames(2, 2);
     CHECK(host_rgb[4] == 0, "Fader 4 at 0: pressed pad still dark"); pad(5, 0);
-    fader(3, 127); pad(5, 100); frames(2, 2); uint32_t full = host_rgb[4];
+    kk_set_brightness(15); pad(5, 100); frames(2, 2); uint32_t full = host_rgb[4];
     CHECK(((full >> 16) & 255) == KK_RGB_PEAK, "instant attack (%06x)", full);
-    fader(3, 64); settle(); uint32_t half = host_rgb[4];
-    CHECK(((full >> 16) & 255) == KK_RGB_PEAK && ((half >> 16) & 255) * 2 >= KK_RGB_PEAK - 4 && ((half >> 16) & 255) * 2 <= KK_RGB_PEAK + 4, "brightness scales (%06x %06x)", full, half);
+    kk_set_brightness(8); settle(); uint32_t half = host_rgb[4];
+    CHECK(((full >> 16) & 255) == KK_RGB_PEAK && ((half >> 16) & 255) * 2 >= KK_RGB_PEAK - 12 && ((half >> 16) & 255) * 2 <= KK_RGB_PEAK + 24, "brightness scales (%06x %06x)", full, half);
+    kk_set_brightness(15);
     pad(5, 0); frames(10, 3);
     unsigned released = (host_rgb[4] >> 16) & 255;
-    CHECK(released >= 8 && released <= 12, "release returns to idle at once (%u)", released);
+    CHECK(released >= 16 && released <= 24, "release returns to idle at once (%u)", released);
     settle();
     unsigned idle = (host_rgb[4] >> 16) & 255;
-    CHECK(idle >= 8 && idle <= 12, "spare idle 12.5%% = half of chord 25%% (%u)", idle);
-    fader(3, 10); CHECK(kk.screen_dim, "LCD dims at <= 10%%"); fader(3, 127); CHECK(!kk.screen_dim, "LCD normal");
+    CHECK(idle >= 16 && idle <= 24, "spare idle 12.5%% = half of chord 25%% (%u)", idle);
+    kk_set_brightness(1); CHECK(kk.screen_dim, "LCD dims at <= 10%%"); kk_set_brightness(15); CHECK(!kk.screen_dim, "LCD normal");
+    { uint8_t d[16]; kk_set_brightness(6); kamotkeys_settings_read(d); kk_set_brightness(15);
+      CHECK(kamotkeys_settings_apply(d) == 0 && kk.brightness_level == 6, "brightness saved"); kk_set_brightness(15); }
     /* Every channel sent to the pads is a multiple of 4, in every mode and at
      * every Fader 4 position (values with bit 0/1 set flash on hardware). */
     {
@@ -226,12 +232,12 @@ void test_velocity_faders(void)
         unsigned odd = 0;
         for (unsigned m = 0; m <= 4; ++m) {
             for (unsigned v = 0; v <= 127; v += 9) {
-                fader(3, v); pad(1, 90); pad(5, 90); frames(3, 3); pad(1, 0); pad(5, 0); frames(3, 3);
+                kk_set_brightness(v / 9U); pad(1, 90); pad(5, 90); frames(3, 3); pad(1, 0); pad(5, 0); frames(3, 3);
                 for (unsigned p = 0; p < 16; ++p) odd |= host_rgb[p] & 0x030303;
             }
             if (m < 4) tap(modes[m]);
         }
-        tap(KK_BTN_CHORD); fader(3, 127);
+        tap(KK_BTN_CHORD); kk_set_brightness(15);
         CHECK(!odd && kk.mode == KK_MODE_NORMAL, "all pad values are multiples of 4 (%06x)", odd);
     }
     /* Idle chord pads keep their hue (the blue MIN pad is clearly blue). */

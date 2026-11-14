@@ -59,7 +59,7 @@ static unsigned battery_adc;
 static unsigned master_adc;
 static uint32_t raw_keys, raw_buttons;
 #else
-static unsigned master = 127;
+#define master kk.master   /* 0.77: shared with Fader 4 */
 #endif
 /* Piano view: x offset of the left screen edge in world pixels, x16. */
 enum { WK = 14, BK = 9, PIANO_TOP = 141, WHITE_H = 62, BLACK_H = 38 };

@@ -126,12 +126,13 @@ void test_031(void)
     CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "A# + pad 10 -> delete note 77");
     frames(20, 5); shot("17_clip_delete");
     key(10, 0); CHECK(kk.clip_action == 0, "key released: back to the plain press");
-    host_clear(); key(8, 100); key(8, 0);
-    CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1, "0.66: G# = Scene Arrange (note 102)");
+    host_clear(); key(2, 100); key(2, 0); key(8, 100); key(8, 0);
+    CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1 &&
+          out_count(USB, 0x9F, KK_CLIP_STOP_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_STOP_NOTE) == 1, "0.77: D = Scene Arrange (102), G# = STOP (103)");
     host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0);
     CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
           "0.67: top A / B: track view left / right (CC 31 / 32), no notes");
-    host_clear(); key(2, 100); key(2, 0); CHECK(out_count(USB, 0x90, -1) == 1, "D plays a note again in Clip Mode");
+    host_clear(); key(4, 100); key(4, 0); CHECK(out_count(USB, 0x90, -1) == 1, "E plays a note in Clip Mode");
     /* 0.67: Step Mode entered from Clip Mode returns to Clip Mode; PARA there plays the clip. */
     tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP, "SEQ REC from Clip Mode -> Step Mode");
     host_clear(); tap(KK_BTN_PARA);

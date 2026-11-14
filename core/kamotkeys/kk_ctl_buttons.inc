@@ -8,7 +8,7 @@ static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
 static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
 static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
-static uint32_t show_since;
+static uint32_t show_since, show_taps[3];           /* 0.77: last three light-show starts */
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
 extern void kk_ui_bt_key(unsigned save);
 static void button(unsigned id, unsigned down, uint32_t now)
@@ -43,7 +43,7 @@ static void button(unsigned id, unsigned down, uint32_t now)
         if (down) chord_long = 0;
         else if (!chord_long && held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
         return;
-    case KK_BTN_PLAY: ableton(KK_CC_START, down ? 127 : 0); return;
+    case KK_BTN_PLAY: ableton(KK_CC_FINISH, down ? 127 : 0); return;   /* 0.77: finish the clip, next track */
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
     /* 0.59: KNOB BANK + FADER BANK held together = the light show (each new
      * combo press: next pattern; held 3 s: ripple lights on/off). Alone they
@@ -55,6 +55,15 @@ static void button(unsigned id, unsigned down, uint32_t now)
         if (down) {
             if (kk.buttons & (1U << other)) {          /* second of the two: light show */
                 show_combo = 1; show_since = now; show_ripple_done = 0;
+                show_taps[0] = show_taps[1]; show_taps[1] = show_taps[2]; show_taps[2] = now ? now : 1;
+                if (show_taps[0] && now - show_taps[0] <= 1200U) {
+                    /* 0.77: three quick light-show starts = ripple lights on / off. */
+                    kk.ripple = !kk.ripple; show_ripple_done = 1;
+                    show_taps[0] = show_taps[1] = show_taps[2] = 0;
+                    kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 2) % KK_ANIMATIONS);   /* undo the quick taps' pattern steps */
+                    kk.anim_active = 0; ++kk.edit_revision;
+                    return;
+                }
                 kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);
                 consume(PAD_SOURCE, SOURCES);          /* pads stop making sound */
                 kk.anim_active = 1; kk.anim_phase = 0;
@@ -131,12 +140,6 @@ static void long_presses(uint32_t now)
         unsigned id = ids[i];
         if ((kk.buttons & (1U << id)) && now - kk.pressed_at[id] >= limits[i] && kk.page != pages[i])
             open_page(pages[i]);
-    }
-    if (show_combo && kk.anim_active && !show_ripple_done && now - show_since >= 3000U) {
-        show_ripple_done = 1; kk.ripple = !kk.ripple;  /* combo held 3 s: ripple lights on / off */
-        kk.anim_active = 0;
-        kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 1) % KK_ANIMATIONS);
-        ++kk.edit_revision;
     }
     if ((kk.buttons & (1U << KK_BTN_CHORD)) && !chord_long && now - kk.pressed_at[KK_BTN_CHORD] >= 600U) {
         chord_long = 1; kk_set_mode(KK_MODE_STEP);      /* again from Step Mode: back to Normal */

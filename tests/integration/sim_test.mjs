@@ -53,7 +53,7 @@ check(out(1, 0x80, 36).length === 1, 'key note off');
 midi = [];
 tap(B.PLAY); tap(B.GLOBE); tap(B.FADERBANK); tap(B.LEFT); tap(B.RIGHT); tap(B.KNOB); tap(B.KNOB);
 const cc = out(1, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
-check(cc === '20:127 20:0 21:127 21:0 22:127 22:0 24:127 24:0 27:127 27:0 25:127 25:0 25:127 25:0', 'Ableton CCs (KNOB BANK momentary): ' + cc);
+check(cc === '36:127 36:0 21:127 21:0 22:127 22:0 24:127 24:0 27:127 27:0 25:127 25:0 25:127 25:0', 'Ableton CCs (KNOB BANK momentary): ' + cc);
 
 // Drum mode on channel 10 reaches the drum engine, never the DX7.
 tap(B.FX); midi = []; energy = 0;

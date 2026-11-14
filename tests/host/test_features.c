@@ -6,11 +6,14 @@ void test_ripple(void)
 {
     boot(); settle();
     unsigned pattern = kk.anim_pattern;
-    show_on(); frames(140, 10); show_off();
-    CHECK(!kk.ripple, "a 1.4 s light show does not toggle ripples");
-    pattern = kk.anim_pattern; frames(20, 10);
-    host_clear(); show_on(); frames(310, 10);
-    CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "3 s combo hold -> ripple on, pattern unchanged, show stops");
+    show_on(); frames(310, 10); show_off();
+    CHECK(!kk.ripple, "a long light show does not toggle ripples");
+    pattern = kk.anim_pattern; frames(150, 10);
+    /* 0.77: three quick light-show starts (within 1.2 s) = ripple lights on / off. */
+    host_clear(); show_on(); frames(10, 10); show_off(); frames(10, 10); show_on(); frames(10, 10); show_off(); frames(10, 10);
+    CHECK(!kk.ripple, "two quick starts: still a light show");
+    show_on();
+    CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "third quick start -> ripple on, pattern unchanged, show stops");
     show_off();
     CHECK(out_count(USB, CC15, 22) == 0 && out_count(USB, CC15, 25) == 0, "no Capture / Record sent");
     settle(); frames(40, 25); uint32_t idle = host_rgb[6];
@@ -22,8 +25,8 @@ void test_ripple(void)
     CHECK(host_rgb[6] == idle, "ripple fades away (%06x vs %06x)", host_rgb[6], idle);
     host_clear(); key(36, 100); key(36, 0);
     CHECK(out_count(USB, ON1, -1) == 1, "keys still play with ripples on");
-    show_on(); frames(310, 10); show_off();
-    CHECK(!kk.ripple, "3 s combo hold again -> off");
+    frames(150, 10); show_on(); show_off(); show_on(); show_off(); show_on(); show_off();
+    CHECK(!kk.ripple, "three quick starts again -> off");
 }
 
 /* 0.58: Step Mode (hold CHORD): pads and function keys on channel 14,
@@ -45,7 +48,7 @@ void test_step_mode(void)
           out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
           "0.73: D = RES, E = FOLLOW, G = LENGTH, A = BARS, A# = DELETE");
     host_clear(); key(0, 100); key(0, 0); key(11, 100); key(11, 0);
-    CHECK(out_count(USB, 0x90, -1) == 2 && out_count(USB, 0x9D, -1) == 0, "C and B play notes");
+    CHECK(out_count(USB, 0x90, -1) == 1 && out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "C plays a note, B = DOUBLE (0.77)");
     /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
      * BARS = lowest F#; the lowest G# and third-octave C still play. */
     host_clear(); key(29, 100); key(29, 0); key(35, 100); key(35, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
@@ -196,7 +199,7 @@ void test_bluetooth(void)
     CHECK(kk.mode == KK_MODE_NORMAL && ble_count(0xBD, KK_STEP_SYNC_CC) == 1, "BLE: Step Mode off reaches Live");
     /* Clip Mode over Bluetooth. */
     tap(KK_BTN_CHORD); host_clear();
-    host_ble_busy = 2; pad(3, 100); pad(3, 0); key(1, 100); key(1, 0); key(8, 100); key(8, 0);
+    host_ble_busy = 2; pad(3, 100); pad(3, 0); key(1, 100); key(1, 0); key(2, 100); key(2, 0);
     host_ble_busy = 1; key(10, 100); pad(4, 100); pad(4, 0); key(10, 0); key(30, 100); key(30, 0); key(33, 100); key(33, 0);
     frames(20, 5);
     CHECK(ble_count(0x9F, 84 + 2) == 1 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1 && ble_count(0x9F, KK_CLIP_ARRANGE_NOTE) == 1 &&

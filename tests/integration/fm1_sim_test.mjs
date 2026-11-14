@@ -95,7 +95,7 @@ const before = octave(); midi = [];
 tap(B.PLAY); tap(B.EDIT); tap(B.REC);
 btn(B.HOME, 1); tap(B.REC); tap(B.OCTD); tap(B.OCTU); btn(B.HOME, 0); ms(30);
 const cc = out(USB, 0xbe).map(m => m.d[1] + ':' + m.d[2]).join(' ');
-check(cc === '20:127 20:0 21:127 21:0 25:127 25:0 22:127 22:0 24:127 24:0 27:127 27:0', 'PLAY, EDIT=STOP, REC, HOME+REC/OCT-/OCT+: ' + cc);
+check(cc === '36:127 36:0 21:127 21:0 25:127 25:0 22:127 22:0 24:127 24:0 27:127 27:0', 'PLAY, EDIT=STOP, REC, HOME+REC/OCT-/OCT+: ' + cc);
 check(leds()[B.HOME] === 0 && octave() === before, 'HOME combos open no page and leave the octave alone');
 
 // SAVE (where the SMK-37 has PARA): tap = Play/Pause; HOME + SAVE = metronome;

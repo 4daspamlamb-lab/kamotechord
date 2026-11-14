@@ -21,7 +21,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
 {
     memset(d, 0, KK_SETTINGS_BYTES);
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
-    d[3] = kk.arp_on;   /* 0.75: the Clip Mode PLAY key is no longer a saved switch */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
+    d[3] = (uint8_t)(kk.arp_on | (15U - kk.brightness_level) << 2);   /* 0.77: bits 2..5 = 15 - brightness */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
     d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = kk.arp.octaves;
     d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)kk_midi_local();
 #ifdef KK_DEVICE_FM1
@@ -33,7 +33,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
 int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
 {
     unsigned bpm = d[1] | (unsigned)d[2] << 8;
-    if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || d[3] > 3 || d[4] >= KK_ARP_MODES ||
+    if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || d[3] > 63 || d[4] >= KK_ARP_MODES ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
         d[9] < 1 || d[9] > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || d[13] > 1)
         return -1;
@@ -54,6 +54,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
 #endif
     kk.clip_play = 0;
+    kk_set_brightness(15U - ((d[3] >> 2) & 15U));
     if (kk.arp_on != (d[3] & 1U)) { kk.arp_on = d[3] & 1U; reroute_all(); }   /* bit 1: old select/play switch, ignored */
     kk_perform_guard();
     ++kk.edit_revision;

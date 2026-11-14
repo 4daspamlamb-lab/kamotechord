@@ -36,7 +36,9 @@ struct kk_state {
     uint8_t arp_on, repeat_on, repeat_division, program;
     struct kk_arp_settings arp;
     uint8_t fader[KK_FADERS], fader_known;   /* raw 0..127, bit per fader */
-    uint16_t brightness;                     /* Fader 4, 0..256            */
+    uint16_t brightness;                     /* pad brightness 0..256 (0.77: Patch page E5, saved) */
+    uint8_t brightness_level;                /* 0..15 (15 = full) */
+    uint8_t master;                          /* 0.77: master volume 0..127 (Fader 4 / E8) */
     uint8_t screen_dim;                      /* Fader 4 <= 10 %            */
     uint32_t buttons;                        /* physical button bitmap     */
     uint64_t keys;                           /* physical key bitmap (KK_KEYS) */
@@ -75,7 +77,8 @@ enum { KK_PAD_SENSITIVITY_MAX = 7 };
 unsigned kk_pad_curve(unsigned velocity);
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);
-unsigned kk_step_drum_held(void);   /* Step Mode, DRUM key held: pads = Drum Mode pads */
+unsigned kk_step_drum_held(void);
+void kk_set_brightness(unsigned level);   /* 0..15 */   /* Step Mode, DRUM key held: pads = Drum Mode pads */
 unsigned kk_pad_lit(unsigned pad);     /* held, or its note is sounding */
 /* Pad Scale played on the keys with chord keys (devices with
  * KK_PAD_SCALE_ON_KEYS, i.e. the FM-1, while in Pad Scale Mode). */

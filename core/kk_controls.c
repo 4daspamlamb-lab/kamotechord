@@ -161,6 +161,10 @@ static void intent(unsigned id, struct source *s)
         s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : id == KK_CLIP_PASTE_KEY ? KK_CLIP_PASTE_NOTE : KK_CLIP_ARRANGE_NOTE);
         return;
     }
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_STOP_KEY) {
+        s->channel = KK_CH_CLIP; s->notes[0] = KK_CLIP_STOP_NOTE; s->count = 1;   /* 0.77: STOP (hold + clips, or tap) */
+        return;
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_MOVE_KEY)) return;   /* no note */
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;   /* 0.66: move the 8-track view */
@@ -328,6 +332,15 @@ static void reroute_all(void)
 }
 
 /* ------------------------------------------------------- public actions */
+/* 0.77: pad brightness from the Patch page (E5), 16 steps, saved. */
+void kk_set_brightness(unsigned level)
+{
+    if (level > 15) level = 15;
+    kk.brightness_level = (uint8_t)level;
+    kk.brightness = (uint16_t)(level * 256U / 15U);
+    kk.screen_dim = level <= 1;
+    ++kk.edit_revision;
+}
 void kk_settings_touch(void) { ++kk.edit_revision; groove_settings_panel_changed(); }
 void kk_set_mode(unsigned mode)
 {
@@ -426,10 +439,8 @@ static void fader(unsigned id, unsigned value)
         unsigned r = first ? value * 12U / 128U : quantise(kk.scale.root, value, 12);
         if (r != kk.scale.root) { kk.scale.root = (uint8_t)r; ++kk.edit_revision; }
     } else if (id == 3) {
-        unsigned p = fader_permille(value);
-        kk.brightness = (uint16_t)(p * 256U / 1000U);
-        unsigned dim = p <= 100;
-        if (dim != kk.screen_dim) { kk.screen_dim = (uint8_t)dim; ++kk.edit_revision; }
+        /* 0.77: Fader 4 = master volume (the keyboard's and, via the script, Live's). */
+        if (kk.master != value) { kk.master = (uint8_t)value; kk_midi_cc(KK_CH_ABLETON, KK_CC_MASTER, value); }
     }
     ++kk.edit_revision;
 }
@@ -494,8 +505,9 @@ void kk_perform_init(void)
     memset(&kk, 0, sizeof kk);
     memset(sources, 0, sizeof sources);
     kk.bpm = 120; kk.pad_sensitivity = 3; kk.velocity = KK_VELOCITY_DEFAULT;
+    kk.master = 127; kk_set_brightness(15);    /* 0.77: brightness from the Patch page (saved) */
 #ifdef KK_DEVICE_FM1
-    kk.brightness = 256; kk.fader_known = 8;   /* no Fader 4: full brightness */
+    kk.fader_known = 8;
 #endif
     /* Octaves are never restored from flash: keys start at -2, pads at 0. */
     kk.octave = KK_KEY_OCTAVE_DEFAULT; kk.pad_octave = KK_PAD_OCTAVE_DEFAULT;

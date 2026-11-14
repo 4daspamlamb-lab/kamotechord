@@ -24,7 +24,8 @@ enum { KK_VELOCITY_DEFAULT = 100 };
  * G# nothing, A# DELETE (hold + pad); top F# / G# / A# = scene launch / up / down.
  * A plain pad press selects (slot + arm) unless toggled to play. */
 #define KK_CLIP_PRESS_SELECT 1
-enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6 /* F#: PLAY (hold / tap, 0.75) */, KK_CLIP_ARRANGE_KEY = 8,   /* G#: Scene Arrange (0.66) */
+enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6 /* F#: PLAY (hold / tap, 0.75) */, KK_CLIP_ARRANGE_KEY = 2, /* D: Scene Arrange (0.77) */
+       KK_CLIP_STOP_KEY = 8,   /* G#: STOP (hold + clips, or tap: the selected clip), 0.77 */
        KK_TRACKS_LEFT_KEY = 33, KK_TRACKS_RIGHT_KEY = 35, KK_CLIP_MOVE_KEY = 29,  /* top F held + top G# / A#: move the clip (0.76) */                                        /* top A / B: 8-track view (0.67) */
        KK_CLIP_DELETE_KEY = 10, KK_CLIP_OVERDUB_KEY = 0 };   /* 0.72: lowest C held + clip = OVERDUB */
 /* The third black key (F#) held + clip = SELECT (select the slot, arm its
@@ -61,6 +62,7 @@ static inline int kk_step_key_function(unsigned key)
     case 5: return KK_STEP_DRUM;        /* F  hold: pads = Drum Mode pads */
     case 7: return KK_STEP_LENGTH;      /* G  hold + pad n = n bars */
     case 9: return KK_STEP_BARS;        /* A  tap: bar view (DELETE + bar deletes it) */
+    case 11: return KK_STEP_DOUBLE;     /* B  0.77: double everything (length and notes) */
     case 1: return KK_STEP_COPY;        /* C# tap: copy the next step / key / bar */
     case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the next one; hold: several */
     case 6: return KK_STEP_PAGE_PREV;   /* F# */

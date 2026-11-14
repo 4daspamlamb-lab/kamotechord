@@ -100,7 +100,12 @@ static void page_input(void)
 #else
         if ((d = take(3))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
 #endif
-        for (unsigned i = 4; i < 7; ++i) (void)take(i);
+#ifndef KK_DEVICE_FM1
+        if ((d = take(4))) { kk_set_brightness((unsigned)clampi((int)kk.brightness_level + d, 0, 15)); kk_settings_touch(); }   /* 0.77 */
+#else
+        (void)take(4);
+#endif
+        for (unsigned i = 5; i < 7; ++i) (void)take(i);
         break;
     case KK_PAGE_ARP:
         for (unsigned i = 0; i < 6; ++i) if ((d = take(i))) kk_edit_arp(i, d);
@@ -123,7 +128,7 @@ static void page_input(void)
         for (unsigned i = 2; i < 7; ++i) (void)take(i);
     }
     /* E8 is always MASTER volume, as on SMK37 OPEN. */
-    if ((d = take(7))) master = (unsigned)clampi((int)master + d, 0, 127);
+    if ((d = take(7))) master = (uint8_t)clampi((int)master + d, 0, 127);
     (void)groove_master_update((master * 1023U + 63U) / 127U);
 #endif
 }

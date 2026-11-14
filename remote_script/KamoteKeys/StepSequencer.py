@@ -105,6 +105,7 @@ class StepSequencer(object):
         self._note_len = 1             # new notes: sixteenths of a bar (0.63)
         self._bars_view = False        # BARS toggled on: pads show the bars
         self._bar_delete = None        # [bar, pressed at, cleared already] while DELETE + bar is held
+        self._made_clip = None         # 0.77: the clip this mode created (deleted on exit if still empty)
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -157,6 +158,7 @@ class StepSequencer(object):
             self.send_all()
         elif not on and self._active:
             self._active = False
+            self._drop_empty_clip()
             if play and self._slot is not None:
                 try:
                     if self._slot.has_clip and not (self._clip is not None and self._clip.is_playing):
@@ -289,10 +291,36 @@ class StepSequencer(object):
         self._clip = clip
         for name in ('notes', 'loop_start', 'loop_end'):
             self._listen(clip, name, self._on_clip_changed)
+        self._show_used_pitch()
         self._status = S_OK if self._rack is not None else S_NO_DRUM_RACK
         self._page = min(self._page, self._pages() - 1)
         self._log('bound to %s / %s (%.2f beats, %s)' % (
             self._track.name, clip.name, self._length(), 'Drum Rack' if self._rack else 'no Drum Rack'))
+
+    def _drop_empty_clip(self):
+        """0.77: a clip this mode made and that is still empty is deleted on exit."""
+        slot, self._made_clip = self._made_clip, None
+        try:
+            if slot is not None and slot.has_clip and not list(slot.clip.get_notes_extended(0, 128, -1000.0, 1e6)):
+                slot.delete_clip()
+                self._log('empty clip removed on leaving Step Mode')
+        except Exception as error:
+            self._log('cannot remove the empty clip: %s' % error)
+
+    def _show_used_pitch(self):
+        """0.77: on an existing clip, select a pitch that has notes, so the
+        pads show them at once (instead of an empty lane)."""
+        try:
+            notes = list(self._clip.get_notes_extended(0, 128, -1000.0, 1e6))
+        except Exception:
+            return
+        if not notes or any(n.pitch == self._pitch for n in notes):
+            return
+        counts = {}
+        for n in notes:
+            counts[n.pitch] = counts.get(n.pitch, 0) + 1
+        self._pitch = sorted(counts, key=lambda p: (-counts[p], p))[0]
+        self._dirty = True
 
     def _create_clip(self):
         song = self._song()
@@ -303,6 +331,7 @@ class StepSequencer(object):
         try:
             self._slot.create_clip(bar)
             self._slot.clip.name = self._track.name
+            self._made_clip = self._slot
             self._say('new 1-bar clip "%s"' % self._track.name)
         except Exception as error:
             self._log('cannot create a clip: %s' % error)

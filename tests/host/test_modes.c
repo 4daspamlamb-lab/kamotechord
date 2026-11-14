@@ -260,7 +260,7 @@ void test_display(void)
     btn(KK_BTN_ARP, 1); host_ms += 700; frames(2, 1); btn(KK_BTN_ARP, 0); frames(120, 2); shot("11_arp_page"); tap(KK_BTN_ARP);
     tap(KK_BTN_BT); frames(120, 2); shot("12_bluetooth_menu"); tap(KK_BTN_BT);
     btn(KK_BTN_BT, 1); host_ms += 1600; frames(2, 1); btn(KK_BTN_BT, 0); frames(120, 2); shot("13_diagnostics"); tap(KK_BTN_BT);
-    fader(3, 8); frames(120, 2); shot("14_main_dimmed"); fader(3, 127); frames(120, 2);
+    kk_set_brightness(1); frames(120, 2); shot("14_main_dimmed"); kk_set_brightness(15); frames(120, 2);
     show_on(); fader(0, 70);
     for (unsigned p = 0; p < 8; ++p) {
         frames(60, 5); char name[32]; snprintf(name, sizeof name, "15_lightshow_%u", kk.anim_pattern + 1); shot(name);

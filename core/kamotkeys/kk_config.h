@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.76" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.77" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -42,7 +42,7 @@ enum {
     /* 0.65: COPY / PASTE keys (notes, press / release) and the clipboard the
      * script reports for the screen: CC 106 kind (KK_COPY_*, +64 = paste
      * armed, +32 = copy armed), 107 / 108 its numbers. */
-    KK_CLIP_COPY_NOTE = 100, KK_CLIP_PASTE_NOTE = 101, KK_CLIP_ARRANGE_NOTE = 102,
+    KK_CLIP_COPY_NOTE = 100, KK_CLIP_PASTE_NOTE = 101, KK_CLIP_ARRANGE_NOTE = 102, KK_CLIP_STOP_NOTE = 103,
     /* 0.66: host CC 109 = first track shown, 110 = Scene Arrange on. */
     KK_HOST_TRACKS_CC = 109, KK_HOST_ARRANGE_CC = 110,
     KK_COPY_KIND_CC = 106, KK_COPY_A_CC = 107, KK_COPY_B_CC = 108,
@@ -117,6 +117,8 @@ enum {
     KK_CC_SCENE_DOWN = 28, KK_CC_SCENE_UP = 29, KK_CC_SCENE_LAUNCH = 30,
     KK_CC_TRACKS_LEFT = 31, KK_CC_TRACKS_RIGHT = 32,   /* 0.66: move the 8-track view */
     KK_CC_CLIP_UP = 33, KK_CC_CLIP_DOWN = 34,          /* 0.75: move Live's selected clip a scene up / down */
+    KK_CC_MASTER = 35,     /* 0.77: Fader 4 = master volume (value 0..127) */
+    KK_CC_FINISH = 36,     /* 0.77: SEQ PLAY = finish the recording clip, go to the next track */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */
     KK_CC_SPARE_BASE = 102

@@ -34,8 +34,14 @@ static void draw_patch(void)
     static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7 LIGHTEST"};
     row(5, KK_K4 " PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1], 0);
 #endif
+#ifndef KK_DEVICE_FM1
+    char bri[8]; decimal(bri, kk.brightness_level * 100 / 15); { char *q = bri; while (*q) ++q; q[0] = '%'; q[1] = 0; }
+    row(6, "E5 PAD BRIGHTNESS", bri, 0);
+#endif
+#ifdef KK_DEVICE_FM1
     text(12, 198, KK_K1 " PATCH   MIDI OUT AUTO = USB WHEN", 1, DIM);
     text(12, 208, "CONNECTED, ELSE BLE", 1, DIM);
+#endif
     text(12, 222, KK_TXT_PATCH_BACK, 1, FAINT);
 }
 static void draw_arp(void)
