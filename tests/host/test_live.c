@@ -74,14 +74,23 @@ void test_031(void)
     host_clear(); pad(3, 110);
     CHECK(out_count(USB, 0x9F, 84 + 2) == 1 && host_local_n == 0, "pad 3 -> select note 86 ch16 (default), never the synth");
     pad(3, 0); CHECK(out_count(USB, 0x8F, 84 + 2) == 1, "release -> note off");
+    /* 0.75: F# = PLAY key. Tap: the next clip pressed is launched, then select again. */
     host_clear(); key(6, 100); key(6, 0); pad(3, 110); pad(3, 0);
-    CHECK(kk.clip_play && host_out_n == 2 && out_count(USB, 0x9F, 38) == 1, "F# toggles pads to play (silent key): pad 3 -> launch note 38");
-    host_clear(); tap(KK_BTN_ARP); pad(3, 100); frames(300, 2); pad(3, 0); tap(KK_BTN_ARP);
+    CHECK(!kk.clip_play && host_out_n == 2 && out_count(USB, 0x9F, 38) == 1, "tap F#, pad 3 -> launch note 38 once (silent key)");
+    host_clear(); pad(3, 110); pad(3, 0);
+    CHECK(out_count(USB, 0x9F, 84 + 2) == 1, "next press selects again");
+    /* Hold F#: every clip pressed meanwhile is launched. */
+    host_clear(); key(6, 100); pad(3, 110); pad(3, 0); pad(4, 110); pad(4, 0); key(6, 0);
+    CHECK(out_count(USB, 0x9F, 38) == 1 && out_count(USB, 0x9F, 39) == 1 && !kk.clip_play, "hold F#: pads 3 and 4 launch, then select again");
+    key(6, 100); key(6, 0); key(6, 100); key(6, 0); CHECK(!kk.clip_play, "tap F# twice: cancelled");
+    host_clear(); tap(KK_BTN_ARP); key(6, 100); pad(3, 100); frames(300, 2); pad(3, 0); key(6, 0); tap(KK_BTN_ARP);
     CHECK(out_count(USB, 0x9F, 38) == 1, "ARP does not touch clip launches");
-    {
-        uint8_t d[16]; kamotkeys_settings_read(d); kk.clip_play = 0;
-        CHECK(kamotkeys_settings_apply(d) == 0 && kk.clip_play == 1, "select / play is saved");
-    }
+    /* 0.75: G held + top G# / A# = move Live's selected clip up / down (CC 33 / 34). */
+    host_clear(); key(7, 100); key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(7, 0);
+    CHECK(out_count(USB, CC15, KK_CC_CLIP_UP) == 2 && out_count(USB, CC15, KK_CC_CLIP_DOWN) == 2 &&
+          out_count(USB, CC15, KK_CC_SCENE_UP) == 0 && out_count(USB, 0x90, -1) == 0, "G + top G# / A#: move the clip up / down, G silent");
+    host_clear(); key(32, 100); key(32, 0);
+    CHECK(out_count(USB, CC15, KK_CC_SCENE_UP) == 2, "without G: scene up as before");
     host_in(0xBF, KK_CLIP_HELLO_CC, 1);
     host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_RECORDING);
     host_in(0xBF, KK_CLIP_STATE_CC + 2, KK_CLIP_STOPPED); host_in(0xBF, KK_CLIP_STATE_CC + 3, KK_CLIP_QUEUED);
@@ -142,7 +151,6 @@ void test_031(void)
     { unsigned ca, cb; CHECK(kk_midi_copy(&ca, &cb) == (KK_COPY_CLIP | 64) && ca == 3 && cb == 2, "clipboard from the script"); }
     frames(40, 5); shot("17b_clip_paste");
     host_in(0xBF, KK_COPY_KIND_CC, 0);
-    key(6, 100); key(6, 0);                                     /* back to select */
     /* 0.57: Live's highlighted slot shows violet (not amber/yellow). */
     host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 5, KK_CLIP_STOPPED); host_in(0xBF, KK_HOST_HIGHLIGHT_CC, 5);
     settle();

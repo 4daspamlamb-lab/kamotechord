@@ -55,6 +55,7 @@ COPY_CLIP = 1
 ARRANGE_NOTE = 102                     # 0.66: Scene Arrange on / off
 TRACKS_CC, ARRANGE_CC = 109, 110       # first track shown, Scene Arrange on (to the keyboard)
 CC_TRACKS_LEFT, CC_TRACKS_RIGHT = 31, 32
+CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scene up / down
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
 ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
 STEP_TIMEOUT = 6.0                     # s without a Step Mode heartbeat: leave it
@@ -69,7 +70,8 @@ CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO = 20, 21, 22, 24, 25,
 CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
-                 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT)
+                 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
+                 CC_CLIP_UP, CC_CLIP_DOWN)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -376,6 +378,47 @@ class KamoteKeys(ControlSurface):
             pass
         self._status('KamoteKeys: launch scene %s' % ('?' if index is None else index + 1))
 
+    # ------------------------------------------------- move a clip (0.75)
+    def _move_clip(self, delta):
+        """Move Live's selected clip one scene up / down (into an empty slot;
+        an occupied slot is swapped with it). The moved clip stays selected."""
+        song = self.song()
+        view = song.view
+        tracks = list(song.visible_tracks)
+        t = next((i for i, x in enumerate(tracks) if self._same(x, view.selected_track)), None)
+        scenes = list(song.scenes)
+        s = next((i for i, x in enumerate(scenes) if self._same(x, view.selected_scene)), None)
+        if t is None or s is None:
+            self._status('KamoteKeys: select a clip to move')
+            return
+        slots = list(tracks[t].clip_slots)
+        target = s + delta
+        if not (0 <= target < len(slots)) or not slots[s].has_clip:
+            self._status('KamoteKeys: no clip to move there')
+            return
+        source, dest = slots[s], slots[target]
+        try:
+            if dest.has_clip:
+                # Swap through the source: keep a copy of the target in a new scene, then put it back.
+                song.create_scene(-1)
+                spare = list(tracks[t].clip_slots)[-1]
+                dest.duplicate_clip_to(spare)
+                source.duplicate_clip_to(dest)
+                spare.duplicate_clip_to(source)
+                spare.delete_clip()
+                song.delete_scene(len(list(song.scenes)) - 1)
+            else:
+                source.duplicate_clip_to(dest)
+                source.delete_clip()
+            view.selected_scene = list(song.scenes)[target]
+            view.highlighted_clip_slot = dest
+            if not (self._scene <= target < self._scene + SCENES):
+                self._scene = max(0, min(len(scenes) - SCENES, target if delta > 0 else target - 1))
+                self._send_all()
+            self._status('KamoteKeys: moved %s to scene %d' % (tracks[t].name, target + 1))
+        except Exception as error:
+            self._status('KamoteKeys: cannot move the clip (%s)' % error)
+
     # ------------------------------------------------- tracks view (0.66)
     def _move_tracks(self, delta):
         count = len(list(self.song().visible_tracks))
@@ -625,6 +668,8 @@ class KamoteKeys(ControlSurface):
             self._scroll(-1)
         elif cc == CC_SCENE_LAUNCH:
             self._launch_scene()
+        elif cc in (CC_CLIP_UP, CC_CLIP_DOWN):
+            self._move_clip(-1 if cc == CC_CLIP_UP else 1)
         elif cc in (CC_TRACKS_LEFT, CC_TRACKS_RIGHT):
             self._move_tracks(-1 if cc == CC_TRACKS_LEFT else 1)
         elif cc == CC_RECORD:

@@ -21,7 +21,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
 {
     memset(d, 0, KK_SETTINGS_BYTES);
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
-    d[3] = (uint8_t)(kk.arp_on | kk.clip_play << 1); d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
+    d[3] = kk.arp_on;   /* 0.75: the Clip Mode PLAY key is no longer a saved switch */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
     d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = kk.arp.octaves;
     d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)kk_midi_local();
 #ifdef KK_DEVICE_FM1
@@ -53,8 +53,8 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     kk.rgb_timing = d[14]; smk37_rgb_timing(kk.rgb_timing);
     kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
 #endif
-    kk.clip_play = (d[3] >> 1) & 1U;
-    if (kk.arp_on != (d[3] & 1U)) { kk.arp_on = d[3] & 1U; reroute_all(); }
+    kk.clip_play = 0;
+    if (kk.arp_on != (d[3] & 1U)) { kk.arp_on = d[3] & 1U; reroute_all(); }   /* bit 1: old select/play switch, ignored */
     kk_perform_guard();
     ++kk.edit_revision;
     return 0;

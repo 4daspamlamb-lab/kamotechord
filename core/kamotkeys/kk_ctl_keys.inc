@@ -39,6 +39,12 @@ static void audition_tick(uint32_t now)
     kk_midi_note_on(audition_channel, audition_note, kk_velocity(100)); audition_on = 1;
     ++audition_done;
 }
+/* Clip Mode PLAY key (0.75): held, or tapped for the next pad. */
+static uint8_t play_used, play_cancelled;
+static unsigned play_key_held(void)
+{
+    return KK_CLIP_TOGGLE_KEY < KK_KEYS ? (unsigned)((kk.keys >> (KK_CLIP_TOGGLE_KEY % 64U)) & 1U) : 0;
+}
 /* ------------------------------------------------------- physical events */
 static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
 /* Sustain (CC 64, channel 1) is on while the SUSTAIN button latch OR a
@@ -133,7 +139,15 @@ static void source_press(unsigned id, unsigned velocity)
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
     if (id >= PAD_SOURCE && kk.mode == KK_MODE_STEP && held_repeat()) audition_start_hits(held_repeat(), fm1_millis());
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {
-        kk.clip_play = !kk.clip_play; kk_settings_touch(); ++kk.edit_revision;   /* 0.65: select <-> play, saved */
+        /* 0.75 PLAY key: pads select by default; hold PLAY + clip = launch it, or
+         * tap PLAY and the next clip pressed is launched. Tapping again cancels. */
+        if (kk.clip_play) { kk.clip_play = 0; play_cancelled = 1; }
+        else { kk.clip_play = 1; play_cancelled = 0; }
+        play_used = 0; ++kk.edit_revision;
+    }
+    if (id >= PAD_SOURCE && kk.mode == KK_MODE_CLIP && kk.clip_play && s->channel == KK_CH_CLIP) {
+        play_used = 1;
+        if (!play_key_held()) { kk.clip_play = 0; ++kk.edit_revision; }   /* tapped: one clip only */
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_key_function(id) == KK_STEP_CHORD_TOGGLE) {
         kk.step_single = !kk.step_single; s->count = 0; ++kk.edit_revision;   /* 0.64: chords <-> single notes */
@@ -174,6 +188,9 @@ static void source_release(unsigned id)
 {
     struct source *s = &sources[id];
     if (!s->held) return;
+    if (id < KK_KEYS && id == KK_CLIP_TOGGLE_KEY && kk.mode == KK_MODE_CLIP && play_used && kk.clip_play) {
+        kk.clip_play = 0; ++kk.edit_revision;                     /* held PLAY used: back to select */
+    }
     unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK, was_clip = s->route == ROUTE_CLIPMOD;
     if (kk.sustain_on && s->route == ROUTE_DIRECT && s->sounding && s->channel != KK_CH_CLIP && s->channel != KK_CH_STEP) {
         hold_keep(s); s->sounding = 0;                   /* keep sounding until the next key */

@@ -305,6 +305,17 @@ class T(unittest.TestCase):
         self.s._step_seen -= kk_mod.STEP_TIMEOUT + 1; self.s.update_display()
         self.assertFalse(self.s._step.active)
 
+    def test_move_clip_up_down(self):
+        """0.75: G + top G# / A# moves Live's selected clip a scene up / down."""
+        t = self.song._tracks[1]; src = t.clip_slots[0]; src.clip = Clip(src)
+        clip = src.clip
+        self.song.view.selected_track = TrackProxy(t); self.song.view.selected_scene = self.song.scenes[0]
+        deliver((0xBE, 34, 127))                                         # down
+        self.assertIsNone(t.clip_slots[0].clip); self.assertIs(t.clip_slots[1].clip, clip)
+        self.assertIs(self.song.view.selected_scene, self.song.scenes[1])
+        deliver((0xBE, 33, 127))                                         # up again
+        self.assertIs(t.clip_slots[0].clip, clip); self.assertIsNone(t.clip_slots[1].clip)
+
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 26)   # hello, scene, tracks, arrange, tempo x2, highlight, 16 states, clipboard x3

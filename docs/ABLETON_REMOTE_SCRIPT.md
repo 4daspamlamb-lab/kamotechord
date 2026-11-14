@@ -63,7 +63,8 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 |---|---|
 | plain pad press | **SELECT** (default): selects the slot and **arms its track** (disarms the others), so the next Session Record (KNOB BANK) records there. Toggled to **PLAY** it launches / stops as in the table above |
 | **lowest C** (white) | hold + a clip: **overdub** into it (an empty slot: arm and record a new clip); the same again ends it (0.72) |
-| **F#** (3rd black) | pads: SELECT ↔ PLAY (remembered after power-off; the screen shows PADS: SELECT / PLAY) |
+| **F#** (3rd black) | **PLAY** (0.75): hold + clips = launch / stop them; tap, then the next clip pressed is launched (pads select otherwise) |
+| **G** (5th white) held + top **G# / A#** | move Live's selected clip one scene up / down (an occupied slot is swapped); it stays selected (0.75) |
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |

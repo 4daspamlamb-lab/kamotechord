@@ -161,7 +161,7 @@ static void intent(unsigned id, struct source *s)
         s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : id == KK_CLIP_PASTE_KEY ? KK_CLIP_PASTE_NOTE : KK_CLIP_ARRANGE_NOTE);
         return;
     }
-    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) return;   /* no note */
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_MOVE_KEY)) return;   /* no note */
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;   /* 0.66: move the 8-track view */
         s->notes[0] = (uint8_t)(id == KK_TRACKS_LEFT_KEY ? KK_CC_TRACKS_LEFT : KK_CC_TRACKS_RIGHT);
@@ -179,6 +179,9 @@ static void intent(unsigned id, struct source *s)
         /* Clip Mode scene keys (ch 15 CC): launch, up, down. */
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;
         s->notes[0] = (uint8_t)(id == KK_SCENE_LAUNCH_KEY ? KK_CC_SCENE_LAUNCH : id == KK_SCENE_UP_KEY ? KK_CC_SCENE_UP : KK_CC_SCENE_DOWN);
+        /* 0.75: with the MOVE key (G) held, up / down move Live's selected clip instead. */
+        if (KK_CLIP_MOVE_KEY < KK_KEYS && ((kk.keys >> (KK_CLIP_MOVE_KEY % 64U)) & 1U) && id != KK_SCENE_LAUNCH_KEY)
+            s->notes[0] = (uint8_t)(id == KK_SCENE_UP_KEY ? KK_CC_CLIP_UP : KK_CC_CLIP_DOWN);
         return;
     }
     if (id < KK_KEYS) {

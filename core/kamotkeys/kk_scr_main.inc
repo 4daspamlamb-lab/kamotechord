@@ -250,7 +250,7 @@ static void draw_big(void)
         char *p = append(buf, "TRACK "); p = decimal(p, (int)(kk_midi_host_tracks() + kk.clip_pad % 8 + 1));
         p = append(p, "  SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
 #ifdef KK_CLIP_PRESS_SELECT
-        p = append(p, kk.clip_play ? "  PADS: PLAY" : "  PADS: SELECT");
+        p = append(p, kk.clip_play ? "  PADS: PLAY" : "  PADS: SELECT");   /* PLAY while the PLAY key is held / tapped */
 #endif
         text_center(120, w->y + 42, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
         copy_line(w->y + 55);

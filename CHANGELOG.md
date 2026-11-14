@@ -1,5 +1,10 @@
 # Changelog
 
+## KamoteKeys 0.75 (development snapshot)
+
+- **Clip Mode PLAY key (F#):** pads always select by default; hold F# and press clips to launch / stop them, or tap F# and the next clip pressed is launched (tap again to cancel). No longer a saved switch.
+- **Move a clip:** hold G (5th white key) and press the top G# / A# to move Live's selected clip one scene up / down (an occupied slot is swapped); the clip stays selected so you can keep moving it. Needs the updated Remote Script.
+
 ## KamoteKeys 0.74 (development snapshot)
 
 - **DELETE + bar deletes the bar** (Step Mode bar view): the bar is removed, the later bars move up and the clip gets one bar shorter. Hold the bar pad for 3 s to only clear its notes instead. Needs the updated Remote Script.
