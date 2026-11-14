@@ -31,6 +31,8 @@ Only these messages are claimed by the script; keys and pads on channels
 """
 from __future__ import absolute_import, print_function, unicode_literals
 
+import time
+
 from _Framework.ControlSurface import ControlSurface
 from _Framework.ButtonElement import ButtonElement
 from _Framework.InputControlElement import MIDI_NOTE_TYPE, MIDI_CC_TYPE
@@ -50,6 +52,12 @@ SCENE_CC = 104
 COPY_NOTE, PASTE_NOTE = 100, 101           # 0.65: Clip Mode COPY / PASTE keys
 COPY_KIND_CC, COPY_A_CC, COPY_B_CC = 106, 107, 108   # clipboard shown on the keyboard's screen
 COPY_CLIP = 1
+ARRANGE_NOTE = 102                     # 0.66: Scene Arrange on / off
+TRACKS_CC, ARRANGE_CC = 109, 110       # first track shown, Scene Arrange on (to the keyboard)
+CC_TRACKS_LEFT, CC_TRACKS_RIGHT = 31, 32
+ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
+ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
+STEP_TIMEOUT = 6.0                     # s without a Step Mode heartbeat: leave it
 HIGHLIGHT_CC = 105
 STATE_CC = 80
 HELLO_CC = 126
@@ -61,7 +69,7 @@ CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO = 20, 21, 22, 24, 25,
 CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
-                 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH)
+                 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -74,6 +82,10 @@ class KamoteKeys(ControlSurface):
         self._sent = [None] * (TRACKS * SCENES)
         self._tempo_sent = None
         self._scene = 0                  # first Live scene shown on the 8 x 2 grid
+        self._track = 0                  # first Live track shown (0.66: D / E move it)
+        self._arrange = False            # Scene Arrange view (0.66)
+        self._arrangement = None         # {scene index: set(track indexes)}, loaded lazily
+        self._step_seen = 0.0            # last Step Mode heartbeat
         self._highlight_sent = None
         self._ticks = 0
         self._received = False
@@ -91,7 +103,7 @@ class KamoteKeys(ControlSurface):
                     button.add_value_listener(self._pad_value, identify_sender=True)
                     self._pads.append(button)
             self._copy_keys = []
-            for note in (COPY_NOTE, PASTE_NOTE):
+            for note in (COPY_NOTE, PASTE_NOTE, ARRANGE_NOTE):
                 button = ButtonElement(True, MIDI_NOTE_TYPE, CLIP_CHANNEL, note)
                 button.add_value_listener(self._copy_key_value, identify_sender=True)
                 self._copy_keys.append(button)
@@ -131,6 +143,9 @@ class KamoteKeys(ControlSurface):
         if not value:                    # note on: one action per physical press
             return
         note = sender.message_identifier()
+        if self._arrange:
+            self._arrange_toggle((note - NOTE_BASE) % (TRACKS * SCENES))   # Scene Arrange: track on / off
+            return
         if self._cp.target():
             self._clip_target((note - NOTE_BASE) % (TRACKS * SCENES))   # COPY / PASTE armed: this clip
             return
@@ -145,6 +160,12 @@ class KamoteKeys(ControlSurface):
 
     def _copy_key_value(self, value, sender):
         self._first_message()
+        if sender.message_identifier() == ARRANGE_NOTE:
+            if value:
+                self._arrange = not self._arrange
+                self._status('KamoteKeys: Scene Arrange %s' % ('on: tap pads to choose the tracks of each scene' if self._arrange else 'off'))
+                self._send_all()
+            return
         if sender.message_identifier() == COPY_NOTE:
             self._cp.copy_key(bool(value))
         else:
@@ -162,7 +183,7 @@ class KamoteKeys(ControlSurface):
             if not slot.has_clip:
                 self._status('KamoteKeys: empty slot, nothing to copy')
                 return
-            self._clip_copy = (pad % TRACKS, self._scene + pad // TRACKS)
+            self._clip_copy = (self._track + pad % TRACKS, self._scene + pad // TRACKS)
             self._status('KamoteKeys: copied %s scene %d' % (track.name, self._clip_copy[1] + 1))
         else:
             if self._clip_copy is None:
@@ -170,7 +191,7 @@ class KamoteKeys(ControlSurface):
             else:
                 try:
                     source = list(list(self.song().visible_tracks)[self._clip_copy[0]].clip_slots)[self._clip_copy[1]]
-                    if (self._clip_copy[0], self._clip_copy[1]) != (pad % TRACKS, self._scene + pad // TRACKS):
+                    if (self._clip_copy[0], self._clip_copy[1]) != (self._track + pad % TRACKS, self._scene + pad // TRACKS):
                         source.duplicate_clip_to(slot)
                         self._status('KamoteKeys: pasted into %s scene %d' % (track.name, self._scene + pad // TRACKS + 1))
                 except Exception as error:
@@ -208,6 +229,8 @@ class KamoteKeys(ControlSurface):
     def _step_mode_value(self, value):
         self._first_message()
         # 127 = start; leaving: 0 = and play the clip, 64 = quietly (PATCH held).
+        if value == 127:
+            self._step_seen = time.time()   # also the 2 s heartbeat (0.66)
         self._step.set_active(value == 127, play=value == 0)
         self._cp.reset()
         self._refresh_clipboard()
@@ -226,7 +249,7 @@ class KamoteKeys(ControlSurface):
     # -------------------------------------------------------------- clips
     def _slot(self, pad):
         tracks = list(self.song().visible_tracks)
-        index, scene = pad % TRACKS, self._scene + pad // TRACKS
+        index, scene = self._track + pad % TRACKS, self._scene + pad // TRACKS
         if index >= len(tracks):
             return None, None
         track = tracks[index]
@@ -318,7 +341,7 @@ class KamoteKeys(ControlSurface):
         for index, other in enumerate(list(song.visible_tracks)):
             if not getattr(other, 'can_be_armed', False):
                 continue
-            mine = index == pad % TRACKS
+            mine = index == self._track + pad % TRACKS
             if bool(other.arm) != mine:
                 other.arm = mine
             armed = armed or mine
@@ -340,13 +363,102 @@ class KamoteKeys(ControlSurface):
         self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
 
     def _launch_scene(self):
-        scene = self.song().view.selected_scene
+        song = self.song()
+        scene = song.view.selected_scene
+        scenes = list(song.scenes)
+        index = next((i for i, x in enumerate(scenes) if self._same(x, scene)), None)
+        if index is not None and index in self._arranged():
+            self._launch_arranged(index)      # 0.66: the tracks chosen in Scene Arrange
+            return
         try:
             scene.fire()
-            index = list(self.song().scenes).index(scene) + 1
         except Exception:
-            index = '?'
-        self._status('KamoteKeys: launch scene %s' % index)
+            pass
+        self._status('KamoteKeys: launch scene %s' % ('?' if index is None else index + 1))
+
+    # ------------------------------------------------- tracks view (0.66)
+    def _move_tracks(self, delta):
+        count = len(list(self.song().visible_tracks))
+        new = max(0, min(max(0, count - TRACKS), self._track + delta))
+        if new != self._track:
+            self._track = new
+            self._send_all()
+        self._status('KamoteKeys: tracks %d-%d' % (self._track + 1, self._track + TRACKS))
+
+    # ------------------------------------------------ Scene Arrange (0.66)
+    # One clip per track; each scene stores which tracks play. Launching the
+    # scene from the keyboard (top F#) launches those tracks' clips and stops
+    # the others, so every scene plays the same clips: edit once, heard everywhere.
+    def _arranged(self):
+        if self._arrangement is None:
+            self._arrangement = {}
+            try:
+                text = self.song().get_data(ARRANGE_KEY, '') or ''
+                for part in str(text).split(';'):
+                    if ':' in part:
+                        scene, tracks = part.split(':', 1)
+                        self._arrangement[int(scene)] = set(int(t) for t in tracks.split(',') if t != '')
+            except Exception as error:
+                self.log_message('KamoteKeys: cannot read the arrangement: %s' % error)
+        return self._arrangement
+
+    def _save_arrangement(self):
+        text = ';'.join('%d:%s' % (s, ','.join(str(t) for t in sorted(ts))) for s, ts in sorted(self._arranged().items()))
+        try:
+            self.song().set_data(ARRANGE_KEY, text)
+        except Exception as error:
+            self.log_message('KamoteKeys: cannot save the arrangement: %s' % error)
+
+    def _source_slot(self, track, scene):
+        """The clip a track plays in a scene: its own slot, else the nearest clip above, then below."""
+        slots = list(track.clip_slots)
+        order = [scene] + list(range(scene - 1, -1, -1)) + list(range(scene + 1, len(slots)))
+        for s in order:
+            if 0 <= s < len(slots) and slots[s].has_clip:
+                return slots[s]
+        return None
+
+    def _scene_tracks(self, scene):
+        """Tracks playing in a scene: the stored choice, else the tracks with a clip in that scene."""
+        stored = self._arranged().get(scene)
+        if stored is not None:
+            return stored
+        tracks = list(self.song().visible_tracks)
+        return set(i for i, t in enumerate(tracks) if scene < len(list(t.clip_slots)) and list(t.clip_slots)[scene].has_clip)
+
+    def _arrange_state(self, pad):
+        tracks = list(self.song().visible_tracks)
+        index, scene = self._track + pad % TRACKS, self._scene + pad // TRACKS
+        if index >= len(tracks) or scene >= len(list(self.song().scenes)) or self._source_slot(tracks[index], scene) is None:
+            return ARR_NONE
+        return ARR_ON if index in self._scene_tracks(scene) else ARR_OFF
+
+    def _arrange_toggle(self, pad):
+        tracks = list(self.song().visible_tracks)
+        index, scene = self._track + pad % TRACKS, self._scene + pad // TRACKS
+        if index >= len(tracks) or self._source_slot(tracks[index], scene) is None:
+            self._status('KamoteKeys: that track has no clip')
+            return
+        chosen = set(self._scene_tracks(scene))
+        chosen.symmetric_difference_update([index])
+        self._arranged()[scene] = chosen
+        self._save_arrangement()
+        self._status('KamoteKeys: scene %d: %s %s' % (scene + 1, tracks[index].name, 'on' if index in chosen else 'off'))
+        self._send_state(pad, force=True)
+
+    def _launch_arranged(self, scene):
+        song = self.song()
+        chosen = self._scene_tracks(scene)
+        for index, track in enumerate(list(song.visible_tracks)):
+            try:
+                source = self._source_slot(track, scene) if index in chosen else None
+                if source is not None:
+                    source.fire()
+                elif hasattr(track, 'stop_all_clips'):
+                    track.stop_all_clips()
+            except Exception as error:
+                self.log_message('KamoteKeys: arrange launch: %s' % error)
+        self._status('KamoteKeys: launch scene %d (arranged: %d tracks)' % (scene + 1, len(chosen)))
 
     def _delete(self, pad):
         """DELETE key + pad: delete that clip."""
@@ -381,6 +493,8 @@ class KamoteKeys(ControlSurface):
             return False
 
     def _state(self, pad):
+        if self._arrange:
+            return self._arrange_state(pad)
         track, slot = self._slot(pad)
         if slot is None:
             return EMPTY
@@ -428,7 +542,7 @@ class KamoteKeys(ControlSurface):
         try:
             song = self.song()
             view = song.view
-            tracks = list(song.visible_tracks)[:TRACKS]
+            tracks = list(song.visible_tracks)[self._track:self._track + TRACKS]
             scenes = list(song.scenes)
             t = next((i for i, x in enumerate(tracks) if self._same(x, view.selected_track)), None)
             s = next((i for i, x in enumerate(scenes) if self._same(x, view.selected_scene)), None)
@@ -447,6 +561,8 @@ class KamoteKeys(ControlSurface):
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
         self._send_midi((0xB0 | CLIP_CHANNEL, SCENE_CC, min(self._scene, 127)))
+        self._send_midi((0xB0 | CLIP_CHANNEL, TRACKS_CC, min(self._track, 127)))
+        self._send_midi((0xB0 | CLIP_CHANNEL, ARRANGE_CC, int(self._arrange)))
         self._send_tempo(force=True)
         self._send_highlight(force=True)
         for pad in range(TRACKS * SCENES):
@@ -468,6 +584,9 @@ class KamoteKeys(ControlSurface):
             self._send_state(pad)
         self._send_tempo()
         self._send_highlight()
+        if self._step.active and time.time() - self._step_seen > STEP_TIMEOUT:
+            self.log_message('KamoteKeys: no Step Mode heartbeat, leaving Step Mode')
+            self._step.set_active(False)     # keyboard gone or switched port: never stay stuck in Step Mode
         self._step.update()              # playhead and changes only
 
     def refresh_state(self):
@@ -506,6 +625,8 @@ class KamoteKeys(ControlSurface):
             self._scroll(-1)
         elif cc == CC_SCENE_LAUNCH:
             self._launch_scene()
+        elif cc in (CC_TRACKS_LEFT, CC_TRACKS_RIGHT):
+            self._move_tracks(-1 if cc == CC_TRACKS_LEFT else 1)
         elif cc == CC_RECORD:
             # Session Record: records new clips in armed tracks at the selected
             # scene, or overdubs the playing clips; a second press stops it.

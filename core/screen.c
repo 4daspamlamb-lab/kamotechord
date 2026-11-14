@@ -123,6 +123,7 @@ static void signatures(void)
     if (kk.mode == KK_MODE_STEP)
         for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
     { unsigned ca, cb, ck = kk_midi_copy(&ca, &cb); h = mixsig(mixsig(mixsig(h, ck), ca), cb | (unsigned)kk.clip_play << 8); }
+    h = mixsig(h, kk_midi_host_tracks() | kk_midi_arrange() << 8);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);

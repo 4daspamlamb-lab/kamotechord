@@ -149,7 +149,7 @@ class StepSequencer(object):
         if on and not self._active:
             self._active = True
             self._log('Step Mode started')
-            self._bind(create=True)
+            self._bind(create=False)   # 0.66: the clip is made by the first step (Move-style)
             self.send_all()
         elif not on and self._active:
             self._active = False
@@ -178,7 +178,7 @@ class StepSequencer(object):
     def _deferred_bind(self):
         self._bind_pending = False
         if self._active:
-            self._bind(create=True)
+            self._bind(create=False)   # 0.66: the clip is made by the first step (Move-style)
             self.send_all()
 
     def _bind(self, create):

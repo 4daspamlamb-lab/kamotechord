@@ -1,5 +1,14 @@
 # Changelog
 
+## KamoteKeys 0.66 (development snapshot)
+
+- **Scene Arrange (Clip Mode, G#):** tap pads to choose which tracks play in each scene (one clip per track; a scene uses the track's clip from that scene or the nearest one). Top F# launches exactly those tracks and stops the others; saved in the Live set.
+- **Track view:** in Clip Mode, white D / E move the 8 tracks shown left / right.
+- **Step Mode repeats are heard:** hold 1× / 2× / 3× and press a pad: the step is set and the sound plays that many times; another repeat key on the same pad replaces it.
+- **Step Mode no longer gets stuck:** the keyboard repeats "Step Mode on" every 2 s on every port (USB and Bluetooth) and the script leaves Step Mode after 6 s without it; entering / leaving goes to every port.
+- **Step Mode makes a clip only when you press the first step** (before, selecting an empty slot made one).
+- Fix: after a port reconnects, the clip-state request waits 100 ms so the router's port reset cannot swallow it.
+
 ## KamoteKeys 0.65 (development snapshot)
 
 Clip Mode (CHORD), SMK-37:

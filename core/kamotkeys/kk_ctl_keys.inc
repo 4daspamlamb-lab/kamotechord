@@ -2,6 +2,43 @@
  * Keys and pads: velocity curve, Sustain, press/release, kk_control_event.
  * Part of core/kk_controls.c: #included there, never compiled on its own (the
  * hash-locked SDK build gives -Oz only to that file). */
+/* ------------------------------------------- Step Mode repeat preview */
+/* 0.66: a repeat key (1x / 2x / 3x) held + a pad plays the selected sound
+ * that many times across one 1/16 step, so the repeat is heard as it is set. */
+static uint8_t audition_hits, audition_done, audition_note, audition_channel, audition_on;
+static uint32_t audition_start, audition_gap;
+static unsigned held_repeat(void)
+{
+    for (unsigned k = 0; k < KK_KEYS; ++k)
+        if ((kk.keys >> k) & 1U) {
+            int f = kk_step_key_function(k);
+            if (f >= KK_STEP_REPEAT_1 && f <= KK_STEP_REPEAT_3) return (unsigned)(f - KK_STEP_REPEAT_1 + 1);
+        }
+    return 0;
+}
+static void audition_stop(void)
+{
+    if (audition_on) { kk_midi_note_off(audition_channel, audition_note); audition_on = 0; }
+}
+static void audition_start_hits(unsigned hits, uint32_t now)
+{
+    audition_stop();
+    unsigned x10 = kk_tempo_x10() ? kk_tempo_x10() : 1200;
+    audition_gap = 150000U / x10 / hits;              /* a 1/16 step in ms = 60000 / bpm / 4 */
+    if (!audition_gap) audition_gap = 1;
+    audition_hits = (uint8_t)hits; audition_done = 0; audition_start = now;
+    audition_note = (uint8_t)kk_midi_step_info(KK_STEP_ACTIVE_CC);
+    audition_channel = kk_midi_step_info(KK_STEP_KEYS_CC) ? KK_CH_MELODIC : KK_CH_DRUM;
+}
+static void audition_tick(uint32_t now)
+{
+    if (audition_done >= audition_hits) { if (audition_on && now - audition_start >= audition_hits * audition_gap) audition_stop(); return; }
+    uint32_t due = audition_start + audition_done * audition_gap;
+    if ((int32_t)(now - due) < 0) return;
+    audition_stop();
+    kk_midi_note_on(audition_channel, audition_note, kk_velocity(100)); audition_on = 1;
+    ++audition_done;
+}
 /* ------------------------------------------------------- physical events */
 static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
 /* Sustain (CC 64, channel 1) is on while the SUSTAIN button latch OR a
@@ -93,6 +130,7 @@ static void source_press(unsigned id, unsigned velocity)
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0 && s->count)
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
+    if (id >= PAD_SOURCE && kk.mode == KK_MODE_STEP && held_repeat()) audition_start_hits(held_repeat(), fm1_millis());
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {
         kk.clip_play = !kk.clip_play; kk_settings_touch(); ++kk.edit_revision;   /* 0.65: select <-> play, saved */
     }

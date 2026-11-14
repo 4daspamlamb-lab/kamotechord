@@ -133,6 +133,8 @@ Channel 14 never reaches the internal synth.
 
 **Copy / paste (0.65).** Keyboard → Live: channel 16 notes 100 / 101 = Clip Mode COPY / PASTE (press / release); in Step Mode COPY / PASTE are the channel 14 function notes 67 / 77. Live → keyboard, channel 16: CC 106 = clipboard kind (0 none, 1 clip, 2 step, 3 sound, 4 bar; +32 copy waiting, +64 paste waiting), CC 107 / 108 = its numbers (clip: track, scene; step: step, page; sound: note, page; bar: bar).
 
+**0.66:** channel 16 note 102 = Scene Arrange on / off; channel 15 CC 31 / 32 = track view left / right; Live → keyboard channel 16 CC 109 = first track shown, CC 110 = Scene Arrange on, clip state codes 7 / 8 / 9 = arranged track on / off / no clip. Step Mode CC 127 = 127 is repeated every 2 s on every port (heartbeat).
+
 ## Notes received from the host
 
 Note On/Off on channels 1 and 10 coming from the computer light the matching Pad Scale/Drum pads (Move-style). They also play the internal synth unless *Internal synth* is off.

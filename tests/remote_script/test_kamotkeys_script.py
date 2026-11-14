@@ -87,6 +87,7 @@ class Slot(object):
         else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record')
     def stop(self): self.track.log.append('stop')
     def delete_clip(self): self.clip = None; self.track.log.append('delete')
+    def fire_logged(self): self.track.log.append('fire')
     def duplicate_clip_to(self, other): other.clip = self.clip; self.track.log.append('duplicate')
 
 class Track(object):
@@ -118,6 +119,9 @@ class Song(object):
     def capture_midi(self): self.calls.append('capture')
     def undo(self): self.calls.append('undo')
     def redo(self): self.calls.append('redo')
+    data = None
+    def get_data(self, key, default): return (self.data or {}).get(key, default)
+    def set_data(self, key, value): self.data = dict(self.data or {}); self.data[key] = value
 
 class CInstance(object):
     def __init__(self, song): self.song_obj = song
@@ -140,7 +144,7 @@ class T(unittest.TestCase):
 
     def test_controls_claim_only_protocol_messages(self):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
-        self.assertEqual(notes, list(range(36, 102)))     # launch, overdub, delete, select, COPY, PASTE
+        self.assertEqual(notes, list(range(36, 103)))     # launch, overdub, delete, select, COPY, PASTE, ARRANGE
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
         self.assertEqual(steps, list(range(36, 52)) + list(range(60, 86)))   # step pads, step functions
         self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
@@ -271,9 +275,39 @@ class T(unittest.TestCase):
         self.assertEqual([v for st, c, v in self.s.sent if st == 0xBF and c == 106][-1], 1)   # paste done, clip kept
         self.assertNotIn('duplicate', self.song._tracks[2].log)
 
+    def test_scene_arrange_and_track_view(self):
+        """0.66: Scene Arrange stores per-scene tracks; launch plays those clips, stops the rest."""
+        for i in range(3):
+            slot = self.song._tracks[i].clip_slots[0]; slot.clip = Clip(slot)
+        self.song._tracks[i].stop_all_clips = None
+        for t in self.song._tracks: t.stop_all_clips = (lambda t=t: t.log.append('stop all'))
+        for i in range(3): self.song._tracks[i].clip_slots[0].fire = (lambda i=i: self.song._tracks[i].log.append('fire'))
+        deliver((0x9F, 102, 127)); deliver((0x8F, 102, 0))              # G#: Scene Arrange on
+        self.assertIn((0xBF, 110, 1), self.s.sent)
+        self.assertEqual(self.state(0), 7); self.assertEqual(self.state(3), 9)   # T1 on (has a clip), T4 none
+        self.assertEqual(self.state(8), 8)                               # scene 2: T1 can play its scene-1 clip, off by default
+        self.press(8); self.s.update_display(); self.assertEqual(self.state(8), 7)   # turned on for scene 2
+        self.press(8)
+        self.press(1)                                                    # T2 off in scene 1
+        self.s.update_display(); self.assertEqual(self.state(1), 8)
+        self.assertEqual(self.song.data['kamotekeys_arrange'], '0:0,2;1:')
+        deliver((0xBE, 30, 127)); deliver((0xBE, 30, 0))                 # top F#: launch scene 1
+        self.assertIn('fire', self.song._tracks[0].log); self.assertNotIn('fire', self.song._tracks[1].log)
+        self.assertIn('stop all', self.song._tracks[1].log)
+        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 0)       # 6 tracks: no room to move right
+        self.song._tracks += [type(self.song._tracks[0])() for _ in range(4)]
+        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 1); self.assertIn((0xBF, 109, 1), self.s.sent)
+        deliver((0xBE, 31, 127)); self.assertEqual(self.s._track, 0)
+
+    def test_step_mode_times_out_without_heartbeat(self):
+        import sys; kk_mod = sys.modules[type(self.s).__module__]
+        deliver((0xBD, 127, 127)); self.assertTrue(self.s._step.active)
+        self.s._step_seen -= kk_mod.STEP_TIMEOUT + 1; self.s.update_display()
+        self.assertFalse(self.s._step.active)
+
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 24)   # hello, scene, tempo x2, highlight, 16 states, clipboard x3
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 26)   # hello, scene, tracks, arrange, tempo x2, highlight, 16 states, clipboard x3
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])
@@ -388,11 +422,17 @@ class StepTest(unittest.TestCase):
     @property
     def clip(self): return self.song.track.clip_slots[0].clip
 
+    def started(self):
+        """Step Mode with a clip (0.66: the first step makes it)."""
+        self.mode(True); self.tap(0); self.tap(0)
+
     def test_entering_creates_a_named_one_bar_clip(self):
         self.mode(True)
+        self.assertIsNone(self.clip); self.assertEqual(self.info(100), 3)   # 0.66: no clip until a step is pressed
+        self.tap(0); self.s.update_display()
         self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
         c = self.codes(); self.assertEqual(len(c), 16)
-        self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
+        self.assertTrue(3 <= c[0] <= 8); self.assertEqual(c[4], 1)      # the first step's note; empty (0.62: no beat marker)
         self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
 
     def test_steps_write_real_notes(self):
@@ -404,7 +444,7 @@ class StepTest(unittest.TestCase):
         self.tap(0); self.assertEqual([n.start_time for n in self.clip.notes], [1.0])   # off again
 
     def test_mouse_edits_show_on_pads(self):
-        self.mode(True)
+        self.started()
         self.clip.add_new_notes((MidiNoteSpecification(36, 0.5, 0.25, 127),))
         self.s.sent.clear(); self.s.update_display()
         self.assertEqual(self.codes().get(2), 8)                          # loudest = brightest
@@ -530,7 +570,7 @@ class StepTest(unittest.TestCase):
         self.assertEqual((self.info(103), self.info(104)), (65, 1))       # same track: same keys
 
     def test_playhead_only_on_shown_page_and_light(self):
-        self.mode(True); self.clip.is_playing = True; self.clip.playing_position = 1.0
+        self.started(); self.s.update_display(); self.clip.is_playing = True; self.clip.playing_position = 1.0
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.codes(), {4: 10})   # only the change
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])           # nothing new
 
@@ -546,15 +586,15 @@ class StepTest(unittest.TestCase):
     def test_no_drum_rack_and_deleted_clip(self):
         self.song = StepSong(rack=False); del registry[:]
         self.s = KamoteKeys(CInstance(self.song)); self.s.sent.clear()
-        self.mode(True); self.assertEqual(self.info(100), 1)
-        self.tap(0); self.assertEqual([n.pitch for n in self.clip.notes], [36])   # still sequences C1
+        self.mode(True); self.tap(0); self.s.update_display(); self.assertEqual(self.info(100), 1)
+        self.assertEqual([n.pitch for n in self.clip.notes], [36])   # still sequences C1
         slot = self.song.track.clip_slots[0]; slot.clip = None; slot.fire('has_clip')
         self.assertEqual(len(scheduled), 1)                               # rebind deferred, not in the listener
-        run_scheduled(); self.assertIsNotNone(slot.clip)                   # a new clip
+        run_scheduled(); self.assertIsNone(slot.clip); self.assertEqual(self.s._step._status, 3)   # 0.66: waits for a step
         self.s.update_display()
 
     def test_leaving_stops_listening(self):
-        self.mode(True); clip = self.clip; self.mode(False)
+        self.started(); clip = self.clip; self.mode(False)
         self.assertFalse(clip._cbs.get('notes')); self.s.sent.clear(); self.s.update_display()
         self.assertFalse([m for m in self.s.sent if m[0] == 0xBD])
 

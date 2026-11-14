@@ -74,6 +74,16 @@ void test_step_mode(void)
     int scale_note = kk_key_scale_note(14, kk.octave, &kk.scale);
     CHECK(scale_note > 0 && out_count(USB, 0x90, scale_note) == 1 && out_count(USB, 0x9C, scale_note) == 1 && kk_led_button(KK_BTN_SEQ) == 2,
           "scale keys: D plays its scale note on ch 1 and selects it, SEQ lit");
+    int keys_were = (int)kk_midi_step_info(KK_STEP_KEYS_CC);
+    /* 0.66: holding a repeat key + a pad previews the sound that many times. */
+    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_in(0xBD, KK_STEP_ACTIVE_CC, 38); host_clear();
+    key(32, 100); pad(5, 90); pad(5, 0); frames(100, 2); key(32, 0);
+    CHECK(out_count(USB, 0x99, 38) == 2 && out_count(USB, 0x89, 38) == 2, "repeat 2x + pad: snare previewed twice (%u)", out_count(USB, 0x99, 38));
+    host_clear(); key(34, 100); pad(5, 90); pad(5, 0); frames(100, 2); key(34, 0);
+    CHECK(out_count(USB, 0x99, 38) == 3, "then 3x: three times (%u)", out_count(USB, 0x99, 38));
+    host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_clear(); frames(450, 5);
+    CHECK(out_count(USB, 0xBD, KK_STEP_SYNC_CC) >= 1 && out_count(BLE, 0xBD, KK_STEP_SYNC_CC) >= 1, "Step Mode heartbeat on every port");
+    host_in(0xBD, KK_STEP_KEYS_CC, (uint8_t)keys_were);
     /* 0.63: a locked chord + scale keys: a key picks the whole chord. */
     host_in(0xBD, KK_STEP_KEYS_CC, 1);
     kk.chord_lock = 1; kk.latched_mods = kk.chord_mods = KK_MOD_MIN;

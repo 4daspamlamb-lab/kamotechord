@@ -98,7 +98,7 @@ void test_031(void)
     frames(40, 5); shot("16_clip_mode");
     host_ready_ports = 0; frames(5, 2);
     CHECK(kk_midi_host_protocol() == 0 && kk_midi_clip_state(0) == KK_CLIP_UNKNOWN, "disconnect forgets stale clip state");
-    host_clear(); host_ready_ports = 4; frames(5, 2);
+    host_clear(); host_ready_ports = 4; frames(30, 5);
     CHECK(out_count(BLE, 0xBF, KK_CLIP_SYNC_CC) == 1, "reconnect (BLE) re-requests the state");
     host_ready_ports = 6; frames(5, 2);
     /* 0.65 keys: C# COPY / D# PASTE = ch 16 notes 100 / 101 (press + release);
@@ -111,7 +111,16 @@ void test_031(void)
     frames(20, 5); shot("17_clip_delete");
     key(10, 0); CHECK(kk.clip_action == 0, "key released: back to the plain press");
     host_clear(); key(8, 100); key(8, 0);
-    CHECK(host_out_n == 0, "G# does nothing in Clip Mode");
+    CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1, "0.66: G# = Scene Arrange (note 102)");
+    host_clear(); key(2, 100); key(2, 0); key(4, 100); key(4, 0);
+    CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
+          "D / E: track view left / right (CC 31 / 32), no notes");
+    host_in(0xBF, KK_HOST_TRACKS_CC, 3); host_in(0xBF, KK_HOST_ARRANGE_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_ARR_ON);
+    host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_ARR_OFF); settle();
+    CHECK(kk_midi_host_tracks() == 3 && kk_midi_arrange() && ((host_rgb[0] >> 8) & 255) > ((host_rgb[1] >> 8) & 255) * 3,
+          "Scene Arrange: track on bright green, off dim (%06x / %06x)", host_rgb[0], host_rgb[1]);
+    frames(40, 5); shot("17c_scene_arrange");
+    host_in(0xBF, KK_HOST_ARRANGE_CC, 0); host_in(0xBF, KK_HOST_TRACKS_CC, 0);
     host_clear(); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(30, 100); key(30, 0);
     CHECK(out_count(USB, CC15, KK_CC_SCENE_DOWN) == 2 && out_count(USB, CC15, KK_CC_SCENE_UP) == 2 &&
           out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top A# / G# / F# -> scene down / up / launch, no notes");

@@ -31,6 +31,10 @@ Remove any manual MIDI mappings of the KamoteKeys transport buttons; the script 
 
 Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a slot, press a pad), without LED feedback.
 
+## USB or Bluetooth: one port for both directions
+
+Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & MIDI, set the KamoteKeys Control Surface **Input and Output to the same port**: the USB port when the keyboard is on USB, its Bluetooth port when it is on Bluetooth. If the Input is the USB port and the keyboard is on Bluetooth, the script never sees the keyboard (Step Mode keys then reach the track as plain notes); if the Output is a different port, the pads get no colours. To use both, add KamoteKeys twice (two Control Surface rows), one with the USB port and one with the Bluetooth port. Since 0.66 the script leaves Step Mode by itself if the keyboard stops reporting it (6 s), so a lost message never leaves it stuck.
+
 ## Clip Mode (CHORD button)
 
 [Diagram](diagrams/SMK37-Clip-Mode.png)
@@ -60,10 +64,13 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
-| G# | nothing |
+| **D / E** (white) | move the 8-track view one track left / right |
+| **G#** | **Scene Arrange** on / off (below) |
 | top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
 
 The screen shows the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held.
+
+**Scene Arrange (G#, 0.66).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
 
 **FM-1 keys** (unchanged): hold the first black key (F#) + clip = **overdub** (an empty slot: record a new clip; the same again ends it), the second (G#) = **delete**, the third (A#) = **select + arm**; C# = launch the selected scene, top D# / F# = scene up / down. A plain press launches.
 

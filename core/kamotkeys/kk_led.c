@@ -96,6 +96,9 @@ static uint32_t clip_colour(unsigned pad, unsigned *level)
     case KK_CLIP_QUEUED_RECORD: c = 0xff0000; *level = blink ? LIT : 250; break;
     case KK_CLIP_EMPTY_ARMED: c = 0xff2000; *level = 120; break;
     case KK_CLIP_EMPTY: c = 0xb0b0b0; *level = 70; break;
+    case KK_CLIP_ARR_ON: c = 0x00ff40; *level = 800; break;                /* Scene Arrange: track plays */
+    case KK_CLIP_ARR_OFF: c = 0xff5000; *level = 90; break;                /* track off in this scene */
+    case KK_CLIP_ARR_NONE: c = 0x000000; *level = 0; break;                /* track has no clip */
     default: c = 0x8090a0; *level = 40; break;                 /* no Remote Script yet */
     }
     /* Live's highlighted (selected) slot (0.57): violet. A playing, queued or

@@ -53,6 +53,8 @@ int kk_midi_host_highlight(void);
 void kk_midi_step_mode(unsigned on);
 unsigned kk_midi_step_code(unsigned pad);
 unsigned kk_midi_copy(unsigned *a, unsigned *b);
+unsigned kk_midi_host_tracks(void);   /* first track on the clip grid (0-based) */
+unsigned kk_midi_arrange(void);       /* Scene Arrange on */
 unsigned kk_midi_step_info(unsigned cc);
 uint32_t kk_midi_input_revision(void);
 void kk_midi_clip_sync_request(void);

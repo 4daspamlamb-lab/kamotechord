@@ -24,7 +24,8 @@ enum { KK_VELOCITY_DEFAULT = 100 };
  * G# nothing, A# DELETE (hold + pad); top F# / G# / A# = scene launch / up / down.
  * A plain pad press selects (slot + arm) unless toggled to play. */
 #define KK_CLIP_PRESS_SELECT 1
-enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6, KK_CLIP_BLANK_KEY = 8,
+enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6, KK_CLIP_ARRANGE_KEY = 8,   /* G#: Scene Arrange (0.66) */
+       KK_TRACKS_LEFT_KEY = 2, KK_TRACKS_RIGHT_KEY = 4,                                          /* D / E: 8-track view (0.66) */
        KK_CLIP_DELETE_KEY = 10, KK_CLIP_OVERDUB_KEY = 255 };
 /* The third black key (F#) held + clip = SELECT (select the slot, arm its
  * track); the fourth (G#) = launch the selected scene; the last two black

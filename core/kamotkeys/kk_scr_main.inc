@@ -230,6 +230,16 @@ static void draw_big(void)
         text_center(120, w->y + 50, "PRESS A CLIP", 1, TEXT);
         return;
     }
+    if (kk.mode == KK_MODE_CLIP && kk_midi_arrange()) {
+        /* 0.66 Scene Arrange: pads = which tracks play in these two scenes. */
+        text_center(120, w->y + 14, "ARRANGE", 3, GREEN);
+        char *p = append(buf, "SCENES "); p = decimal(p, (int)kk_midi_host_scene() + 1); p = append(p, " / ");
+        p = decimal(p, (int)kk_midi_host_scene() + 2); p = append(p, "  TRACKS "); p = decimal(p, (int)kk_midi_host_tracks() + 1);
+        p = append(p, "-"); decimal(p, (int)kk_midi_host_tracks() + 8);
+        text_center(120, w->y + 42, buf, 1, DIM);
+        text_center(120, w->y + 55, "TAP: TRACK ON / OFF   TOP F#: LAUNCH", 1, TEXT);
+        return;
+    }
     if (kk.mode == KK_MODE_CLIP) {
         static const char *const states[] = {"EMPTY", "STOPPED", "PLAYING", "QUEUED", "RECORDING", "QUEUED REC", "EMPTY (ARMED)"};
         unsigned st = kk_midi_clip_state(kk.clip_pad);
@@ -237,7 +247,7 @@ static void draw_big(void)
         static const uint16_t colours[7] = {DIM, C565(60, 120, 255), GREEN, AMBER, RED, RED, DIM};
         text_center(120, w->y + 14, name, text_width(name, 3) <= 228 ? 3 : 2,
                     kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
-        char *p = append(buf, "TRACK "); p = decimal(p, kk.clip_pad % 8 + 1);
+        char *p = append(buf, "TRACK "); p = decimal(p, (int)(kk_midi_host_tracks() + kk.clip_pad % 8 + 1));
         p = append(p, "  SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
 #ifdef KK_CLIP_PRESS_SELECT
         p = append(p, kk.clip_play ? "  PADS: PLAY" : "  PADS: SELECT");

@@ -140,12 +140,18 @@ static void intent(unsigned id, struct source *s)
         } else { s->notes[0] = (uint8_t)note; s->count = 1; }
         return;
     }
-    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_COPY_KEY || id == KK_CLIP_PASTE_KEY)) {
-        /* 0.65: COPY / PASTE go to the script as notes (it tracks taps and holds). */
-        s->channel = KK_CH_CLIP; s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : KK_CLIP_PASTE_NOTE); s->count = 1;
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_COPY_KEY || id == KK_CLIP_PASTE_KEY || id == KK_CLIP_ARRANGE_KEY)) {
+        /* 0.65: COPY / PASTE (0.66: Scene Arrange) go to the script as notes. */
+        s->channel = KK_CH_CLIP; s->count = 1;
+        s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : id == KK_CLIP_PASTE_KEY ? KK_CLIP_PASTE_NOTE : KK_CLIP_ARRANGE_NOTE);
         return;
     }
-    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_BLANK_KEY)) return;   /* no note */
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) return;   /* no note */
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
+        s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;   /* 0.66: move the 8-track view */
+        s->notes[0] = (uint8_t)(id == KK_TRACKS_LEFT_KEY ? KK_CC_TRACKS_LEFT : KK_CC_TRACKS_RIGHT);
+        return;
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
         (id == KK_CLIP_OVERDUB_KEY || id == KK_CLIP_DELETE_KEY || id == KK_CLIP_SELECT_KEY)) {
         /* Clip Mode: the first black key held = OVERDUB, the second = DELETE,
@@ -496,16 +502,25 @@ void kk_perform_tick(uint32_t now)
     /* A port coming up (USB plugged, BLE connected): ask the Remote Script for
      * the clip state. A port going away: forget stale host state. */
     unsigned ready = fm1_midi_ready_ports() & 6U;
+    static uint32_t sync_at; static uint8_t sync_due;
     if (ready != kk.ports_seen) {
-        if (ready & ~kk.ports_seen) kk_midi_clip_sync_request();
+        /* 0.66: ask 100 ms later, once the router has finished resetting the
+         * new port (a request sent during the reset can be dropped). */
+        if (ready & ~kk.ports_seen) { sync_due = 1; sync_at = now; }
         if (!ready) kk_midi_remote_clear();
         kk.ports_seen = (uint8_t)ready;
     }
+    if (sync_due && now - sync_at >= 100U) { sync_due = 0; kk_midi_clip_sync_request(); }
     /* Step Mode: (re)announce it whenever the Remote Script (re)connects. */
     static unsigned script_seen;
     unsigned script = kk_midi_host_protocol() != 0;
     if (script && !script_seen && kk.mode == KK_MODE_STEP) kk_midi_step_mode(1);
     script_seen = script;
+    /* 0.66: while in Step Mode, say so every 2 s; the script leaves Step Mode
+     * by itself when this stops (keyboard off, port changed, message lost). */
+    static uint32_t step_beat;
+    if (kk.mode == KK_MODE_STEP && script && now - step_beat >= 2000U) { step_beat = now; kk_midi_step_mode(1); }
+    audition_tick(now);
     arp_tick();
     repeat_tick();
     if (kk.anim_active) {
