@@ -138,8 +138,7 @@ class KamoteKeys(ControlSurface):
 
     def _step_select_value(self, value, sender):
         self._first_message()
-        if value:
-            self._step.select_pitch(sender.message_identifier())
+        self._step.key_zone(sender.message_identifier(), bool(value))
 
     def _step_mode_value(self, value):
         self._first_message()

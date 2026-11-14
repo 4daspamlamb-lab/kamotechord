@@ -75,6 +75,7 @@ static uint32_t step_colour(unsigned pad, unsigned *level)
     case KK_STEPC_BAR_OUT: *level = 40; return 0x606060;                     /* bar view: past the end */
     case KK_STEPC_BAR_SHOWN: *level = LIT; return 0xffffff;                  /* bar view: bar on the pads */
     case KK_STEPC_BAR_PLAY: *level = LIT; return 0x00ff40;                   /* bar view: playing bar */
+    case KK_STEPC_LEN_ON: *level = 700; return 0xffa000;                     /* note length view */
     case KK_STEPC_DRUM_EMPTY: *level = 40; return 0x808080;                  /* Drum Rack pad, no sample */
     case KK_STEPC_DRUM_LOADED: *level = 330; return 0x00d0b0;                /* Drum Rack pad with a sound */
     case KK_STEPC_DRUM_ACTIVE: *level = LIT; return 0xffffff;                /* active drum */

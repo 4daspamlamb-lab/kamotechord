@@ -112,9 +112,10 @@ Colours: see the table below.
 | Keys | Do |
 |---|---|
 | lowest octave, white | DRUM (hold), page ◀, page ▶, LENGTH (hold), DOUBLE, RESOLUTION, FOLLOW |
-| lowest octave, black | C# = COPY, D# = PASTE, F# = BARS (hold), A# = CLEAR; G# plays |
-| second octave = **key zone** | drum keys: C … B = 12 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys |
-| top five white keys (F G A B C) | velocity 40 / 60 / 80 / 100 / 120 |
+| lowest octave, black | C# = COPY, D# = PASTE, F# = BARS (tap: bar view on / off), A# = CLEAR |
+| **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
+| top F G A B | velocity 32 / 64 / 96 / 127 |
+| top C (hold) | pads = **note length** for new steps, 1–16 sixteenths of a bar (tap a pad) |
 | top three black keys (F# G# A#) | hold + a pad: the step plays 1× / 2× / 3× |
 | OCT − / OCT + | moves the key zone by an octave (remembered per track) |
 | SEQ | key zone = drum keys / **scale keys** (remembered per track; tracks without a Drum Rack start with scale keys) |
@@ -122,7 +123,9 @@ Colours: see the table below.
 - **Key zone**: a key **plays its sound and selects it** for the steps, like tapping a drum pad on Move. With SEQ the white keys play the scale set with Faders 2 / 3 (black keys silent), so melodic tracks can be step-sequenced too. Sounds 13–16 and other Drum Rack banks: hold DRUM and use the pads / page keys.
 - **Other sounds on a step**: an empty step of the selected sound shows a violet tint when other sounds play there, stronger with 2 and 3+ of them.
 - **LENGTH (hold) + pad n** sets the clip to **n bars** (pads show the bars while LENGTH is held). Growing a clip repeats its pattern into the new bars (if they are empty).
-- **BARS (hold F#)**: pads show the clip's bars (teal = in the clip, white = the bar on the pads, green = playing); tap one to show it.
+- **BARS (tap F#)**: pads show the clip's bars (teal = in the clip, white = the bar on the pads, green = playing); tap one to show it and return to the pattern, or tap F# again.
+- **Chords**: lock a chord on the main screen (chord pads + LOCK), enter Step Mode: with scale keys (SEQ) or on a track without a Drum Rack, a key picks that chord (built on the key's note, in the scale) and a pad writes the whole chord, with the note length set on the top C. SEQ switches scale keys on / off without leaving Step Mode.
+- **Note length (hold top C)**: pads 1–16 = 1/16 … 1 bar; new steps (and chords) get that length.
 - **Repeats**: pick a sound, hold the top F# / G# / A# and press a pad: that step plays 1 / 2 / 3 times (pink).
 - **COPY / PASTE** (C# / D#): tap COPY to copy the shown page (all sounds), go to another page and tap PASTE to replace it. **COPY + key** copies just that sound's steps; **PASTE + key** pastes them onto that sound.
 - **CLEAR + key** (A#) deletes every note of that sound in the clip (Move: Delete + pad). A plain **CLEAR tap** clears the selected sound on the shown page.
@@ -142,7 +145,7 @@ Colours: see the table below.
 
 FM-1 keys (white keys = steps): DRUM F#, page G# / A#, LENGTH C#, DOUBLE D#, RESOLUTION F# (2nd), FOLLOW G# (2nd), COPY A# (2nd), CLEAR C# (2nd), velocity down / up D# / F# (top). Tie: hold a step and press a later one (pads; FM-1 white keys).
 
-On the SMK-37 the remaining keys (lowest G#, third-octave C–E) still play notes. The screen also shows NO DRUM RACK (steps then use C1) or SELECT A MIDI TRACK.
+On the SMK-37 the lowest G# still plays a note. The screen also shows NO DRUM RACK (steps then use C1) or SELECT A MIDI TRACK.
 
 **Edge cases:** no Drum Rack → steps still work on C1; the clip or track deleted, the selection or the clip length changed with the mouse → the mode rebinds itself (deferred, never inside a Live notification). Messages go to Live's `Log.txt` as `KamoteKeys step: ...` and to the status bar.
 

@@ -141,7 +141,7 @@ class T(unittest.TestCase):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
         self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
-        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 85)))   # step pads, step functions
+        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 86)))   # step pads, step functions
         self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
         self.assertTrue(all(b.channel in (12, 13, 14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
@@ -461,6 +461,19 @@ class StepTest(unittest.TestCase):
         self.assertEqual(self.info(96), 1); self.assertEqual(self.codes().get(2), 10)        # followed, playhead
         self.assertEqual(self.info(105), 2)                                                   # playing bar 2
 
+    def test_chord_pick_note_length_and_bar_toggle(self):
+        self.mode(True)
+        for n in (48, 51, 55): deliver((0x9C, n, 127))                     # a locked Cm chord: all on ...
+        for n in (48, 51, 55): deliver((0x8C, n, 0))                       # ... then all off
+        self.s.update_display(); self.assertEqual(self.info(102), 48)
+        self.fn(85); self.s.update_display(); self.assertEqual(self.codes()[0], 25)   # note length view
+        self.pad(3); self.pad(3, False); self.fn(85, False)               # 4/16 = a quarter bar
+        self.tap(0)
+        self.assertEqual(sorted((n.pitch, n.duration) for n in self.clip.notes), [(48, 1.0), (51, 1.0), (55, 1.0)])
+        self.tap(0); self.assertEqual(self.clip.notes, [])                  # the whole chord comes off
+        self.press(78); self.s.update_display(); self.assertEqual(self.codes()[0], 19)   # BARS tap: bar view stays
+        self.tap(0); self.s.update_display(); self.assertIn(self.codes()[0], (1, 13, 14, 15))   # bar picked: pattern again
+
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)
         self.fn(63); self.pad(3); self.pad(3, False); self.fn(63, False)  # 4 bars
@@ -488,7 +501,7 @@ class StepTest(unittest.TestCase):
     def test_velocity_tie_copy_clear(self):
         self.mode(True); self.tap(0)
         self.pad(0); self.press(69); self.pad(0, False)                   # hold step + velocity 1
-        self.assertEqual([n.velocity for n in self.clip.notes], [40])
+        self.assertEqual([n.velocity for n in self.clip.notes], [32])
         self.pad(4); self.pad(7); self.pad(7, False); self.pad(4, False)  # tie steps 5-8
         tie = [n for n in self.clip.notes if n.start_time == 1.0][0]; self.assertEqual(tie.duration, 1.0)
         self.s.update_display(); self.assertEqual(self.codes().get(5), 9)   # inside the long note

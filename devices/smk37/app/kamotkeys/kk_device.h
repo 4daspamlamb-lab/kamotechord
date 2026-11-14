@@ -58,11 +58,11 @@ static inline int kk_step_key_function(unsigned key)
     case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the page; + drum key: onto that drum */
     case 6: return KK_STEP_BARS;        /* F# hold: pads = bars, tap one to show it */
     case 10: return KK_STEP_CLEAR;      /* A# tap: clear the page; + drum key: clear that drum */
-    case 29: return KK_STEP_VEL_1;      /* 0.62: the last five white keys F G A B C = velocity */
+    case 29: return KK_STEP_VEL_1;      /* 0.63: top F G A B = velocity 32 / 64 / 96 / 127 */
     case 31: return KK_STEP_VEL_2;
     case 33: return KK_STEP_VEL_3;
     case 35: return KK_STEP_VEL_4;
-    case 36: return KK_STEP_VEL_5;
+    case 36: return KK_STEP_NOTE_LEN;   /* top C hold: pads = note length (1-16 sixteenths of a bar) */
     case 30: return KK_STEP_REPEAT_1;   /* top F# G# A#: hold + a pad = 1 / 2 / 3 hits per step */
     case 32: return KK_STEP_REPEAT_2;
     case 34: return KK_STEP_REPEAT_3;
@@ -73,7 +73,7 @@ static inline int kk_step_key_function(unsigned key)
 /* Step Mode drum keys (0.60, like Move's drum pads): the second octave,
  * C = the first drum of the bank (36 = kick). Each plays its sound and
  * selects it for the steps. -1 = not a drum key. */
-static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key < 24 ? (int)key - 12 : -1; }
+static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key <= 28 ? (int)key - 12 : -1; }   /* 0.63: C2..E3 */
 
 /* 16 RGB pads (ripple lights, light shows). */
 #define KK_HAS_RGB_PADS 1

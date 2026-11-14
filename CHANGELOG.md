@@ -1,5 +1,14 @@
 # Changelog
 
+## KamoteKeys 0.63 (development snapshot)
+
+Step Mode (SEQ REC), SMK-37:
+- **Chords into the sequencer:** lock a chord on the main screen; in Step Mode with scale keys (SEQ, toggles without leaving Step Mode) or on a track without a Drum Rack, a key picks that chord and a pad writes the whole chord.
+- **Note length:** hold the top C, tap pad 1–16 = 1/16 … 1 bar for new steps and chords.
+- **Velocity on top F G A B: 32 / 64 / 96 / 127.**
+- **Key zone runs C2–E3** (17 keys); the "plays notes" keys are gone.
+- **BARS (lowest F#) is a toggle:** tap for the bar view, pick a bar to return to the pattern.
+
 ## KamoteKeys 0.62 (development snapshot)
 
 Step Mode (SEQ REC), SMK-37, closer to Ableton Move:

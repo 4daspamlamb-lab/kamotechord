@@ -122,8 +122,8 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 |---|---|---|
 | keyboard → Live | Note 36–51 | step pads 1–16 (press / release) |
 | keyboard → Live | Note 60–76 | DRUM, page ◀, page ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW, COPY, CLEAR, velocity 1–6, velocity down, velocity up |
-| keyboard → Live | Note 77–84 | PASTE, BARS, OCT −, OCT +, SEQ (scale keys), repeat 1× / 2× / 3× |
-| keyboard → Live | Note on **channel 13** | key-zone key pressed: select that pitch (on + off at once) |
+| keyboard → Live | Note 77–85 | PASTE, BARS, OCT −, OCT +, SEQ (scale keys), repeat 1× / 2× / 3×, NOTE LENGTH (hold) |
+| keyboard → Live | Notes on **channel 13** | key-zone key pressed: select that pitch, or a locked chord (all note-ons, then all note-offs) |
 | keyboard → Live | Note on channel 10 (drum keys) or 1 (scale keys) | the key's own sound, for the armed track and the internal synth |
 | keyboard → Live | CC 127 | 127 = Step Mode started, 0 = ended |
 | Live → keyboard | CC 80–95 | pad colour code |

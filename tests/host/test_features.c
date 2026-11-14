@@ -42,11 +42,12 @@ void test_step_mode(void)
           "C = DRUM (hold), D = page prev");
     /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
      * BARS = lowest F#; the lowest G# and third-octave C still play. */
-    host_clear(); key(29, 100); key(29, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x9D, KK_STEP_VEL_5) == 1 &&
-          out_count(USB, 0x9D, KK_STEP_REPEAT_1) == 1 && out_count(USB, 0x9D, KK_STEP_REPEAT_3) == 1, "F = vel 1, top C = vel 5, F# / A# = repeat 1 / 3");
-    host_clear(); key(6, 100); key(6, 0); key(8, 100); key(8, 0); key(24, 100); key(24, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x90, 56) == 1 && out_count(USB, 0x90, 72) == 1, "F# = BARS, G# and C4 play");
+    host_clear(); key(29, 100); key(29, 0); key(35, 100); key(35, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x9D, KK_STEP_VEL_4) == 1 && out_count(USB, 0x9D, KK_STEP_NOTE_LEN) == 1 &&
+          out_count(USB, 0x9D, KK_STEP_REPEAT_1) == 1 && out_count(USB, 0x9D, KK_STEP_REPEAT_3) == 1, "F..B = vel 1..4, top C = note length, F# / A# = repeat 1 / 3");
+    host_clear(); key(6, 100); key(6, 0); key(24, 100); key(24, 0); key(28, 100); key(28, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x99, 48) == 1 && out_count(USB, 0x99, 52) == 1,
+          "F# = BARS; the key zone runs up to E3 (C3 = 48, E3 = 52)");
     host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0); key(10, 100); key(10, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
           "C# = COPY, D# = PASTE, A# = CLEAR");
@@ -70,6 +71,16 @@ void test_step_mode(void)
     int scale_note = kk_key_scale_note(14, kk.octave, &kk.scale);
     CHECK(scale_note > 0 && out_count(USB, 0x90, scale_note) == 1 && out_count(USB, 0x9C, scale_note) == 1 && kk_led_button(KK_BTN_SEQ) == 2,
           "scale keys: D plays its scale note on ch 1 and selects it, SEQ lit");
+    /* 0.63: a locked chord + scale keys: a key picks the whole chord. */
+    host_in(0xBD, KK_STEP_KEYS_CC, 1);
+    kk.chord_lock = 1; kk.latched_mods = kk.chord_mods = KK_MOD_MIN;
+    host_clear(); key(12, 100); key(12, 0);
+    {
+        int root = kk_key_scale_note(12, kk.octave, &kk.scale);
+        CHECK(out_count(USB, 0x90, -1) == 3 && out_count(USB, 0x9C, -1) == 3 && out_count(USB, 0x9C, root) == 1 && host_out[0].b[0] == 0x9C &&
+              host_out[2].b[0] == 0x9C, "locked MIN chord: 3 notes play, ch 13 gets all 3 note-ons first (root %d)", root);
+    }
+    kk.chord_lock = 0; kk.latched_mods = kk.chord_mods = 0;
     host_in(0xBD, KK_STEP_KEYS_CC, 0);
     host_clear(); host_in(0xBF, KK_CLIP_HELLO_CC, 1);
     host_in(0xBD, KK_STEP_CODE_CC + 0, KK_STEPC_NOTE_6); host_in(0xBD, KK_STEP_CODE_CC + 1, KK_STEPC_EMPTY);

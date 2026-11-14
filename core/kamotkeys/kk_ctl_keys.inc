@@ -92,7 +92,7 @@ static void source_press(unsigned id, unsigned velocity)
         sustained_count = 0;                             /* and a held arpeggio */
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0 && s->count)
-        kk_midi_tap(KK_CH_STEP_SELECT, s->notes[0]);   /* the script selects this pitch for the steps */
+        kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
     engage(id);
     if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {

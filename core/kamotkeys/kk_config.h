@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.62" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.63" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -58,8 +58,8 @@ enum {
  *  device -> host: Note 36+pad = step pad 1..16 (press / release)
  *                  Note 60.. = function keys (KK_STEP_*; press / release)
  *                  CC 127 = 127 entering Step Mode (send everything), 0 leaving
- *                  Channel 13 note = key-zone key pressed: select that pitch
- *                  (0.62; on + off at once; the sound goes out on ch 10 / 1)
+ *                  Channel 13 notes = key-zone key pressed: select that pitch, or
+ *                  a locked chord (0.63: all note-ons, then all note-offs)
  *  host -> device: CC 80+pad = pad colour code (KK_STEPC_*)
  *                  CC 96 page, 97 page count, 98 resolution, 99 follow,
  *                  100 status, 101 drum view, 102 active pitch,
@@ -73,7 +73,7 @@ enum {
     KK_STEP_VEL_1, KK_STEP_VEL_2, KK_STEP_VEL_3, KK_STEP_VEL_4, KK_STEP_VEL_5, KK_STEP_VEL_6,
     KK_STEP_VEL_DOWN, KK_STEP_VEL_UP, KK_STEP_PASTE,
     KK_STEP_BARS, KK_STEP_OCT_DOWN, KK_STEP_OCT_UP, KK_STEP_SCALE_KEYS,
-    KK_STEP_REPEAT_1, KK_STEP_REPEAT_2, KK_STEP_REPEAT_3,
+    KK_STEP_REPEAT_1, KK_STEP_REPEAT_2, KK_STEP_REPEAT_3, KK_STEP_NOTE_LEN,
     KK_STEP_CODE_CC = 80, KK_STEP_PAGE_CC = 96, KK_STEP_PAGES_CC = 97, KK_STEP_RES_CC = 98,
     KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
     KK_STEP_KEYOCT_CC = 103, KK_STEP_KEYS_CC = 104, KK_STEP_BAR_CC = 105, KK_STEP_BARS_CC = 106,
@@ -88,6 +88,7 @@ enum {
     KK_STEPC_GHOST_1 = 13, KK_STEPC_GHOST_2 = 14, KK_STEPC_GHOST_3 = 15,   /* other sounds on an empty step */
     KK_STEPC_RATCHET = 16,                                                /* step repeated 2x / 3x */
     KK_STEPC_BAR_IN = 17, KK_STEPC_BAR_OUT = 18, KK_STEPC_BAR_SHOWN = 19, KK_STEPC_BAR_PLAY = 24,
+    KK_STEPC_LEN_ON = 25,                                                 /* note length view: inside the length */
     KK_STEPC_DRUM_EMPTY = 20, KK_STEPC_DRUM_LOADED = 21, KK_STEPC_DRUM_ACTIVE = 22, KK_STEPC_DRUM_ACTIVE_EMPTY = 23
 };
 

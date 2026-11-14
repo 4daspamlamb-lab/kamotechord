@@ -131,7 +131,13 @@ static void intent(unsigned id, struct source *s)
         } else {
             note = 36 + 12 * off + i; s->channel = KK_CH_DRUM;
         }
-        if (note >= 0 && note < 128) { s->notes[0] = (uint8_t)note; s->count = 1; }
+        if (note < 0 || note > 127) return;
+        /* 0.63: a locked chord turns melodic keys (scale keys, or any track
+         * without a Drum Rack) into chord keys: the steps get the chord. */
+        if (kk.chord_mods && (kk_midi_step_info(KK_STEP_KEYS_CC) || kk_midi_step_info(KK_STEP_STATUS_CC) == 1)) {
+            s->channel = KK_CH_MELODIC;
+            s->count = (uint8_t)kk_chord_build(note, kk.chord_mods, &kk.scale, s->notes);
+        } else { s->notes[0] = (uint8_t)note; s->count = 1; }
         return;
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&

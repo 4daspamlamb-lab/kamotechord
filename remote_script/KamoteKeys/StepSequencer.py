@@ -35,8 +35,8 @@ PAD_NOTE = 36
 PADS = 16
 (F_DRUM, F_PAGE_PREV, F_PAGE_NEXT, F_LENGTH, F_DOUBLE, F_RESOLUTION, F_FOLLOW, F_COPY, F_CLEAR,
  F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP, F_PASTE,
- F_BARS, F_OCT_DOWN, F_OCT_UP, F_SCALE_KEYS, F_REPEAT_1, F_REPEAT_2, F_REPEAT_3) = range(60, 85)
-FUNCTION_NOTES = tuple(range(60, 85))
+ F_BARS, F_OCT_DOWN, F_OCT_UP, F_SCALE_KEYS, F_REPEAT_1, F_REPEAT_2, F_REPEAT_3, F_NOTE_LEN) = range(60, 86)
+FUNCTION_NOTES = tuple(range(60, 86))
 REPEATS = {F_REPEAT_1: 1, F_REPEAT_2: 2, F_REPEAT_3: 3}
 SELECT_CHANNEL = 12                    # device -> host: channel 13 note = key-zone pitch picked (0.62)
 CODE_CC, PAGE_CC, PAGES_CC, RES_CC, FOLLOW_CC, STATUS_CC, DRUMVIEW_CC, ACTIVE_CC = 80, 96, 97, 98, 99, 100, 101, 102
@@ -49,12 +49,13 @@ C_TIE, C_PLAY_EMPTY, C_PLAY_NOTE, C_HELD = 9, 10, 11, 12
 C_DRUM_EMPTY, C_DRUM_LOADED, C_DRUM_ACTIVE, C_DRUM_ACTIVE_EMPTY = 20, 21, 22, 23
 C_GHOST_1, C_RATCHET = 13, 16          # 13..15: other sounds on an empty step (1, 2, 3+)
 C_BAR_IN, C_BAR_OUT, C_BAR_SHOWN, C_BAR_PLAY = 17, 18, 19, 24
+C_LEN_ON = 25
 # Status codes (CC 100).
 S_OK, S_NO_DRUM_RACK, S_NO_MIDI_TRACK, S_NO_CLIP = 0, 1, 2, 3
 
 # Step resolutions in beats; the same resolution is used for every page.
 RESOLUTIONS = ((0.25, '1/16'), (0.5, '1/8'), (0.125, '1/32'), (1.0 / 6.0, '1/16T'), (1.0 / 3.0, '1/8T'))
-VELOCITIES = (40, 60, 80, 100, 120)   # the five velocity keys (0.62)
+VELOCITIES = (32, 64, 96, 127)        # the four velocity keys (0.63)
 PREF_KEY = 'kamotekeys_step'          # per-track key-zone octave and layout
 EPS = 1e-4
 MAX_LENGTH = 4.0 * 64                  # beats: 64 bars of 4/4 is plenty
@@ -93,6 +94,10 @@ class StepSequencer(object):
         self._used = set()             # COPY / PASTE / CLEAR held and already used with another key
         self._clipboard = None         # (lane pitch or None, [(pitch, offset, duration, velocity, mute)])
         self._prefs = {}               # track -> [key-zone octave, scale keys] (0.62)
+        self._chord = []               # pitches written by a step (a locked chord), root first (0.63)
+        self._zone_held, self._zone_pick = set(), []   # key-zone notes arriving as one pick
+        self._note_len = 1             # new notes: sixteenths of a bar (0.63)
+        self._bars_view = False        # BARS toggled on: pads show the bars
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -398,7 +403,9 @@ class StepSequencer(object):
     def _codes(self):
         if self._fn and F_DRUM in self._fn:
             return self._drum_codes()
-        if self._fn and (F_LENGTH in self._fn or F_BARS in self._fn):
+        if self._fn and F_NOTE_LEN in self._fn:
+            return [C_LEN_ON if i < self._note_len else C_BAR_OUT for i in range(PADS)]
+        if self._bars_view or (self._fn and F_LENGTH in self._fn):
             return self._bar_codes()
         codes = []
         playhead = self._playhead_step()
@@ -517,8 +524,14 @@ class StepSequencer(object):
                 self._set_bars(index + 1)                       # 0.62: LENGTH + pad n = n bars
                 self.update()
                 return
-            if F_BARS in self._fn:
-                self._show_bar(index + 1)
+            if F_NOTE_LEN in self._fn:
+                self._note_len = index + 1                      # 0.63: note length in sixteenths of a bar
+                self._say('note length %d/16' % self._note_len)
+                self.update()
+                return
+            if self._bars_view:
+                self._show_bar(index + 1)                       # pick a bar, back to the pattern
+                self._bars_view = False
                 self.update()
                 return
             repeat = [REPEATS[f] for f in self._fn if f in REPEATS]
@@ -576,6 +589,8 @@ class StepSequencer(object):
             pref[0] = max(-3, min(4, pref[0] + (1 if note == F_OCT_UP else -1)))
             self._save_prefs()
             self._say('key octave %+d' % pref[0])
+        elif note == F_BARS:
+            self._bars_view = not self._bars_view           # 0.63: tap toggles the bar view
         elif note == F_SCALE_KEYS:
             pref = self._pref()
             pref[1] = not pref[1]
@@ -615,9 +630,10 @@ class StepSequencer(object):
         try:
             self._read_notes()
             if self._notes_at(t):
-                self._clip.remove_notes_extended(self._pitch, 1, t - EPS, self._step())
+                for pitch in self._pitches():
+                    self._clip.remove_notes_extended(pitch, 1, t - EPS, self._step())
             else:
-                self._clip.add_new_notes((self._spec(self._pitch, t, self._step(), self._velocity),))
+                self._clip.add_new_notes(tuple(self._spec(p, t, self._duration(), self._velocity) for p in self._pitches()))
         except Exception as error:
             self._log('cannot change step %d: %s' % (index + 1, error))
         self._dirty = True
@@ -658,7 +674,7 @@ class StepSequencer(object):
                         n.velocity = velocity
                     self._clip.apply_note_modifications(notes)
                 else:
-                    self._clip.add_new_notes((self._spec(self._pitch, t, self._step(), velocity),))
+                    self._clip.add_new_notes(tuple(self._spec(p, t, self._duration(), velocity) for p in self._pitches()))
                 self._consumed.add(index)
             self._say('velocity %d' % velocity)
         except Exception as error:
@@ -739,7 +755,21 @@ class StepSequencer(object):
             self._page = max(0, min(limit, self._page + delta))
             self._say('page %d/%d' % (self._page + 1, self._pages()))
 
-    def select_pitch(self, note):
+    def key_zone(self, note, pressed):
+        """Channel 13 notes: one pick (a pitch, or a locked chord sent as all
+        note-ons, then all note-offs)."""
+        if pressed:
+            if not self._zone_held:
+                self._zone_pick = []
+            self._zone_held.add(note)
+            self._zone_pick.append(note)
+            return
+        self._zone_held.discard(note)
+        if not self._zone_held and self._zone_pick:
+            pick, self._zone_pick = sorted(set(self._zone_pick)), []
+            self.select_pitch(pick[0], pick)
+
+    def select_pitch(self, note, chord=None):
         """A key-zone key (drum key or scale key) was pressed: like a drum pad
         on Move, it selects that pitch for the steps (the keyboard plays it).
         With CLEAR / COPY / PASTE held it acts on that pitch instead."""
@@ -757,7 +787,16 @@ class StepSequencer(object):
             self._paste(note)
         else:
             self._select_drum(note)
+            self._chord = list(chord) if chord and len(chord) > 1 else []
+            if self._chord:
+                self._say('chord %s' % ' '.join(str(n) for n in self._chord))
         self.update()
+
+    def _pitches(self):
+        return self._chord if self._chord and self._chord[0] == self._pitch else [self._pitch]
+
+    def _duration(self):
+        return self._note_len * self._bar() / 16.0
 
     # Copy / paste (0.61, like Move's Copy button): COPY copies the shown page
     # (all drums) or, with a drum key, that drum's lane on the page; PASTE

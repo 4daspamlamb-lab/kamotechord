@@ -82,6 +82,18 @@ void kk_midi_tap(unsigned channel, unsigned note)
     const uint8_t off[3] = {(uint8_t)(0x80 | (channel & 15)), (uint8_t)(note & 127), 0};
     out(on, 3, kk_midi_port_mask(), 0); out(off, 3, kk_midi_port_mask(), 0);
 }
+/* Several short notes as one group (all on, then all off): a chord pick. */
+void kk_midi_tap_set(unsigned channel, const uint8_t *notes, unsigned count)
+{
+    for (unsigned i = 0; i < count; ++i) {
+        const uint8_t on[3] = {(uint8_t)(0x90 | (channel & 15)), (uint8_t)(notes[i] & 127), 127};
+        out(on, 3, kk_midi_port_mask(), 0);
+    }
+    for (unsigned i = 0; i < count; ++i) {
+        const uint8_t off[3] = {(uint8_t)(0x80 | (channel & 15)), (uint8_t)(notes[i] & 127), 0};
+        out(off, 3, kk_midi_port_mask(), 0);
+    }
+}
 void kk_midi_message(const uint8_t *m, size_t n) { out(m, n, kk_midi_port_mask(), 1); }
 void kk_midi_all_off(void)
 {
