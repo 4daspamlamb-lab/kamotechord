@@ -206,6 +206,27 @@ static int held_elsewhere(const struct output *o, unsigned owner, unsigned ch, u
         if (i != owner && (o->held[i][note >> 3] & (1U << (note & 7U))) && owner_channel(i) == ch) return 1;
     return 0;
 }
+/* KamoteKeys (0.69): a message that does not fit the port right now (BLE MIDI
+ * has a small transmit buffer) waits here, in order, instead of resetting
+ * the port and losing everything sent until the reset ends. */
+enum { KQ = 64 };
+static struct { uint8_t m[KQ][3]; uint8_t head, tail; } kq[3];
+static int kq_send(unsigned port, const uint8_t *m)
+{
+    if (kq[port].head == kq[port].tail && !fm1_midi_send_port(port, m, size(m[0]))) return 0;
+    unsigned next = (kq[port].tail + 1U) % KQ;
+    if (next == kq[port].head) return 1;                     /* full: the caller recovers */
+    memcpy(kq[port].m[kq[port].tail], m, 3); kq[port].tail = (uint8_t)next;
+    return 0;
+}
+static void kq_flush(unsigned port)
+{
+    while (kq[port].head != kq[port].tail) {
+        const uint8_t *m = kq[port].m[kq[port].head];
+        if (fm1_midi_send_port(port, m, size(m[0]))) return;
+        kq[port].head = (uint8_t)((kq[port].head + 1U) % KQ);
+    }
+}
 static void deliver(unsigned port, unsigned owner, const uint8_t *m)
 {
     struct output *o = &output[port];
@@ -225,7 +246,7 @@ static void deliver(unsigned port, unsigned owner, const uint8_t *m)
             o->sent_sustain |= (uint16_t)(1U << ch);
         }
     }
-    if (fm1_midi_send_port(port, m, size(m[0]))) { recover(port); ++dropped; }
+    if (owner >= KK_OWNER ? kq_send(port, m) : fm1_midi_send_port(port, m, size(m[0]))) { recover(port); ++dropped; }
     else if (type == 0xb0 && m[1] == 64) {
         if (m[2] >= 64) o->sent_sustain |= (uint16_t)(1U << ch);
         else o->sent_sustain &= (uint16_t)~(1U << ch);
@@ -266,8 +287,9 @@ void groove_midi_poll(void)
 {
     unsigned ready = fm1_midi_ready_ports();
     for (unsigned p = 0; p < 3; ++p) {
-        if ((ready_seen & ~ready) & (1U << p)) recover(p);
+        if ((ready_seen & ~ready) & (1U << p)) { recover(p); kq[p].head = kq[p].tail; }   /* gone: drop the wait queue */
         if (!(ready & (1U << p))) continue;
+        kq_flush(p);
         struct output *o = &output[p];
         if (o->stop) {
             const uint8_t stop = 0xfc;

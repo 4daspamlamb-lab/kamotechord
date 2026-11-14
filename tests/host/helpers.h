@@ -119,4 +119,5 @@ void test_ripple(void);
 void test_step_mode(void);
 void test_live_tempo(void);
 
+void test_bluetooth(void);
 #endif

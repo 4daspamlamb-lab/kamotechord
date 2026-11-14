@@ -148,3 +148,60 @@ void test_live_tempo(void)
     host_in(0xBF, KK_HOST_TEMPO_MSB_CC, 1400 >> 7); host_in(0xBF, KK_HOST_TEMPO_LSB_CC, 1400 & 127);
     CHECK(kk_tempo_x10() == 1200, "tempo without the script's hello is ignored");
 }
+
+/* 0.69: every Step Mode and Clip Mode message over Bluetooth only, with the
+ * BLE buffer often full: nothing may be lost or reordered. */
+static unsigned ble_count(unsigned status, int data1) { return out_count(BLE, status, data1); }
+static void ble_in(uint8_t a, uint8_t b, uint8_t c) { uint8_t m[3] = {a, b, c}; fm1_app_midi_received(2, m, 3); }
+void test_bluetooth(void)
+{
+    boot();
+    host_ready_ports = 4; frames(30, 5);                      /* Bluetooth only */
+    ble_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    /* Step Mode in / out and every key type, with the BLE buffer full now and then. */
+    host_clear(); host_ble_busy = 2; tap(KK_BTN_REC); frames(5, 5);
+    CHECK(kk.mode == KK_MODE_STEP && ble_count(0xBD, KK_STEP_SYNC_CC) >= 1, "BLE: Step Mode on reaches Live despite a full buffer");
+    host_clear();
+    host_ble_busy = 3; pad(1, 100); pad(1, 0);                /* a step */
+    host_ble_busy = 1; key(1, 100); key(1, 0);                /* COPY */
+    host_ble_busy = 2; key(12, 100); key(12, 0);              /* key zone: kick (ch 10) + select (ch 13) */
+    host_ble_busy = 1; key(5, 100); pad(2, 100); pad(2, 0); key(5, 0);   /* LENGTH + pad */
+    host_ble_busy = 2; tap(KK_BTN_OCT_UP); tap(KK_BTN_SEQ); tap(KK_BTN_PARA); tap(KK_BTN_LEFT); tap(KK_BTN_RIGHT);
+    host_ble_busy = 1; key(7, 100); pad(9, 100); pad(9, 0); key(7, 0);   /* DRUM view pad: rim */
+    frames(20, 5);
+    CHECK(ble_count(0x9D, 36) == 1 && ble_count(0x8D, 36) == 1, "BLE: step pad on/off");
+    CHECK(ble_count(0x9D, KK_STEP_COPY) == 1 && ble_count(0x8D, KK_STEP_COPY) == 1, "BLE: COPY on/off");
+    CHECK(ble_count(0x99, 36) == 1 && ble_count(0x9C, 36) == 1 && ble_count(0x8C, 36) == 1, "BLE: key zone sound + select");
+    CHECK(ble_count(0x9D, KK_STEP_LENGTH) == 1 && ble_count(0x9D, 37) == 1, "BLE: LENGTH + pad");
+    CHECK(ble_count(0x9D, KK_STEP_OCT_UP) == 1 && ble_count(0x9D, KK_STEP_SCALE_KEYS) == 1 && ble_count(0x9D, KK_STEP_PLAY) == 1 &&
+          ble_count(0x9D, KK_STEP_PAGE_PREV) == 1 && ble_count(0x9D, KK_STEP_PAGE_NEXT) == 1, "BLE: OCT, SEQ, PARA, ◀, ▶");
+    CHECK(ble_count(0x99, 37) == 1 && ble_count(0x9C, 37) == 1, "BLE: DRUM view pad plays + selects");
+    CHECK(out_count(USB, 0x9D, -1) == 0, "BLE only: nothing goes to USB");
+    {   /* order kept: COPY note-on comes after the step pad's note-off */
+        int off = -1, copy = -1;
+        for (unsigned i = 0; i < host_out_n; ++i) {
+            if (host_out[i].port != BLE) continue;
+            if (off < 0 && host_out[i].b[0] == 0x8D && host_out[i].b[1] == 36) off = (int)i;
+            if (copy < 0 && host_out[i].b[0] == 0x9D && host_out[i].b[1] == KK_STEP_COPY) copy = (int)i;
+        }
+        CHECK(off >= 0 && copy > off, "BLE: messages stay in order (%d, %d)", off, copy);
+    }
+    /* Feedback from Live over Bluetooth drives the pads. */
+    ble_in(0xBD, KK_STEP_CODE_CC + 3, KK_STEPC_NOTE_6); settle();
+    CHECK(kk_midi_step_code(3) == KK_STEPC_NOTE_6 && ((host_rgb[3] >> 16) & 255) >= KK_RGB_PEAK * 9 / 10, "BLE: step colours from Live");
+    host_clear(); host_ble_busy = 1; frames(450, 5);
+    CHECK(ble_count(0xBD, KK_STEP_SYNC_CC) >= 1, "BLE: Step Mode heartbeat");
+    host_clear(); host_ble_busy = 2; tap(KK_BTN_REC); frames(5, 5);
+    CHECK(kk.mode == KK_MODE_NORMAL && ble_count(0xBD, KK_STEP_SYNC_CC) == 1, "BLE: Step Mode off reaches Live");
+    /* Clip Mode over Bluetooth. */
+    tap(KK_BTN_CHORD); host_clear();
+    host_ble_busy = 2; pad(3, 100); pad(3, 0); key(1, 100); key(1, 0); key(8, 100); key(8, 0);
+    host_ble_busy = 1; key(10, 100); pad(4, 100); pad(4, 0); key(10, 0); key(30, 100); key(30, 0); key(33, 100); key(33, 0);
+    frames(20, 5);
+    CHECK(ble_count(0x9F, 84 + 2) == 1 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1 && ble_count(0x9F, KK_CLIP_ARRANGE_NOTE) == 1 &&
+          ble_count(0x9F, 68 + 3) == 1 && ble_count(0xBE, KK_CC_SCENE_LAUNCH) == 2 && ble_count(0xBE, KK_CC_TRACKS_LEFT) == 2,
+          "BLE: clip select, COPY, ARRANGE, DELETE, scene launch, track view");
+    ble_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); settle();
+    CHECK(kk_midi_clip_state(0) == KK_CLIP_PLAYING, "BLE: clip states from Live");
+    tap(KK_BTN_CHORD); host_ready_ports = 6; host_ble_busy = 0; frames(30, 5);
+}

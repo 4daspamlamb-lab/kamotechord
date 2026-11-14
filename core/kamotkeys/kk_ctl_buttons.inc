@@ -76,10 +76,13 @@ static void button(unsigned id, unsigned down, uint32_t now)
     case KK_BTN_LEFT:
         if (menu || kk.page == KK_PAGE_DIAG) { if (down) { menu_owned |= bit; kk_ui_bt_key(0); } return; }
         if (down) left_combo = 0;
-        else if (!left_combo) { ableton(KK_CC_UNDO, 127); ableton(KK_CC_UNDO, 0); }
+        /* 0.69: in Step Mode ◀ / ▶ turn the page (◀ + PARA stays the metronome). */
+        if (down && kk.mode == KK_MODE_STEP) { left_combo = 1; kk_midi_tap(KK_CH_STEP, KK_STEP_PAGE_PREV); return; }
+        else if (!down && !left_combo) { ableton(KK_CC_UNDO, 127); ableton(KK_CC_UNDO, 0); }
         return;
     case KK_BTN_RIGHT:
         if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
+        if (kk.mode == KK_MODE_STEP) { if (down) kk_midi_tap(KK_CH_STEP, KK_STEP_PAGE_NEXT); return; }
         ableton(KK_CC_REDO, down ? 127 : 0); return;
     case KK_BTN_OCT_DOWN: case KK_BTN_OCT_UP:
         if (!down) return;

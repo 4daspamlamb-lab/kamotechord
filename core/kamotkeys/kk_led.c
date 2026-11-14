@@ -69,9 +69,9 @@ static uint32_t step_colour(unsigned pad, unsigned *level)
     }
     switch (code) {
     case KK_STEPC_EMPTY: case KK_STEPC_EMPTY_BEAT: *level = 80; return 0x2040ff;   /* empty step: dim blue */
-    case KK_STEPC_GHOST_1: *level = 150; return 0x8020ff;                    /* 1 other sound: violet tint */
-    case KK_STEPC_GHOST_2: *level = 260; return 0x9010ff;
-    case KK_STEPC_GHOST_3: *level = 400; return 0xa000ff;                    /* 3+ other sounds */
+    case KK_STEPC_GHOST_1: *level = 330; return 0xb070ff;                    /* 1 other sound: clear lilac (0.69) */
+    case KK_STEPC_GHOST_2: *level = 520; return 0xb060ff;
+    case KK_STEPC_GHOST_3: *level = 750; return 0xb050ff;                    /* 3+ other sounds */
     case KK_STEPC_TIE: *level = 150; return 0xff8000;                        /* inside a long note */
     case KK_STEPC_RATCHET: *level = LIT; return 0xff2080;                    /* repeated step: pink */
     case KK_STEPC_PLAY_EMPTY: *level = 550; return 0xffffff;                 /* playhead */

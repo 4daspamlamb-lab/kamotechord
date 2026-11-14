@@ -7,6 +7,7 @@ enum { HOST_LOG = 1 << 20 };
 struct host_msg { uint8_t port, n, b[3]; };
 extern uint32_t host_ms;
 extern struct host_msg host_out[HOST_LOG], host_local[HOST_LOG];
+extern unsigned host_ble_busy;
 extern unsigned host_out_n, host_local_n, host_ready_ports, host_settings_changes;
 extern uint16_t host_fb[240 * 240];
 extern uint32_t host_rgb[16];

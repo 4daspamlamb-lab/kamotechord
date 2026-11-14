@@ -21,8 +21,10 @@ uint32_t fm1_millis(void) { return host_ms; }
 unsigned fm1_midi_output_ports(void) { return 6; }
 unsigned fm1_midi_input_ports(void) { return 6; }
 unsigned fm1_midi_ready_ports(void) { return host_ready_ports; }
+unsigned host_ble_busy;   /* > 0: the next sends to BLE fail (small BLE buffer) */
 int fm1_midi_send_port(unsigned port, const uint8_t *m, size_t n)
 {
+    if (port == 2 && host_ble_busy) { --host_ble_busy; return 1; }
     if (host_out_n < HOST_LOG) {
         struct host_msg *x = &host_out[host_out_n++];
         x->port = (uint8_t)port; x->n = (uint8_t)n; memcpy(x->b, m, n);

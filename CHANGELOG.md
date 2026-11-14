@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.69 (development snapshot)
+
+- **Fix: Step Mode (and Clip Mode) over Bluetooth.** When the Bluetooth MIDI buffer was momentarily full, the router reset the port and dropped every message until the reset finished, so step pads, function keys, key-zone picks and Step Mode on/off were lost on Bluetooth (USB has a much bigger buffer). KamoteKeys messages now wait in a small queue and go out in order as soon as there is room (SMK-37 and FM-1). New Bluetooth-only test of every Step and Clip Mode message with a full buffer.
+- **◀ / ▶ turn the page in Step Mode** (like G# / A#); ◀ + PARA is still the metronome.
+- **Other sounds on a step are much clearer:** a lilac tint at 2-3x the old brightness, brighter with more sounds.
+
 ## KamoteKeys 0.68 (development snapshot)
 
 - **Fix: Step Mode DRUM view pads now play.** Holding DRUM (G) turns the pads into Drum Mode pads: the same order and colours as FX Drum Mode (pad 1 kick, pad 9 rim, pad 2 snare …, following the key zone's octave), they sound on channel 10 and select the drum for the steps. Before, they only selected the Drum Rack pad in Live, in a Push-style order.

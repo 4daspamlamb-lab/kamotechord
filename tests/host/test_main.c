@@ -21,6 +21,7 @@ int main(void)
     test_live_tempo();
     test_ripple();
     test_step_mode();
+    test_bluetooth();
     printf("%u checks, %u failures\n", checks, failures);
     return failures != 0;
 }
