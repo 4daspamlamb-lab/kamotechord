@@ -3,6 +3,7 @@
 Performance firmware for the M-VAVE SMK-37 Pro/Elite (on SMK37 OPEN) and FM-1 (on FM1 OPEN), plus an Ableton Live 12 Remote Script. One codebase builds all three.
 
 ## Rules
+- Do NOT push, and do NOT update docs / diagrams / CHANGELOG, unless the user says "publish". Otherwise: change code + tests, run tools/test-all.sh, build the zip (tools/release.sh), give the build blocks. Commit locally only.
 - Git: push only to `origin` (4daspamlamb-lab/kamotechord), branch `kamotekeys`. Never push to `upstream` (m-vave/smk37_open).
 - Never edit `devices/*/sdk/` (hash-locked by `manifest.json`, incl. `Build.ps1`). Never edit the synced copies under `devices/*/app/` that `.gitignore` lists; edit `core/` instead.
 - The user builds on Windows (Parallels, toolchain `C:\JL\pi32`) and flashes in Chrome/Brave on a Mac. Every release reply includes the PowerShell blocks from `build/KamoteKeys-<v>/BUILD.txt` and the flash steps at its end.

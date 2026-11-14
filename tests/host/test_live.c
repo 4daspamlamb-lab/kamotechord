@@ -86,9 +86,10 @@ void test_031(void)
     host_clear(); tap(KK_BTN_ARP); key(6, 100); pad(3, 100); frames(300, 2); pad(3, 0); key(6, 0); tap(KK_BTN_ARP);
     CHECK(out_count(USB, 0x9F, 38) == 1, "ARP does not touch clip launches");
     /* 0.75: G held + top G# / A# = move Live's selected clip up / down (CC 33 / 34). */
-    host_clear(); key(7, 100); key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(7, 0);
+    host_clear(); key(29, 100); key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(29, 0);
     CHECK(out_count(USB, CC15, KK_CC_CLIP_UP) == 2 && out_count(USB, CC15, KK_CC_CLIP_DOWN) == 2 &&
-          out_count(USB, CC15, KK_CC_SCENE_UP) == 0 && out_count(USB, 0x90, -1) == 0, "G + top G# / A#: move the clip up / down, G silent");
+          out_count(USB, CC15, KK_CC_SCENE_UP) == 0 && out_count(USB, 0x90, -1) == 0, "top F + top G# / A#: move the clip up / down, top F silent");
+    host_clear(); key(7, 100); key(7, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low G plays a note again");
     host_clear(); key(32, 100); key(32, 0);
     CHECK(out_count(USB, CC15, KK_CC_SCENE_UP) == 2, "without G: scene up as before");
     host_in(0xBF, KK_CLIP_HELLO_CC, 1);

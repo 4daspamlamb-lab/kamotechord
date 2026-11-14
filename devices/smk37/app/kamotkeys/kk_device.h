@@ -25,7 +25,7 @@ enum { KK_VELOCITY_DEFAULT = 100 };
  * A plain pad press selects (slot + arm) unless toggled to play. */
 #define KK_CLIP_PRESS_SELECT 1
 enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6 /* F#: PLAY (hold / tap, 0.75) */, KK_CLIP_ARRANGE_KEY = 8,   /* G#: Scene Arrange (0.66) */
-       KK_TRACKS_LEFT_KEY = 33, KK_TRACKS_RIGHT_KEY = 35, KK_CLIP_MOVE_KEY = 7,   /* G held + top G# / A#: move the clip (0.75) */                                        /* top A / B: 8-track view (0.67) */
+       KK_TRACKS_LEFT_KEY = 33, KK_TRACKS_RIGHT_KEY = 35, KK_CLIP_MOVE_KEY = 29,  /* top F held + top G# / A#: move the clip (0.76) */                                        /* top A / B: 8-track view (0.67) */
        KK_CLIP_DELETE_KEY = 10, KK_CLIP_OVERDUB_KEY = 0 };   /* 0.72: lowest C held + clip = OVERDUB */
 /* The third black key (F#) held + clip = SELECT (select the slot, arm its
  * track); the fourth (G#) = launch the selected scene; the last two black

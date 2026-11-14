@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.76 (development snapshot)
+
+- Clip Mode MOVE key moved to the **top F** (5th white key from the right): hold it + top G# / A# to move the selected clip up / down. The low G plays a note again.
+
 ## KamoteKeys 0.75 (development snapshot)
 
 - **Clip Mode PLAY key (F#):** pads always select by default; hold F# and press clips to launch / stop them, or tap F# and the next clip pressed is launched (tap again to cancel). No longer a saved switch.
