@@ -33,6 +33,8 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 
 ## Clip Mode (CHORD button)
 
+[Diagram](diagrams/SMK37-Clip-Mode.png)
+
 ```
  ┌──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┐
  │ T1 C1│ T2 C1│ T3 C1│ T4 C1│ T5 C1│ T6 C1│ T7 C1│ T8 C1│  pads 1-8 : Clip 1 (scene 1)
