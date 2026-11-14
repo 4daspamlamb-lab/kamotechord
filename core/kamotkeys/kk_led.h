@@ -8,7 +8,7 @@
 #define KK_LED_H
 #include <stdint.h>
 
-enum { KK_BOOT_MS = 1100, KK_BOOT_FADE_MS = 350 };
+enum { KK_BOOT_MS = 1700, KK_BOOT_FADE_MS = 350 };   /* 0.67 bubbles boot */
 
 /* SMK-37 only: final 0xRRGGBB for pad 0..15 (after Fader 4). boot_ms = time since the
  * Aurora boot started, or >= KK_BOOT_MS + KK_BOOT_FADE_MS when finished. */

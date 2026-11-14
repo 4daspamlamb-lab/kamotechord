@@ -1,5 +1,14 @@
 # Changelog
 
+## KamoteKeys 0.67 (development snapshot)
+
+- **New startup: Bubbles.** White piano keys drop in and bounce, flat bubbles in an earthy pastel palette (coral, apricot, mustard, lime, mint, teal, sky, violet) pop up behind them, the black keys pop, one colour sweep runs over the keys and the name pops in letter by letter; the pads light in the bubble colours. About 1.7 s, still gated by Fader 4. Preview: docs/diagrams/SMK37-Boot.gif.
+- **Leaving Step Mode returns to the mode you came from** (e.g. Clip Mode) and no longer plays the clip.
+- **PARA in Step Mode** makes the clip if needed and plays it; again stops it (PATCH / ◀ + PARA stay the metronome).
+- Step Mode makes the clip on entering again (as before 0.66); the 0.66 heartbeat still keeps it from getting stuck.
+- **DRUM (hold) view** opens on the bank of the selected sound, so the pads match what the keys selected.
+- **Clip Mode track view moved to the top A / B keys** (3rd / 2nd white key from the right); D / E play notes again.
+
 ## KamoteKeys 0.66 (development snapshot)
 
 - **Scene Arrange (Clip Mode, G#):** tap pads to choose which tracks play in each scene (one clip per track; a scene uses the track's clip from that scene or the nearest one). Top F# launches exactly those tracks and stops the others; saved in the Live set.

@@ -231,7 +231,7 @@ class KamoteKeys(ControlSurface):
         # 127 = start; leaving: 0 = and play the clip, 64 = quietly (PATCH held).
         if value == 127:
             self._step_seen = time.time()   # also the 2 s heartbeat (0.66)
-        self._step.set_active(value == 127, play=value == 0)
+        self._step.set_active(value == 127)   # 0.67: leaving no longer plays the clip (PARA does)
         self._cp.reset()
         self._refresh_clipboard()
 

@@ -313,7 +313,8 @@ static void reroute_all(void)
 void kk_settings_touch(void) { ++kk.edit_revision; groove_settings_panel_changed(); }
 void kk_set_mode(unsigned mode)
 {
-    if (mode == kk.mode) mode = KK_MODE_NORMAL;     /* same button again: normal */
+    if (mode == kk.mode) mode = mode == KK_MODE_STEP ? kk.step_from : KK_MODE_NORMAL;   /* same button again: back */
+    if (mode == KK_MODE_STEP) kk.step_from = kk.mode;   /* 0.67: leaving Step Mode returns here (e.g. Clip Mode) */
     hold_release();                                   /* sustained notes belong to the old mode */
     /* 0.62: a chord LOCK survives every mode change (it is released only
      * with the LOCK pad), and the keys keep playing the locked chord. */

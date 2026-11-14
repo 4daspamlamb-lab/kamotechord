@@ -32,8 +32,11 @@ static void button(unsigned id, unsigned down, uint32_t now)
             unsigned shift = kk.buttons & ((1U << KK_BTN_LEFT) | (1U << KK_BTN_PATCH));
             para_cc = shift ? KK_CC_METRONOME : KK_CC_PLAY_PAUSE;
             if (shift) { left_combo = 1; patch_combo = 1; }
+            /* 0.67: in Step Mode PARA plays / stops the clip being made (the script creates it if needed). */
+            if (!shift && kk.mode == KK_MODE_STEP) { para_cc = 0; kk_midi_tap(KK_CH_STEP, KK_STEP_PLAY); return; }
         }
-        ableton(para_cc, down ? 127 : 0); return;
+        if (para_cc) ableton(para_cc, down ? 127 : 0);
+        return;
     /* CHORD: tap = Clip Mode; hold 0.6 s = Step Mode (0.58, long_presses). */
     case KK_BTN_CHORD:
         if (kk.buttons & (1U << KK_BTN_PATCH)) patch_combo = 1;    /* PATCH held: leave Step Mode quietly */

@@ -64,7 +64,7 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
-| **D / E** (white) | move the 8-track view one track left / right |
+| **top A / B** (white, 3rd / 2nd from the right) | move the 8-track view one track left / right |
 | **G#** | **Scene Arrange** on / off (below) |
 | top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
 
@@ -140,7 +140,7 @@ Colours: see the table below.
 - **COPY / PASTE** (C# / D#), as in Clip Mode: tap (or hold) **COPY**, then press what to copy: a **step pad** (every note in that step), a **key** (that sound's steps on the shown page) or, in the **BARS view**, a **bar**. Tap **PASTE** and the next matching target gets it (a step pad, a key, or a bar in the BARS view); **hold PASTE** to paste onto several. The screen shows the clipboard (COPIED STEP 5 P1, COPIED C1 P1, COPIED BAR 2).
 - **CLEAR** (lowest C): **+ step** clears every note in that step, **+ key** deletes that sound in the whole clip (Move: Delete + pad), a plain **tap** clears the selected sound on the shown page.
 - **Chord toggle** (lowest D): with a locked chord, key-zone keys pick the whole chord or single notes. The screen shows CHORD / SINGLE.
-- **Leaving Step Mode plays the clip** you were editing (if it is not already playing). Hold **PATCH** while you leave to leave quietly.
+- **PARA** in Step Mode (0.67) plays the clip being made (making it first if the slot is empty); pressed while it plays, stops it. Leaving Step Mode does not play anything and returns to the mode you came from (e.g. Clip Mode).
 - **Auto-arm**: entering Step Mode arms the sequenced track (if it was not armed) so the keys are heard; leaving disarms it again.
 - **Screen**: the bar the clip is playing (BAR 2/4; when stopped its length, 4 BARS), page, resolution, FOLLOW, the selected note and SCALE when the key zone is scale keys.
 

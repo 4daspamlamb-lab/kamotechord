@@ -4,6 +4,7 @@
  * refresh. Colours come from the shared logic (core/kamotkeys/kk_led.c);
  * app/board/panel.c maps pads onto the LED chain. */
 #include "kk_led_util.h"
+#include "kk_boot.h"
 #include "kk_perform.h"
 #include "kk_midi.h"
 
@@ -66,14 +67,11 @@ static uint32_t show(unsigned pattern, unsigned pad, unsigned t)
  * from left to right, then the normal colours fade in. */
 static uint32_t aurora(unsigned pad, unsigned ms)
 {
-    unsigned row = pad / 8, col = pad % 8;
-    /* Wave head in 1/256 pad units: from column -2 to 10 over the boot. */
-    int head = -512 + (int)(ms * 3072U / KK_BOOT_MS) - (int)row * 64;
-    int d = (int)col * 256 - head; if (d < 0) d = -d;
-    unsigned b = d < 512 ? (unsigned)(512 - d) * 255U / 512U : 0;
-    b = b * b / 255U * 120U / 255U;                          /* soft, at most ~47 % */
-    uint32_t c = mix(0x00c8b4, 0x8a4cff, col * 255U / 7U);
-    return scale(c, b);
+    /* 0.67 Bubbles boot: each pad lights in its bubble's colour as it pops. */
+    const struct kk_boot_bubble *b = &kk_boot_bubbles[pad];
+    if (ms < b->t0 + 50U) return 0;
+    unsigned k = ms - b->t0 - 50U; k = k > 200U ? 200U : k;
+    return scale(kk_boot_palette[pad % 8], 90U + k * 110U / 200U);   /* quick pop to ~80 % */
 }
 
 /* --------------------------------------------------------------- output */

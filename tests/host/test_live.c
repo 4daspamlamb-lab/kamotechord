@@ -112,9 +112,17 @@ void test_031(void)
     key(10, 0); CHECK(kk.clip_action == 0, "key released: back to the plain press");
     host_clear(); key(8, 100); key(8, 0);
     CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1, "0.66: G# = Scene Arrange (note 102)");
-    host_clear(); key(2, 100); key(2, 0); key(4, 100); key(4, 0);
+    host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0);
     CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
-          "D / E: track view left / right (CC 31 / 32), no notes");
+          "0.67: top A / B: track view left / right (CC 31 / 32), no notes");
+    host_clear(); key(2, 100); key(2, 0); CHECK(out_count(USB, 0x90, -1) == 1, "D plays a note again in Clip Mode");
+    /* 0.67: Step Mode entered from Clip Mode returns to Clip Mode; PARA there plays the clip. */
+    tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP, "SEQ REC from Clip Mode -> Step Mode");
+    host_clear(); tap(KK_BTN_PARA);
+    CHECK(out_count(USB, 0x9D, KK_STEP_PLAY) == 1 && out_count(USB, CC15, KK_CC_PLAY_PAUSE) == 0, "PARA in Step Mode: play the clip (not Play/Pause)");
+    host_clear(); btn(KK_BTN_PATCH, 1); tap(KK_BTN_PARA); btn(KK_BTN_PATCH, 0);
+    CHECK(out_count(USB, CC15, KK_CC_METRONOME) == 2, "PATCH + PARA is still the metronome");
+    tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_CLIP, "SEQ REC again -> back to Clip Mode");
     host_in(0xBF, KK_HOST_TRACKS_CC, 3); host_in(0xBF, KK_HOST_ARRANGE_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_ARR_ON);
     host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_ARR_OFF); settle();
     CHECK(kk_midi_host_tracks() == 3 && kk_midi_arrange() && ((host_rgb[0] >> 8) & 255) > ((host_rgb[1] >> 8) & 255) * 3,

@@ -176,58 +176,67 @@ static void draw_diag(void)
 }
 
 /* ------------------------------------------------------------- boot */
-/* Aurora Boot: flowing ribbons inside a fixed band (never the full screen),
- * the KamoteKeys wordmark and version fading in, then a short status line. */
+/* 0.67 Bubbles boot (kk_boot.h): flat shapes, earthy pastels, no shading. */
+static uint16_t boot565(uint32_t c) { return C565((c >> 16) & 255, (c >> 8) & 255, c & 255); }
+static void disc(int cx, int cy, int r, uint16_t c)
+{
+    for (int dy = -r; dy <= r; ++dy) {
+        int w = 0; while ((w + 1) * (w + 1) + dy * dy <= r * r) ++w;
+        fill(cx - w, cy + dy, 2 * w + 1, 1, c);
+    }
+}
+static void rounded(int x, int y, int w, int h, uint16_t c)
+{
+    fill(x + 2, y, w - 4, 1, c); fill(x + 1, y + 1, w - 2, 1, c);
+    fill(x, y + 2, w, h - 4, c);
+    fill(x + 1, y + h - 2, w - 2, 1, c); fill(x + 2, y + h - 1, w - 4, 1, c);
+}
 static void draw_boot(void)
 {
-    /* Understated boot (0.57): near-black, one hairline drawn out from the
-     * centre in a teal-to-violet gradient with a soft glow, the wordmark
-     * fading in above it, the version below; everything eases out. */
     const struct widget *w = &widgets[W_BOOT];
-    uint32_t t = now_ms - boot_started;
-    unsigned out = t > KK_BOOT_MS - 220 ? (t >= KK_BOOT_MS ? 0 : (KK_BOOT_MS - t) * 255 / 220) : 255;
-    int centre = w->y + w->h / 2, line_y = centre + 14;
+    int t = (int)(now_ms - boot_started);
     fill(0, w->y, 240, w->h, BG);
-    /* Hairline: half-length eases out over 520 ms, then holds. */
-    unsigned p = t < 520 ? t * 1000 / 520 : 1000;
-    unsigned ease = 1000 - (1000 - p) * (1000 - p) / 1000;          /* ease-out quad */
-    int half = (int)(ease * 104 / 1000);
-    for (int x = 120 - half; x < 120 + half; ++x) {
-        unsigned k = (unsigned)(x - 16) * 255 / 208;                 /* 0 teal .. 255 violet */
-        unsigned r = (0x00 * (255 - k) + 0x8a * k) / 255, g = (0xc8 * (255 - k) + 0x4c * k) / 255,
-                 b = (0xb4 * (255 - k) + 0xff * k) / 255;
-        int d = x - 120; if (d < 0) d = -d;
-        unsigned edge = half ? 255 - (unsigned)d * 200 / (unsigned)half : 255;   /* brighter centre */
-        unsigned a = edge * out / 255;
-        dot(x, line_y, C565(r * a / 255, g * a / 255, b * a / 255));
-        dot(x, line_y - 1, C565(r * a / 1530, g * a / 1530, b * a / 1530));     /* faint glow */
-        dot(x, line_y + 1, C565(r * a / 1530, g * a / 1530, b * a / 1530));
+    for (unsigned i = 0; i < 16; ++i) {                        /* bubbles pop up behind */
+        const struct kk_boot_bubble *b = &kk_boot_bubbles[i];
+        int s = kk_boot_pop((t - b->t0) * 1000 / 320);
+        if (s > 20) disc(b->x, w->y + b->y, b->r * s / 1000, boot565(kk_boot_palette[i % 8]));
     }
-    /* A small travelling highlight on the line, once. */
-    if (t > 200 && t < 900) {
-        int hx = 120 - 104 + (int)((t - 200) * 208 / 700);
-        for (int dx = -6; dx <= 6; ++dx) {
-            int x = hx + dx; if (x < 120 - half || x >= 120 + half) continue;
-            unsigned a = (unsigned)(6 - (dx < 0 ? -dx : dx)) * 40 * out / 255;
-            dot(x, line_y, blend565(C565(30, 40, 60), TEXT, a > 255 ? 255 : a));
-        }
+    enum { KW = 25, KH = 75, GAP = 2, X0 = (240 - 7 * (KW + GAP) + GAP) / 2, LAND = 22 };
+    for (int i = 0; i < 7; ++i) {                              /* white keys drop and bounce */
+        int start = i * KK_BOOT_KEY_STEP;
+        if (t < start) continue;
+        int p = kk_boot_bounce((t - start) * 1000 / KK_BOOT_KEY_MS);
+        int y = w->y - KH + (LAND + KH) * p / 1000;
+        rounded(X0 + i * (KW + GAP), y, KW, KH, C565(245, 245, 250));
+        int sweep = (t - KK_BOOT_SWEEP_AT) * 7 / 4;            /* one colour sweep over the keys */
+        int dist = sweep - i * 57; if (dist < 0) dist = -dist;
+        if (t >= KK_BOOT_SWEEP_AT && dist < 68)
+            fill(X0 + i * (KW + GAP), y + KH / 2 + 8, KW, KH / 2 - 10,
+                 blend565(C565(245, 245, 250), boot565(kk_boot_palette[i]), (unsigned)(68 - dist) * 255 / 68));
     }
-    unsigned logo = t < 300 ? 0 : t < 750 ? (t - 300) * 255 / 450 : 255;
-    logo = logo * out / 255;
-    if (logo) text_center(120, centre - 16, KAMOTKEYS_NAME, 3, blend565(BG, TEXT, logo));
-    unsigned ver = t < 600 ? 0 : t < 900 ? (t - 600) * 255 / 300 : 255;
-    ver = ver * out / 255;
-    if (ver) text_center(120, line_y + 10, KAMOTKEYS_VERSION, 1, blend565(BG, DIM, ver));
+    static const uint8_t black[5] = {0, 1, 3, 4, 5};
+    for (int j = 0; j < 5; ++j) {                              /* black keys pop */
+        int s = kk_boot_pop((t - KK_BOOT_BLACK_AT - j * 64) * 1000 / 288);
+        if (s <= 20) continue;
+        int bw = 15 * s / 1000, bh = 45 * s / 1000, cx = X0 + black[j] * (KW + GAP) + KW + GAP / 2;
+        if (bw > 3 && bh > 3) rounded(cx - bw / 2, w->y + LAND, bw, bh, C565(36, 36, 48));
+    }
 }
 static void draw_boot_text(void)
 {
+    /* The name pops in letter by letter in the palette (a small hop each). */
     const struct widget *w = &widgets[W_BOOT_TEXT];
     fill(0, w->y, 240, w->h, BG);
-    uint32_t t = now_ms - boot_started;
-    if (t < 650 || t >= KK_BOOT_MS) return;
-    unsigned ready = fm1_midi_ready_ports();
-    char line[40], *p = append(line, "MIDI");
-    p = append(p, ready & 2 ? " . USB" : ""); append(p, ready & 4 ? " . BLE" : "");
-    text_center(120, w->y + 6, "STARTING", 1, DIM);
-    text_center(120, w->y + 18, line, 1, TEAL);
+    int t = (int)(now_ms - boot_started);
+    const char *name = KAMOTKEYS_NAME;
+    int x = 120 - text_width(name, 3) / 2;
+    for (int i = 0; name[i]; ++i) {
+        int p = (t - KK_BOOT_NAME_AT - i * KK_BOOT_LETTER_STEP) * 1000 / KK_BOOT_LETTER_MS;
+        if (p > 0) {
+            int hop = p < 1000 ? (1000 - kk_boot_pop(p)) * 12 / 1000 + (1000 - p) * 6 / 1000 : 0;
+            char ch[2] = {name[i], 0};
+            text(x, w->y + 5 + hop, ch, 3, boot565(kk_boot_palette[i % 8]));
+        }
+        x += 18;
+    }
 }

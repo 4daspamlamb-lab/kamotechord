@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.66" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.67" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -84,6 +84,7 @@ enum {
     KK_STEP_BARS, KK_STEP_OCT_DOWN, KK_STEP_OCT_UP, KK_STEP_SCALE_KEYS,
     KK_STEP_REPEAT_1, KK_STEP_REPEAT_2, KK_STEP_REPEAT_3, KK_STEP_NOTE_LEN,
     KK_STEP_CHORD_TOGGLE,   /* keyboard only: chord keys <-> single notes (never sent) */
+    KK_STEP_PLAY,           /* 0.67: PARA in Step Mode: create the clip if needed, play / stop it */
     KK_STEP_CODE_CC = 80, KK_STEP_PAGE_CC = 96, KK_STEP_PAGES_CC = 97, KK_STEP_RES_CC = 98,
     KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
     KK_STEP_KEYOCT_CC = 103, KK_STEP_KEYS_CC = 104, KK_STEP_BAR_CC = 105, KK_STEP_BARS_CC = 106,

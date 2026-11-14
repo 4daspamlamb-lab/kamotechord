@@ -37,8 +37,9 @@ PAD_NOTE = 36
 PADS = 16
 (F_DRUM, F_PAGE_PREV, F_PAGE_NEXT, F_LENGTH, F_DOUBLE, F_RESOLUTION, F_FOLLOW, F_COPY, F_CLEAR,
  F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP, F_PASTE,
- F_BARS, F_OCT_DOWN, F_OCT_UP, F_SCALE_KEYS, F_REPEAT_1, F_REPEAT_2, F_REPEAT_3, F_NOTE_LEN) = range(60, 86)
-FUNCTION_NOTES = tuple(range(60, 86))
+ F_BARS, F_OCT_DOWN, F_OCT_UP, F_SCALE_KEYS, F_REPEAT_1, F_REPEAT_2, F_REPEAT_3, F_NOTE_LEN,
+ F_CHORD_TOGGLE, F_PLAY) = range(60, 88)          # F_CHORD_TOGGLE stays on the keyboard
+FUNCTION_NOTES = tuple(range(60, 88))
 REPEATS = {F_REPEAT_1: 1, F_REPEAT_2: 2, F_REPEAT_3: 3}
 SELECT_CHANNEL = 12                    # device -> host: channel 13 note = key-zone pitch picked (0.62)
 CODE_CC, PAGE_CC, PAGES_CC, RES_CC, FOLLOW_CC, STATUS_CC, DRUMVIEW_CC, ACTIVE_CC = 80, 96, 97, 98, 99, 100, 101, 102
@@ -149,7 +150,7 @@ class StepSequencer(object):
         if on and not self._active:
             self._active = True
             self._log('Step Mode started')
-            self._bind(create=False)   # 0.66: the clip is made by the first step (Move-style)
+            self._bind(create=True)
             self.send_all()
         elif not on and self._active:
             self._active = False
@@ -178,7 +179,7 @@ class StepSequencer(object):
     def _deferred_bind(self):
         self._bind_pending = False
         if self._active:
-            self._bind(create=False)   # 0.66: the clip is made by the first step (Move-style)
+            self._bind(create=True)
             self.send_all()
 
     def _bind(self, create):
@@ -617,6 +618,10 @@ class StepSequencer(object):
             pref[0] = max(-3, min(4, pref[0] + (1 if note == F_OCT_UP else -1)))
             self._save_prefs()
             self._say('key octave %+d' % pref[0])
+        elif note == F_PLAY:
+            self._play_clip()
+        elif note == F_DRUM and self._pitch is not None:
+            self._bank = max(0, min(112, 36 + ((self._pitch - 36) // 16) * 16))   # 0.67: the selected sound's bank
         elif note == F_BARS:
             self._bars_view = not self._bars_view           # 0.63: tap toggles the bar view
         elif note == F_SCALE_KEYS:
@@ -906,6 +911,21 @@ class StepSequencer(object):
         except Exception as error:
             self._log('cannot repeat the step: %s' % error)
         self._dirty = True
+
+    def _play_clip(self):
+        """PARA in Step Mode (0.67): make the clip if there is none, then
+        launch it; pressed while it plays, stop it."""
+        if not self._ensure_clip():
+            return
+        try:
+            if self._clip.is_playing or self._clip.is_triggered:
+                self._slot.stop()
+                self._say('clip stopped')
+            else:
+                self._slot.fire()
+                self._say('clip playing')
+        except Exception as error:
+            self._log('cannot play the clip: %s' % error)
 
     def _clear_step(self, index):
         if self._clip is None:

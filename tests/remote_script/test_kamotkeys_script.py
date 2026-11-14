@@ -146,7 +146,7 @@ class T(unittest.TestCase):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
         self.assertEqual(notes, list(range(36, 103)))     # launch, overdub, delete, select, COPY, PASTE, ARRANGE
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
-        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 86)))   # step pads, step functions
+        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 88)))   # step pads, step functions
         self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
         self.assertTrue(all(b.channel in (12, 13, 14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
@@ -427,12 +427,10 @@ class StepTest(unittest.TestCase):
         self.mode(True); self.tap(0); self.tap(0)
 
     def test_entering_creates_a_named_one_bar_clip(self):
-        self.mode(True)
-        self.assertIsNone(self.clip); self.assertEqual(self.info(100), 3)   # 0.66: no clip until a step is pressed
-        self.tap(0); self.s.update_display()
+        self.mode(True)                                                    # 0.67: a clip is made on entering again
         self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
         c = self.codes(); self.assertEqual(len(c), 16)
-        self.assertTrue(3 <= c[0] <= 8); self.assertEqual(c[4], 1)      # the first step's note; empty (0.62: no beat marker)
+        self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
         self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
 
     def test_steps_write_real_notes(self):
@@ -547,8 +545,10 @@ class StepTest(unittest.TestCase):
         self.assertEqual(self.pitches(), [(38, 0.25)])
         slot = self.song.track.clip_slots[0]; slot.fired = 0
         slot.fire = lambda: setattr(slot, 'fired', slot.fired + 1)
-        deliver((0xBD, 127, 64)); self.assertEqual(slot.fired, 0)         # PATCH held: quiet exit
-        self.mode(True); deliver((0xBD, 127, 0)); self.assertEqual(slot.fired, 1)   # normal exit plays the clip
+        slot.stop = lambda: setattr(slot, 'fired', slot.fired - 1)
+        self.press(87); self.assertEqual(slot.fired, 1)                   # 0.67: PARA (F_PLAY) plays the clip
+        self.clip.is_playing = True; self.press(87); self.assertEqual(slot.fired, 0)   # and stops it
+        self.clip.is_playing = False; deliver((0xBD, 127, 0)); self.assertEqual(slot.fired, 0)   # leaving does not play
 
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)
@@ -590,7 +590,7 @@ class StepTest(unittest.TestCase):
         self.assertEqual([n.pitch for n in self.clip.notes], [36])   # still sequences C1
         slot = self.song.track.clip_slots[0]; slot.clip = None; slot.fire('has_clip')
         self.assertEqual(len(scheduled), 1)                               # rebind deferred, not in the listener
-        run_scheduled(); self.assertIsNone(slot.clip); self.assertEqual(self.s._step._status, 3)   # 0.66: waits for a step
+        run_scheduled(); self.assertIsNotNone(slot.clip)                   # a new clip
         self.s.update_display()
 
     def test_leaving_stops_listening(self):
