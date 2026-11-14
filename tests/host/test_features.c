@@ -40,23 +40,37 @@ void test_step_mode(void)
     host_clear(); key(0, 100); key(2, 100); key(2, 0); key(0, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_DRUM) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_PREV) == 1 && out_count(USB, 0x8D, KK_STEP_DRUM) == 1,
           "C = DRUM (hold), D = page prev");
-    host_clear(); key(24, 100); key(24, 0); key(6, 100); key(6, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x90, 54) == 1, "C4 = velocity 1, F# still plays");
+    /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
+     * BARS = lowest F#; the lowest G# and third-octave C still play. */
+    host_clear(); key(29, 100); key(29, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x9D, KK_STEP_VEL_5) == 1 &&
+          out_count(USB, 0x9D, KK_STEP_REPEAT_1) == 1 && out_count(USB, 0x9D, KK_STEP_REPEAT_3) == 1, "F = vel 1, top C = vel 5, F# / A# = repeat 1 / 3");
+    host_clear(); key(6, 100); key(6, 0); key(8, 100); key(8, 0); key(24, 100); key(24, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x90, 56) == 1 && out_count(USB, 0x90, 72) == 1, "F# = BARS, G# and C4 play");
     host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0); key(10, 100); key(10, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
           "C# = COPY, D# = PASTE, A# = CLEAR");
-    /* 0.60: second octave = drum keys (Move-style drum pads). */
+    /* Second octave = key zone: drum keys (Move-style drum pads). */
     host_clear(); key(12, 100);
-    CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x9D, KK_STEP_DRUM_NOTE) == 1 && out_count(USB, 0x8D, KK_STEP_DRUM_NOTE) == 1,
-          "2nd-octave C = kick (ch 10 note 36) + selects drum 0 (ch 14 note 80)");
+    CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x9C, 36) == 1 && out_count(USB, 0x8C, 36) == 1,
+          "2nd-octave C = kick (ch 10 note 36) + selects pitch 36 (ch 13 tap)");
     pad(1, 90); pad(1, 0);
     CHECK(out_count(USB, 0x9D, 36) == 1 && out_count(USB, 0x8D, 36) == 1, "a pad after a drum key still sends its step");
     key(12, 0); CHECK(out_count(USB, 0x89, 36) == 1, "drum key release = note off");
-    host_in(0xBD, KK_STEP_BANK_CC, 52); host_clear(); key(23, 90); key(23, 0);
-    CHECK(out_count(USB, 0x99, 63) == 1 && out_count(USB, 0x9D, KK_STEP_DRUM_NOTE + 11) == 1, "B = drum 12 of the bank from the script (63)");
+    host_in(0xBD, KK_STEP_KEYOCT_CC, 65); host_clear(); key(23, 90); key(23, 0);
+    CHECK(out_count(USB, 0x99, 59) == 1 && out_count(USB, 0x9C, 59) == 1, "octave from the script (+1): B = 59");
     tap(KK_BTN_ARP); host_clear(); key(14, 100); key(14, 0); tap(KK_BTN_ARP);
-    CHECK(out_count(USB, 0x99, 54) == 1, "drum keys ignore the ARP");
-    host_in(0xBD, KK_STEP_BANK_CC, 36);
+    CHECK(out_count(USB, 0x99, 50) == 1, "drum keys ignore the ARP");
+    host_in(0xBD, KK_STEP_KEYOCT_CC, 64);
+    /* OCT and SEQ go to the script in Step Mode. */
+    int oct = kk.octave; host_clear(); tap(KK_BTN_OCT_UP); tap(KK_BTN_SEQ);
+    CHECK(kk.octave == oct && kk.mode == KK_MODE_STEP && out_count(USB, 0x9D, KK_STEP_OCT_UP) == 1 && out_count(USB, 0x9D, KK_STEP_SCALE_KEYS) == 1,
+          "Step Mode: OCT + / SEQ -> script, octave and mode unchanged");
+    host_in(0xBD, KK_STEP_KEYS_CC, 1); host_clear(); key(14, 100); key(14, 0);
+    int scale_note = kk_key_scale_note(14, kk.octave, &kk.scale);
+    CHECK(scale_note > 0 && out_count(USB, 0x90, scale_note) == 1 && out_count(USB, 0x9C, scale_note) == 1 && kk_led_button(KK_BTN_SEQ) == 2,
+          "scale keys: D plays its scale note on ch 1 and selects it, SEQ lit");
+    host_in(0xBD, KK_STEP_KEYS_CC, 0);
     host_clear(); host_in(0xBF, KK_CLIP_HELLO_CC, 1);
     host_in(0xBD, KK_STEP_CODE_CC + 0, KK_STEPC_NOTE_6); host_in(0xBD, KK_STEP_CODE_CC + 1, KK_STEPC_EMPTY);
     host_in(0xBD, KK_STEP_CODE_CC + 2, KK_STEPC_PLAY_NOTE); host_in(0xBD, KK_STEP_CODE_CC + 15, KK_STEPC_OUTSIDE);
@@ -66,7 +80,7 @@ void test_step_mode(void)
     CHECK(((host_rgb[0] >> 16) & 255) > ((host_rgb[0] >> 8) & 255) * 3 / 2 && ((host_rgb[0] >> 16) & 255) >= KK_RGB_PEAK * 9 / 10, "note = bright amber (%06x)", host_rgb[0]);
     CHECK((host_rgb[1] & 255) > ((host_rgb[1] >> 16) & 255) && (host_rgb[1] & 255) < KK_RGB_PEAK / 3, "empty = dim blue (%06x)", host_rgb[1]);
     CHECK(((host_rgb[2] >> 8) & 255) >= KK_RGB_PEAK * 9 / 10, "playhead on a note = green (%06x)", host_rgb[2]);
-    CHECK(host_rgb[15] && host_rgb[15] < host_rgb[1] + 0x100000, "outside the clip = very dim red (%06x)", host_rgb[15]);
+    CHECK(host_rgb[15] == 0, "outside the clip = off (%06x)", host_rgb[15]);
     frames(30, 5); shot("19_step_mode");
     host_clear(); tap(KK_BTN_CHORD);
     CHECK(kk.mode == KK_MODE_CLIP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == KK_STEP_SYNC_CC, "tap CHORD -> Clip Mode, Step Mode ends (CC 127 = 0)");

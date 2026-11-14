@@ -15,6 +15,7 @@ void kk_midi_init(void);
 void kk_midi_note_on(unsigned channel, unsigned note, unsigned velocity);
 void kk_midi_note_off(unsigned channel, unsigned note);
 void kk_midi_cc(unsigned channel, unsigned controller, unsigned value);
+void kk_midi_tap(unsigned channel, unsigned note);   /* on + off, computer only */
 /* Channel voice message to the local synth and the external ports. */
 void kk_midi_message(const uint8_t *message, size_t bytes);
 /* Release everything this engine owns (mode changes, panic, disconnects). */

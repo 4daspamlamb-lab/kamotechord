@@ -36,6 +36,12 @@ void test_031(void)
     CHECK(n >= 3, "Key Scale + locked chord plays a chord (%u notes)", n);
     tap(KK_BTN_SEQ);
     CHECK(kk.mode == KK_MODE_NORMAL && kk.chord_lock && kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "and back to Normal");
+    /* 0.62: the lock survives every mode, and keys keep playing the chord. */
+    tap(KK_BTN_FX); host_clear(); key(12, 100); notes_on(USB, ON1, notes, &n); key(12, 0);
+    CHECK(kk.mode == KK_MODE_DRUM && kk.chord_lock && n >= 3, "LOCK kept in Drum Mode, keys play the chord (%u)", n);
+    tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP && kk.chord_lock && !kk_pad_lit(12), "kept in Step Mode, LOCK pad not lit there");
+    tap(KK_BTN_REC); tap(KK_BTN_CHORD); tap(KK_BTN_CHORD);
+    CHECK(kk.mode == KK_MODE_NORMAL && kk.chord_lock && kk.chord_mods == (KK_MOD_MIN | KK_MOD_MAJ7), "back in Normal with the same lock");
     settle(); uint32_t locked = host_rgb[12];
     CHECK((locked & 0xff) > KK_RGB_PEAK * 3 / 4, "LOCK pad bright (%06x)", locked);
     pad(13, 100); pad(13, 0); CHECK(!kk.chord_lock && !kk.chord_mods, "LOCK off releases the latch");

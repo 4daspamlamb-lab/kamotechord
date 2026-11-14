@@ -120,13 +120,18 @@ static void intent(unsigned id, struct source *s)
         return;
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0) {
-        /* Step Mode drum keys (0.60): play the drum's own note (the Drum Rack
-         * bank from the script, 36 until it says) on the drum channel, so
-         * the armed track and the internal drum kit both sound it. */
-        unsigned bank = kk_midi_step_info(KK_STEP_BANK_CC);
-        unsigned note = (bank ? bank : 36U) + (unsigned)kk_step_drum_key(id);
-        s->channel = KK_CH_DRUM;
-        if (note < 128) { s->notes[0] = (uint8_t)note; s->count = 1; }
+        /* Step Mode key zone (second octave): drum keys (0.60) play the
+         * drum's note on the drum channel; with SEQ (0.62) they are scale
+         * keys on channel 1. The octave is the script's, remembered per
+         * track (64 = C1 drums / the keyboard octave). */
+        unsigned raw = kk_midi_step_info(KK_STEP_KEYOCT_CC);
+        int off = raw ? (int)raw - 64 : 0, i = kk_step_drum_key(id), note;
+        if (kk_midi_step_info(KK_STEP_KEYS_CC)) {
+            note = kk_key_scale_note(12U + (unsigned)i, kk.octave + off, &kk.scale);
+        } else {
+            note = 36 + 12 * off + i; s->channel = KK_CH_DRUM;
+        }
+        if (note >= 0 && note < 128) { s->notes[0] = (uint8_t)note; s->count = 1; }
         return;
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
@@ -152,7 +157,7 @@ static void intent(unsigned id, struct source *s)
 #endif
         note = kk.mode == KK_MODE_KEY_SCALE ? kk_key_scale_note(id, kk.octave, &kk.scale)
                                             : kk_key_note(id, kk.octave);
-        unsigned mods = pads_reassigned() ? 0 : kk.chord_mods;
+        unsigned mods = kk.chord_mods;   /* 0.62: a locked chord also plays in the pad modes */
         s->count = (uint8_t)kk_chord_build(note, mods, &kk.scale, s->notes);
         return;
     }
@@ -288,15 +293,9 @@ void kk_set_mode(unsigned mode)
 {
     if (mode == kk.mode) mode = KK_MODE_NORMAL;     /* same button again: normal */
     hold_release();                                   /* sustained notes belong to the old mode */
-    /* 0.59: a chord LOCK survives switching between the chord modes (Normal,
-     * Key Scale; Pad Scale on keys), so a locked chord and a scale combine. */
-    unsigned old_chords = kk.mode == KK_MODE_NORMAL || kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys();
-    unsigned new_chords = mode == KK_MODE_NORMAL || mode == KK_MODE_KEY_SCALE;
-#ifdef KK_PAD_SCALE_ON_KEYS
-    new_chords |= mode == KK_MODE_PAD_SCALE;
-#endif
-    unsigned keep_lock = old_chords && new_chords && kk.chord_lock;
-    if (!keep_lock) { kk.chord_lock = 0; kk.latched_mods = 0; }
+    /* 0.62: a chord LOCK survives every mode change (it is released only
+     * with the LOCK pad), and the keys keep playing the locked chord. */
+    unsigned keep_lock = kk.chord_lock;
     unsigned keys_change = (mode == KK_MODE_KEY_SCALE) != (kk.mode == KK_MODE_KEY_SCALE);
 #ifdef KK_PAD_SCALE_ON_KEYS
     keys_change |= (mode == KK_MODE_PAD_SCALE) != (kk.mode == KK_MODE_PAD_SCALE);   /* keys change meaning */
@@ -435,8 +434,9 @@ unsigned kk_pad_lit(unsigned pad)
         /* Spare/clip pads light only for their own source (incl. Note Repeat
          * hits): a chord from the keys that reaches 84-90 must not light them. */
         if (s->sounding) return 1;
-        if (kk.mode != KK_MODE_CLIP && kk_chord_pad_modifier(pad)) return (kk.chord_mods & kk_chord_pad_modifier(pad)) != 0;
-        if (kk.mode != KK_MODE_CLIP && kk_is_lock_pad(pad)) return kk.chord_lock;
+        if (pads_reassigned()) return 0;
+        if (kk_chord_pad_modifier(pad)) return (kk.chord_mods & kk_chord_pad_modifier(pad)) != 0;
+        if (kk_is_lock_pad(pad)) return kk.chord_lock;
         return 0;
     }
     /* Pad Scale / Drum: Move-style feedback. Any source sounding the pad's

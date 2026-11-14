@@ -17,7 +17,7 @@ static volatile uint8_t clip_states[16] = {
 static volatile uint8_t host_protocol;
 static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
-static uint8_t step_codes[16], step_info[KK_STEP_BANK_CC - KK_STEP_PAGE_CC + 1];
+static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
 static uint32_t revision;
@@ -75,6 +75,13 @@ void kk_midi_cc(unsigned channel, unsigned controller, unsigned value)
     /* Ableton commands are external only; they must never edit the synth. */
     out(m, 3, kk_midi_port_mask(), channel != KK_CH_ABLETON && channel != KK_CH_CLIP && channel != KK_CH_STEP);
 }
+/* A short note (on + off at once) to the computer only: Step Mode commands. */
+void kk_midi_tap(unsigned channel, unsigned note)
+{
+    const uint8_t on[3] = {(uint8_t)(0x90 | (channel & 15)), (uint8_t)(note & 127), 127};
+    const uint8_t off[3] = {(uint8_t)(0x80 | (channel & 15)), (uint8_t)(note & 127), 0};
+    out(on, 3, kk_midi_port_mask(), 0); out(off, 3, kk_midi_port_mask(), 0);
+}
 void kk_midi_message(const uint8_t *m, size_t n) { out(m, n, kk_midi_port_mask(), 1); }
 void kk_midi_all_off(void)
 {
@@ -120,7 +127,7 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
     if (ch == KK_CH_STEP && type == 0xb0) {
         /* Step Mode feedback from the Remote Script: pad colours and info. */
         if (d1 >= KK_STEP_CODE_CC && d1 < KK_STEP_CODE_CC + 16U) step_codes[d1 - KK_STEP_CODE_CC] = (uint8_t)d2;
-        else if (d1 >= KK_STEP_PAGE_CC && d1 <= KK_STEP_BANK_CC) step_info[d1 - KK_STEP_PAGE_CC] = (uint8_t)d2;
+        else if (d1 >= KK_STEP_PAGE_CC && d1 <= KK_STEP_INFO_LAST) step_info[d1 - KK_STEP_PAGE_CC] = (uint8_t)d2;
         ++input_revision;
         return 1;
     }
@@ -182,5 +189,5 @@ void kk_midi_step_mode(unsigned on) { kk_midi_cc(KK_CH_STEP, KK_STEP_SYNC_CC, on
 unsigned kk_midi_step_code(unsigned pad) { return pad < 16 ? step_codes[pad] : KK_STEPC_OUTSIDE; }
 unsigned kk_midi_step_info(unsigned cc)
 {
-    return cc >= KK_STEP_PAGE_CC && cc <= KK_STEP_BANK_CC ? step_info[cc - KK_STEP_PAGE_CC] : 0;
+    return cc >= KK_STEP_PAGE_CC && cc <= KK_STEP_INFO_LAST ? step_info[cc - KK_STEP_PAGE_CC] : 0;
 }

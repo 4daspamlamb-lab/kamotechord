@@ -121,7 +121,7 @@ static void signatures(void)
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
     if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8 | kk_midi_host_scene() << 16), kk.clip_action);
     if (kk.mode == KK_MODE_STEP)
-        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_BANK_CC; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
+        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
@@ -131,7 +131,7 @@ static void signatures(void)
     if (kk.mode == KK_MODE_CLIP) { for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p)); h = mixsig(h, kk_midi_host_scene()); }
     if (kk.mode == KK_MODE_STEP) {
         for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_step_code(p) | (unsigned)kk_pad_lit(p) << 8);
-        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_BANK_CC; ++c) h = mixsig(h, kk_midi_step_info(c));
+        for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c));
     }
     wanted[W_PIANO] = h;
     h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);

@@ -56,13 +56,16 @@ static inline int kk_step_key_function(unsigned key)
     case 11: return KK_STEP_FOLLOW;     /* B */
     case 1: return KK_STEP_COPY;        /* C# tap: copy the page; + drum key: copy that drum */
     case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the page; + drum key: onto that drum */
+    case 6: return KK_STEP_BARS;        /* F# hold: pads = bars, tap one to show it */
     case 10: return KK_STEP_CLEAR;      /* A# tap: clear the page; + drum key: clear that drum */
-    case 24: return KK_STEP_VEL_1;      /* C  velocity levels (hold a step) */
-    case 26: return KK_STEP_VEL_2;
-    case 28: return KK_STEP_VEL_3;
-    case 29: return KK_STEP_VEL_4;
-    case 31: return KK_STEP_VEL_5;
-    case 33: return KK_STEP_VEL_6;
+    case 29: return KK_STEP_VEL_1;      /* 0.62: the last five white keys F G A B C = velocity */
+    case 31: return KK_STEP_VEL_2;
+    case 33: return KK_STEP_VEL_3;
+    case 35: return KK_STEP_VEL_4;
+    case 36: return KK_STEP_VEL_5;
+    case 30: return KK_STEP_REPEAT_1;   /* top F# G# A#: hold + a pad = 1 / 2 / 3 hits per step */
+    case 32: return KK_STEP_REPEAT_2;
+    case 34: return KK_STEP_REPEAT_3;
     default: return -1;
     }
 }

@@ -91,11 +91,8 @@ static void source_press(unsigned id, unsigned velocity)
         hold_release();                                  /* the next key ends the held notes */
         sustained_count = 0;                             /* and a held arpeggio */
     }
-    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0) {
-        /* Tell the script to select this drum for the steps (a short ch 14 note). */
-        unsigned n = KK_STEP_DRUM_NOTE + (unsigned)kk_step_drum_key(id);
-        kk_midi_note_on(KK_CH_STEP, n, 127); kk_midi_note_off(KK_CH_STEP, n);
-    }
+    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0 && s->count)
+        kk_midi_tap(KK_CH_STEP_SELECT, s->notes[0]);   /* the script selects this pitch for the steps */
     engage(id);
     if (s->route == ROUTE_CLIPMOD) { clip_action_refresh(); return; }
     if (s->route == ROUTE_LOCK) {

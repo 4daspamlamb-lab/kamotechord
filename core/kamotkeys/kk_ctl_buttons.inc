@@ -77,11 +77,18 @@ static void button(unsigned id, unsigned down, uint32_t now)
     case KK_BTN_RIGHT:
         if (menu) { if (down) { menu_owned |= bit; kk_ui_bt_key(1); } return; }
         ableton(KK_CC_REDO, down ? 127 : 0); return;
-    case KK_BTN_OCT_DOWN: if (down) kk_set_octave(kk_active_octave() - 1); return;
-    case KK_BTN_OCT_UP: if (down) kk_set_octave(kk_active_octave() + 1); return;
+    case KK_BTN_OCT_DOWN: case KK_BTN_OCT_UP:
+        if (!down) return;
+        /* Step Mode: the key zone's octave, kept by the script per track (0.62). */
+        if (kk.mode == KK_MODE_STEP) { kk_midi_tap(KK_CH_STEP, id == KK_BTN_OCT_UP ? KK_STEP_OCT_UP : KK_STEP_OCT_DOWN); return; }
+        kk_set_octave(kk_active_octave() + (id == KK_BTN_OCT_UP ? 1 : -1)); return;
     /* 0.45: SCALE = Pad Scale Mode, SEQ = Key Scale Mode (swapped on request). */
     case KK_BTN_SCALE: if (down) kk_set_mode(KK_MODE_PAD_SCALE); return;
-    case KK_BTN_SEQ: if (down) kk_set_mode(KK_MODE_KEY_SCALE); return;
+    case KK_BTN_SEQ:
+        /* Step Mode + SEQ (0.62): the key zone becomes scale keys (per track). */
+        if (down && kk.mode == KK_MODE_STEP) { kk_midi_tap(KK_CH_STEP, KK_STEP_SCALE_KEYS); return; }
+        if (down) kk_set_mode(KK_MODE_KEY_SCALE);
+        return;
     case KK_BTN_FX: if (down) kk_set_mode(KK_MODE_DRUM); return;
     case KK_BTN_ARP:
         if (!down && kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);

@@ -141,8 +141,9 @@ class T(unittest.TestCase):
         notes = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 15)
         self.assertEqual(notes, list(range(36, 100)))     # launch, overdub, delete, select
         steps = sorted(b.identifier for b in registry if b.msg_type == 0 and b.channel == 13)
-        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 78)) + list(range(80, 96)))   # step pads, functions, drum keys
-        self.assertTrue(all(b.channel in (13, 14, 15) for b in registry))
+        self.assertEqual(steps, list(range(36, 52)) + list(range(60, 85)))   # step pads, step functions
+        self.assertEqual(len([b for b in registry if b.channel == 12]), 128)   # key-zone pitches (ch 13)
+        self.assertTrue(all(b.channel in (12, 13, 14, 15) for b in registry))
         self.assertEqual(deliver((0x90, 60, 100)), 0)             # channel 1 notes pass to tracks
 
     def test_launch_stop_switch(self):
@@ -338,7 +339,12 @@ class DrumRack(object):
 class MTrack(Listened):
     def __init__(self, rack=True):
         Listened.__init__(self); self.name = 'Drums'; self.has_midi_input = True; self.arm = False; self.can_be_armed = True
+        object.__setattr__(self, 'data', {})
         self.devices = [DrumRack()] if rack else []; self.clip_slots = [MSlot() for _ in range(4)]
+
+def _get_data(self, key, default): return self.data.get(key, default)
+def _set_data(self, key, value): self.data[key] = value
+MTrack.get_data = _get_data; MTrack.set_data = _set_data
 
 class StepSong(object):
     signature_numerator = 4; signature_denominator = 4
@@ -373,7 +379,7 @@ class StepTest(unittest.TestCase):
         self.mode(True)
         self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
         c = self.codes(); self.assertEqual(len(c), 16)
-        self.assertEqual(c[0], 2); self.assertEqual(c[1], 1)             # beat / plain empty step
+        self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
         self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
 
     def test_steps_write_real_notes(self):
@@ -406,7 +412,7 @@ class StepTest(unittest.TestCase):
         self.assertIs(self.song.track.devices[0].view.selected_drum_pad, self.song.track.devices[0].drum_pads[38])
         self.tap(3); self.assertEqual([n.pitch for n in self.clip.notes], [38])
 
-    def drum(self, i): deliver((0x9D, 80 + i, 127)); deliver((0x8D, 80 + i, 0))
+    def drum(self, i): deliver((0x9C, 36 + i, 127)); deliver((0x8C, 36 + i, 0))   # key-zone key = ch 13 pitch
     def pitches(self): return sorted((n.pitch, n.start_time) for n in self.clip.notes)
 
     def test_drum_keys_clear_and_auto_arm(self):
@@ -414,7 +420,7 @@ class StepTest(unittest.TestCase):
         CLEAR + drum key deletes that sound, a CLEAR tap clears the page,
         the track is armed while Step Mode is on."""
         self.mode(True)
-        self.assertTrue(self.song.track.arm); self.assertEqual(self.info(103), 36)
+        self.assertTrue(self.song.track.arm); self.assertEqual(self.info(103), 64); self.assertEqual(self.info(104), 0)
         self.drum(2); self.s.update_display(); self.assertEqual(self.info(102), 38)     # snare
         self.tap(0); self.tap(4)
         self.drum(0); self.s.update_display(); self.assertEqual(self.info(102), 36)     # kick, then a pad
@@ -428,7 +434,7 @@ class StepTest(unittest.TestCase):
     def test_copy_paste(self):
         self.mode(True); self.tap(0); self.drum(2); self.tap(4)            # kick step 1, snare step 5
         self.press(67)                                                     # COPY tap = whole page
-        self.fn(63); self.press(62); self.pad(15); self.pad(15, False); self.fn(63, False)   # 2 bars
+        self.fn(63); self.pad(1); self.pad(1, False); self.fn(63, False)   # 2 bars (pattern repeated)
         self.press(62); self.press(77)                                     # page 2, PASTE
         self.assertEqual(self.pitches(), [(36, 0.0), (36, 4.0), (38, 1.0), (38, 5.0)])
         self.fn(67); self.drum(2); self.fn(67, False)                      # COPY + snare key = snare lane
@@ -436,19 +442,43 @@ class StepTest(unittest.TestCase):
         self.assertIn((42, 5.0), self.pitches())
         self.assertEqual(len(self.clip.notes), 5)
 
-    def test_length_double_resolution_and_follow(self):
+    def test_length_bars_double_resolution_and_follow(self):
         self.mode(True)
-        self.fn(63); self.pad(7); self.pad(7, False); self.fn(63, False)  # LENGTH + step 8 = half a bar
-        self.assertEqual(self.clip.loop_end, 2.0)
-        self.tap(0); self.press(64)                                       # DOUBLE
-        self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 2.0])
-        self.fn(63); self.press(62); self.pad(15); self.pad(15, False); self.fn(63, False)   # extend to 2 bars
+        self.tap(0); self.tap(4)                                          # kick on beats 1 and 2
+        self.fn(63); self.s.update_display()
+        c = self.codes(); self.assertEqual((c[0], c[1], c[2]), (19, 18, 18))   # LENGTH held: bar view (shown, past end)
+        self.pad(1); self.pad(1, False); self.fn(63, False)               # LENGTH + pad 2 = 2 bars
         self.assertEqual(self.clip.loop_end, 8.0)
+        self.assertEqual(sorted(n.start_time for n in self.clip.notes), [0.0, 1.0, 4.0, 5.0])   # pattern repeated
+        self.fn(63); self.pad(0); self.pad(0, False); self.fn(63, False)  # back to 1 bar
+        self.assertEqual(self.clip.loop_end, 4.0)
+        self.press(64)                                                    # DOUBLE
+        self.assertEqual(self.clip.loop_end, 8.0); self.s.update_display(); self.assertEqual(self.info(106), 2)   # 2 bars
         self.press(65); self.s.update_display(); self.assertEqual(self.info(98), 1)          # 1/8
         self.press(65); self.press(65); self.press(65); self.press(65); self.assertEqual(self.info(98), 0)
         self.press(66); self.clip.is_playing = True; self.clip.playing_position = 4.5
         self.s.sent.clear(); self.s.update_display()
         self.assertEqual(self.info(96), 1); self.assertEqual(self.codes().get(2), 10)        # followed, playhead
+        self.assertEqual(self.info(105), 2)                                                   # playing bar 2
+
+    def test_bars_key_ghosts_repeats_and_key_prefs(self):
+        self.mode(True)
+        self.fn(63); self.pad(3); self.pad(3, False); self.fn(63, False)  # 4 bars
+        self.fn(78); self.pad(2); self.pad(2, False); self.fn(78, False)  # BARS + pad 3 = show bar 3
+        self.s.update_display(); self.assertEqual(self.info(96), 2)
+        self.press(62); self.press(61); self.press(61); self.press(61)    # page back to 1
+        self.drum(2); self.tap(0); self.drum(6); self.tap(0); self.drum(10); self.tap(0)   # snare, hat, open hat on step 1
+        self.drum(0); self.s.update_display()
+        self.assertEqual(self.codes()[0], 15)                            # kick view: 3 other sounds = strongest tint
+        self.drum(6); self.s.update_display(); self.assertEqual(self.codes()[0] in (3, 4, 5, 6, 7, 8), True)
+        self.fn(84); self.pad(4); self.pad(4, False); self.fn(84, False)  # repeat 3 + step 5
+        hits = sorted(n.start_time for n in self.clip.notes if n.pitch == 42 and 1.0 <= n.start_time < 1.25)
+        self.assertEqual(len(hits), 3); self.s.update_display(); self.assertEqual(self.codes()[4], 16)
+        self.press(80); self.s.update_display(); self.assertEqual(self.info(103), 65)     # OCT + (remembered)
+        self.press(81); self.s.update_display(); self.assertEqual(self.info(104), 1)      # SEQ: scale keys
+        self.assertEqual(self.song.track.data['kamotekeys_step'], '1,1')
+        self.mode(False); self.mode(True); self.s.update_display()
+        self.assertEqual((self.info(103), self.info(104)), (65, 1))       # same track: same keys
 
     def test_playhead_only_on_shown_page_and_light(self):
         self.mode(True); self.clip.is_playing = True; self.clip.playing_position = 1.0
@@ -458,7 +488,7 @@ class StepTest(unittest.TestCase):
     def test_velocity_tie_copy_clear(self):
         self.mode(True); self.tap(0)
         self.pad(0); self.press(69); self.pad(0, False)                   # hold step + velocity 1
-        self.assertEqual([n.velocity for n in self.clip.notes], [30])
+        self.assertEqual([n.velocity for n in self.clip.notes], [40])
         self.pad(4); self.pad(7); self.pad(7, False); self.pad(4, False)  # tie steps 5-8
         tie = [n for n in self.clip.notes if n.start_time == 1.0][0]; self.assertEqual(tie.duration, 1.0)
         self.s.update_display(); self.assertEqual(self.codes().get(5), 9)   # inside the long note

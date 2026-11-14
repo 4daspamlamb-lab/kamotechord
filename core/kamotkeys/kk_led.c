@@ -48,27 +48,38 @@ enum { ROOT_CYAN = 0x60f0ff, GREEN = 0x00ff3c };
 enum { IDLE_CHORD = 250, IDLE_SPARE = 125,   /* spare = half of chord (0.48) */ IDLE_SCALE = 220, IDLE_ROOT = 500, IDLE_DRUM = 220, LIT = 1000 };
 
 /* Clip Mode: the colour follows Ableton's real slot state. */
-/* Step Mode (0.58): the Remote Script sends a code per pad (KK_STEPC_*). */
+/* Step Mode: the Remote Script sends a code per pad (KK_STEPC_*). 0.62
+ * palette, one hue per meaning: notes amber (brighter = louder), other
+ * sounds on an empty step violet (stronger with more of them), empty steps
+ * dim blue, ties dim amber, repeats pink, playhead green / white, held cyan,
+ * bar view teal / white / green, past the clip end off. */
 static uint32_t step_colour(unsigned pad, unsigned *level)
 {
     unsigned code = kk_midi_step_code(pad);
     if (!kk_midi_host_protocol()) { *level = 40; return 0x8090a0; }         /* no script */
-    if (kk_pad_lit(pad) && code < KK_STEPC_DRUM_EMPTY) { *level = LIT; return 0x40e0ff; }   /* pressed */
+    if (kk_pad_lit(pad) && code < KK_STEPC_DRUM_EMPTY) { *level = LIT; return 0x30e8ff; }   /* pressed */
     if (code >= KK_STEPC_NOTE_1 && code <= KK_STEPC_NOTE_6) {                /* note: amber, velocity = brightness */
-        *level = 280 + (code - KK_STEPC_NOTE_1) * 144; return 0xff7a00;
+        *level = 300 + (code - KK_STEPC_NOTE_1) * 140; return 0xffa000;
     }
     switch (code) {
-    case KK_STEPC_EMPTY: *level = 90; return 0x5070b0;                       /* empty step: dim blue */
-    case KK_STEPC_EMPTY_BEAT: *level = 170; return 0x5070b0;                 /* first step of a beat */
-    case KK_STEPC_TIE: *level = 200; return 0xff7a00;                        /* inside a long note */
-    case KK_STEPC_PLAY_EMPTY: *level = 600; return 0xffffff;                 /* playhead */
-    case KK_STEPC_PLAY_NOTE: *level = LIT; return 0x30ff50;                  /* playhead on a note */
-    case KK_STEPC_HELD: *level = LIT; return 0x40e0ff;
+    case KK_STEPC_EMPTY: case KK_STEPC_EMPTY_BEAT: *level = 80; return 0x2040ff;   /* empty step: dim blue */
+    case KK_STEPC_GHOST_1: *level = 150; return 0x8020ff;                    /* 1 other sound: violet tint */
+    case KK_STEPC_GHOST_2: *level = 260; return 0x9010ff;
+    case KK_STEPC_GHOST_3: *level = 400; return 0xa000ff;                    /* 3+ other sounds */
+    case KK_STEPC_TIE: *level = 150; return 0xff8000;                        /* inside a long note */
+    case KK_STEPC_RATCHET: *level = LIT; return 0xff2080;                    /* repeated step: pink */
+    case KK_STEPC_PLAY_EMPTY: *level = 550; return 0xffffff;                 /* playhead */
+    case KK_STEPC_PLAY_NOTE: *level = LIT; return 0x00ff40;                  /* playhead on a note */
+    case KK_STEPC_HELD: *level = LIT; return 0x30e8ff;
+    case KK_STEPC_BAR_IN: *level = 300; return 0x00c8a0;                     /* bar view: bar in the clip */
+    case KK_STEPC_BAR_OUT: *level = 40; return 0x606060;                     /* bar view: past the end */
+    case KK_STEPC_BAR_SHOWN: *level = LIT; return 0xffffff;                  /* bar view: bar on the pads */
+    case KK_STEPC_BAR_PLAY: *level = LIT; return 0x00ff40;                   /* bar view: playing bar */
     case KK_STEPC_DRUM_EMPTY: *level = 40; return 0x808080;                  /* Drum Rack pad, no sample */
     case KK_STEPC_DRUM_LOADED: *level = 330; return 0x00d0b0;                /* Drum Rack pad with a sound */
     case KK_STEPC_DRUM_ACTIVE: *level = LIT; return 0xffffff;                /* active drum */
     case KK_STEPC_DRUM_ACTIVE_EMPTY: *level = 500; return 0xa040ff;
-    default: *level = 25; return 0xff2010;                                   /* outside the clip */
+    default: *level = 0; return 0;                                           /* outside the clip: off */
     }
 }
 static uint32_t clip_colour(unsigned pad, unsigned *level)
@@ -139,7 +150,7 @@ unsigned kk_led_button(unsigned id)
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
     case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */
-    case KK_BTN_SEQ: return kk.mode == KK_MODE_KEY_SCALE ? 2 : 1;     /* Key Scale only */
+    case KK_BTN_SEQ: return kk.mode == KK_MODE_KEY_SCALE || (kk.mode == KK_MODE_STEP && kk_midi_step_info(KK_STEP_KEYS_CC)) ? 2 : 1;
     case KK_BTN_FX: return kk.mode == KK_MODE_DRUM ? 2 : 1;
     case KK_BTN_BT: return kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG || pressed ? 2 : 1;
     case KK_BTN_PATCH: return kk.page == KK_PAGE_PATCH || pressed ? 2 : 1;

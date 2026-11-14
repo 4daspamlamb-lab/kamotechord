@@ -178,7 +178,14 @@ static void draw_big(void)
         /* Step Mode: page, resolution, follow, and what the script reports. */
         static const char *const res[5] = {"1/16", "1/8", "1/32", "1/16T", "1/8T"};
         unsigned status = kk_midi_step_info(KK_STEP_STATUS_CC), drum = kk_midi_step_info(KK_STEP_DRUMVIEW_CC);
-        const char *title = !kk_midi_host_protocol() ? "STEP" : drum ? "DRUM PADS" : status == 2 ? "NO MIDI TRACK" : "STEP";
+        /* 0.62: the title shows the bar the clip is playing ("BAR 2/4"), or
+         * its length when stopped ("4 BARS"). */
+        unsigned bar = kk_midi_step_info(KK_STEP_BAR_CC), bars = kk_midi_step_info(KK_STEP_BARS_CC);
+        char tbuf[16], *t = tbuf; tbuf[0] = 0;
+        if (bars && bar) { t = append(t, "BAR "); t = decimal(t, (int)bar); t = append(t, "/"); t = decimal(t, (int)bars); }
+        else if (bars) { t = decimal(t, (int)bars); t = append(t, bars == 1 ? " BAR" : " BARS"); }
+        const char *title = !kk_midi_host_protocol() ? "STEP" : drum ? "DRUM PADS" : status == 2 ? "NO MIDI TRACK"
+                          : status == 0 && tbuf[0] ? tbuf : "STEP";
         text_center(120, w->y + 14, title, text_width(title, 3) <= 228 ? 3 : 2, drum ? TEAL : status == 2 ? RED : ORANGE);
         char *p = buf;
         if (!kk_midi_host_protocol()) p = append(p, "LOAD THE KAMOTEKEYS REMOTE SCRIPT");
@@ -190,6 +197,8 @@ static void draw_big(void)
             p = decimal(p, (int)kk_midi_step_info(KK_STEP_PAGES_CC)); p = append(p, "  ");
             p = append(p, res[kk_midi_step_info(KK_STEP_RES_CC) % 5]);
             if (kk_midi_step_info(KK_STEP_FOLLOW_CC)) p = append(p, "  FOLLOW");
+            p = append(p, "  "); kk_note_label(p, (int)kk_midi_step_info(KK_STEP_ACTIVE_CC)); while (*p) ++p;
+            if (kk_midi_step_info(KK_STEP_KEYS_CC)) p = append(p, " SCALE");
         }
         text_center(120, w->y + 50, buf, 1, DIM);
         return;

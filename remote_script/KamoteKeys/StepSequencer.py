@@ -34,23 +34,28 @@ STEP_CHANNEL = 13                      # MIDI channel 14
 PAD_NOTE = 36
 PADS = 16
 (F_DRUM, F_PAGE_PREV, F_PAGE_NEXT, F_LENGTH, F_DOUBLE, F_RESOLUTION, F_FOLLOW, F_COPY, F_CLEAR,
- F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP, F_PASTE) = range(60, 78)
-FUNCTION_NOTES = tuple(range(60, 78))
-DRUM_NOTE = 80                         # device -> host: notes 80..95 = drum key 0..15 of the bank (0.61)
+ F_VEL_1, F_VEL_2, F_VEL_3, F_VEL_4, F_VEL_5, F_VEL_6, F_VEL_DOWN, F_VEL_UP, F_PASTE,
+ F_BARS, F_OCT_DOWN, F_OCT_UP, F_SCALE_KEYS, F_REPEAT_1, F_REPEAT_2, F_REPEAT_3) = range(60, 85)
+FUNCTION_NOTES = tuple(range(60, 85))
+REPEATS = {F_REPEAT_1: 1, F_REPEAT_2: 2, F_REPEAT_3: 3}
+SELECT_CHANNEL = 12                    # device -> host: channel 13 note = key-zone pitch picked (0.62)
 CODE_CC, PAGE_CC, PAGES_CC, RES_CC, FOLLOW_CC, STATUS_CC, DRUMVIEW_CC, ACTIVE_CC = 80, 96, 97, 98, 99, 100, 101, 102
-BANK_CC = 103                          # host -> device: first note of the drum bank
+KEYOCT_CC, KEYS_CC, BAR_CC, BARS_CC = 103, 104, 105, 106   # key-zone octave (64 = default), scale keys, bar, bars
 MODE_CC = 127
 
 # Pad colour codes (KK_STEPC_* in the firmware).
 C_OUTSIDE, C_EMPTY, C_EMPTY_BEAT, C_NOTE_1 = 0, 1, 2, 3
 C_TIE, C_PLAY_EMPTY, C_PLAY_NOTE, C_HELD = 9, 10, 11, 12
 C_DRUM_EMPTY, C_DRUM_LOADED, C_DRUM_ACTIVE, C_DRUM_ACTIVE_EMPTY = 20, 21, 22, 23
+C_GHOST_1, C_RATCHET = 13, 16          # 13..15: other sounds on an empty step (1, 2, 3+)
+C_BAR_IN, C_BAR_OUT, C_BAR_SHOWN, C_BAR_PLAY = 17, 18, 19, 24
 # Status codes (CC 100).
 S_OK, S_NO_DRUM_RACK, S_NO_MIDI_TRACK, S_NO_CLIP = 0, 1, 2, 3
 
 # Step resolutions in beats; the same resolution is used for every page.
 RESOLUTIONS = ((0.25, '1/16'), (0.5, '1/8'), (0.125, '1/32'), (1.0 / 6.0, '1/16T'), (1.0 / 3.0, '1/8T'))
-VELOCITIES = (30, 50, 70, 90, 110, 127)
+VELOCITIES = (40, 60, 80, 100, 120)   # the five velocity keys (0.62)
+PREF_KEY = 'kamotekeys_step'          # per-track key-zone octave and layout
 EPS = 1e-4
 MAX_LENGTH = 4.0 * 64                  # beats: 64 bars of 4/4 is plenty
 
@@ -87,6 +92,7 @@ class StepSequencer(object):
         self._armed = None             # track this mode armed (disarmed again on exit)
         self._used = set()             # COPY / PASTE / CLEAR held and already used with another key
         self._clipboard = None         # (lane pitch or None, [(pitch, offset, duration, velocity, mute)])
+        self._prefs = {}               # track -> [key-zone octave, scale keys] (0.62)
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -177,6 +183,7 @@ class StepSequencer(object):
             self._listen(track, 'devices', self._on_devices)
             self._rack = self._find_drum_rack(track)
             self._choose_drum()
+            self._load_prefs()
             slot = song.view.highlighted_clip_slot
             if slot is None:
                 self._status = S_NO_MIDI_TRACK
@@ -191,6 +198,37 @@ class StepSequencer(object):
             self._log('bind failed: %s' % error)
             self._unbind()
             self._status = S_NO_MIDI_TRACK
+
+    # ---------------------------------------------- per-track key zone (0.62)
+    def _ptr(self, obj):
+        return getattr(obj, '_live_ptr', id(obj))
+
+    def _load_prefs(self):
+        key = self._ptr(self._track)
+        if key in self._prefs:
+            return
+        pref = [0, self._rack is None]           # drums at C1; scale keys on tracks without a Drum Rack
+        try:
+            stored = self._track.get_data(PREF_KEY, None)
+            if stored:
+                octave, scale = str(stored).split(',')
+                pref = [max(-3, min(4, int(octave))), scale == '1']
+        except Exception:
+            pass
+        self._prefs[key] = pref
+
+    def _pref(self):
+        if self._track is None:
+            return [0, False]
+        self._load_prefs()
+        return self._prefs[self._ptr(self._track)]
+
+    def _save_prefs(self):
+        pref = self._pref()
+        try:
+            self._track.set_data(PREF_KEY, '%d,%d' % (pref[0], int(pref[1])))
+        except Exception:
+            pass                                 # kept for this session only
 
     @staticmethod
     def _same(a, b):
@@ -312,6 +350,26 @@ class StepSequencer(object):
     def _pages(self):
         return max(1, int(math.ceil(self._length() / self._span() - EPS)))
 
+    def _bar(self):
+        try:
+            song = self._song()
+            return song.signature_numerator * 4.0 / song.signature_denominator
+        except Exception:
+            return 4.0
+
+    def _bars(self):
+        return max(1, int(math.ceil(self._length() / self._bar() - EPS))) if self._clip is not None else 0
+
+    def _playing_bar(self):
+        """1-based bar the clip is playing, 0 when it is not playing."""
+        clip = self._clip
+        try:
+            if clip is None or not clip.is_playing:
+                return 0
+            return min(self._bars(), int((clip.playing_position - clip.loop_start) / self._bar() + EPS) + 1)
+        except Exception:
+            return 0
+
     def _step_time(self, index):
         return self._start() + (self._page * PADS + index) * self._step()
 
@@ -340,9 +398,10 @@ class StepSequencer(object):
     def _codes(self):
         if self._fn and F_DRUM in self._fn:
             return self._drum_codes()
+        if self._fn and (F_LENGTH in self._fn or F_BARS in self._fn):
+            return self._bar_codes()
         codes = []
         playhead = self._playhead_step()
-        beat = max(1, int(round(1.0 / self._step())))
         end = self._start() + self._length()
         for i in range(PADS):
             t = self._step_time(i)
@@ -353,13 +412,35 @@ class StepSequencer(object):
                 code = C_HELD
             elif i == playhead:
                 code = C_PLAY_NOTE if notes else C_PLAY_EMPTY
+            elif len(notes) > 1:
+                code = C_RATCHET                                 # repeated step (2x / 3x)
             elif notes:
                 code = _velocity_code(max(n.velocity for n in notes))
             elif self._covered(t):
                 code = C_TIE
             else:
-                code = C_EMPTY_BEAT if (self._page * PADS + i) % beat == 0 else C_EMPTY
+                # 0.62: other sounds on this step show as a violet tint, stronger with more of them.
+                others = len(set(n.pitch for n in self._notes if n.pitch != self._pitch
+                                 and t - EPS <= n.start_time < t + self._step() - EPS))
+                code = C_GHOST_1 + min(3, others) - 1 if others else C_EMPTY
             codes.append(code)
+        return codes
+
+    def _bar_codes(self):
+        """LENGTH or BARS held: pad n = bar n of the clip."""
+        bars, playing = self._bars(), self._playing_bar()
+        shown = int(self._page * self._span() / self._bar() + EPS) + 1
+        codes = []
+        for i in range(PADS):
+            bar = i + 1
+            if bar > bars:
+                codes.append(C_BAR_OUT)
+            elif bar == playing:
+                codes.append(C_BAR_PLAY)
+            elif bar == shown:
+                codes.append(C_BAR_SHOWN)
+            else:
+                codes.append(C_BAR_IN)
         return codes
 
     def _drum_pad_note(self, pad):
@@ -416,7 +497,8 @@ class StepSequencer(object):
                 self._send(CODE_CC + pad, code)
         info = {PAGE_CC: self._page, PAGES_CC: self._pages(), RES_CC: self._res, FOLLOW_CC: int(self._follow),
                 STATUS_CC: self._status, DRUMVIEW_CC: int(F_DRUM in self._fn), ACTIVE_CC: self._pitch,
-                BANK_CC: self._bank}
+                KEYOCT_CC: 64 + self._pref()[0], KEYS_CC: int(self._pref()[1]),
+                BAR_CC: self._playing_bar(), BARS_CC: min(127, self._bars())}
         for cc, value in info.items():
             if force or self._info_sent.get(cc) != value:
                 self._info_sent[cc] = value
@@ -432,7 +514,17 @@ class StepSequencer(object):
             return
         if pressed:
             if F_LENGTH in self._fn:
-                self._set_length(self._step_time(index) + self._step() - self._start())
+                self._set_bars(index + 1)                       # 0.62: LENGTH + pad n = n bars
+                self.update()
+                return
+            if F_BARS in self._fn:
+                self._show_bar(index + 1)
+                self.update()
+                return
+            repeat = [REPEATS[f] for f in self._fn if f in REPEATS]
+            if repeat:
+                self._ratchet(index, repeat[0])                 # 0.62: repeat key + pad
+                self.update()
                 return
             if self._held and self._held[0] != index:
                 first = self._held[0]
@@ -478,7 +570,17 @@ class StepSequencer(object):
             self._follow = not self._follow
             self._say('follow %s' % ('on' if self._follow else 'off'))
         elif F_VEL_1 <= note <= F_VEL_6:
-            self._set_velocity(VELOCITIES[note - F_VEL_1])
+            self._set_velocity(VELOCITIES[min(note - F_VEL_1, len(VELOCITIES) - 1)])
+        elif note in (F_OCT_DOWN, F_OCT_UP):
+            pref = self._pref()
+            pref[0] = max(-3, min(4, pref[0] + (1 if note == F_OCT_UP else -1)))
+            self._save_prefs()
+            self._say('key octave %+d' % pref[0])
+        elif note == F_SCALE_KEYS:
+            pref = self._pref()
+            pref[1] = not pref[1]
+            self._save_prefs()
+            self._say('keys: %s' % ('scale notes' if pref[1] else 'drums'))
         elif note in (F_VEL_DOWN, F_VEL_UP):
             levels = list(VELOCITIES)
             current = min(range(len(levels)), key=lambda i: abs(levels[i] - self._velocity))
@@ -637,14 +739,13 @@ class StepSequencer(object):
             self._page = max(0, min(limit, self._page + delta))
             self._say('page %d/%d' % (self._page + 1, self._pages()))
 
-    def drum_key(self, index):
-        """A drum key (0..15 of the bank) was pressed: like a drum pad on
-        Move, it selects that sound for the steps (the keyboard plays it).
-        With CLEAR held it deletes every note of that sound in the clip."""
-        if not self._active or not 0 <= index < PADS:
+    def select_pitch(self, note):
+        """A key-zone key (drum key or scale key) was pressed: like a drum pad
+        on Move, it selects that pitch for the steps (the keyboard plays it).
+        With CLEAR / COPY / PASTE held it acts on that pitch instead."""
+        if not self._active or not 0 <= note < 128:
             return
-        note = self._bank + index
-        self._log('drum key %d -> note %d' % (index, note))
+        self._log('key -> note %d' % note)
         if F_CLEAR in self._fn:
             self._used.add(F_CLEAR)
             self._clear_drum(note)
@@ -700,6 +801,54 @@ class StepSequencer(object):
             self._say('pasted onto page %d' % (self._page + 1))
         except Exception as error:
             self._log('cannot paste: %s' % error)
+        self._dirty = True
+
+    # ---------------------------------------------------- bars and repeats
+    def _set_bars(self, bars):
+        """Clip length in bars (Move-style); growing a clip repeats its
+        pattern into the new bars when they are empty."""
+        if not self._ensure_clip():
+            return
+        old, new = self._length(), bars * self._bar()
+        start = self._start()
+        try:
+            pattern = list(self._clip.get_notes_extended(0, 128, start - EPS, old)) if new > old + EPS else []
+            self._set_length(new)
+            if pattern and not list(self._clip.get_notes_extended(0, 128, start + old - EPS, new - old)):
+                specs, offset = [], old
+                while offset < new - EPS:
+                    specs += [self._spec(n.pitch, n.start_time + offset, n.duration, n.velocity, n.mute)
+                              for n in pattern if n.start_time + offset < start + new - EPS]
+                    offset += old
+                if specs:
+                    self._clip.add_new_notes(tuple(specs))
+            self._say('clip length %d bar%s' % (bars, '' if bars == 1 else 's'))
+        except Exception as error:
+            self._log('cannot set bars: %s' % error)
+        self._dirty = True
+
+    def _show_bar(self, bar):
+        if self._clip is None or bar > self._bars():
+            return
+        self._page = int((bar - 1) * self._bar() / self._span() + EPS)
+        self._say('bar %d (page %d)' % (bar, self._page + 1))
+
+    def _ratchet(self, index, hits):
+        """The step plays 1, 2 or 3 times (equal parts of the step)."""
+        if not self._ensure_clip():
+            return
+        t, step = self._step_time(index), self._step()
+        if t >= self._start() + self._length() - EPS:
+            return
+        try:
+            old = list(self._clip.get_notes_extended(self._pitch, 1, t - EPS, step))
+            velocity = max([n.velocity for n in old] or [self._velocity])
+            self._clip.remove_notes_extended(self._pitch, 1, t - EPS, step)
+            self._clip.add_new_notes(tuple(self._spec(self._pitch, t + k * step / hits, step / hits, velocity)
+                                           for k in range(hits)))
+            self._say('step %d: %dx' % (self._page * PADS + index + 1, hits))
+        except Exception as error:
+            self._log('cannot repeat the step: %s' % error)
         self._dirty = True
 
     def _clear_drum(self, note):

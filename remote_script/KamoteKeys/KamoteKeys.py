@@ -36,7 +36,7 @@ from _Framework.ButtonElement import ButtonElement
 from _Framework.InputControlElement import MIDI_NOTE_TYPE, MIDI_CC_TYPE
 
 from .StepSequencer import StepSequencer, STEP_CHANNEL, PAD_NOTE as STEP_PAD_NOTE, PADS as STEP_PADS, \
-    FUNCTION_NOTES as STEP_FUNCTION_NOTES, MODE_CC as STEP_MODE_CC, DRUM_NOTE as STEP_DRUM_NOTE
+    FUNCTION_NOTES as STEP_FUNCTION_NOTES, MODE_CC as STEP_MODE_CC, SELECT_CHANNEL as STEP_SELECT_CHANNEL
 
 PROTOCOL = 1
 CLIP_CHANNEL = 15            # MIDI channel 16 (zero based)
@@ -87,11 +87,16 @@ class KamoteKeys(ControlSurface):
             self._sync.add_value_listener(self._sync_value)
             # Step Mode (channel 14): step pads, function keys, mode on/off.
             self._step_buttons = []
-            for note in [STEP_PAD_NOTE + i for i in range(STEP_PADS)] + list(STEP_FUNCTION_NOTES) + \
-                    [STEP_DRUM_NOTE + i for i in range(STEP_PADS)]:
+            for note in [STEP_PAD_NOTE + i for i in range(STEP_PADS)] + list(STEP_FUNCTION_NOTES):
                 button = ButtonElement(True, MIDI_NOTE_TYPE, STEP_CHANNEL, note)
                 button.add_value_listener(self._step_value, identify_sender=True)
                 self._step_buttons.append(button)
+            # Key-zone keys (channel 13): the pitch to sequence (0.62).
+            self._step_select = []
+            for note in range(128):
+                button = ButtonElement(True, MIDI_NOTE_TYPE, STEP_SELECT_CHANNEL, note)
+                button.add_value_listener(self._step_select_value, identify_sender=True)
+                self._step_select.append(button)
             self._step_mode = ButtonElement(True, MIDI_CC_TYPE, STEP_CHANNEL, STEP_MODE_CC)
             self._step_mode.add_value_listener(self._step_mode_value)
             self._transport_buttons = []
@@ -126,13 +131,15 @@ class KamoteKeys(ControlSurface):
     def _step_value(self, value, sender):
         self._first_message()
         note = sender.message_identifier()
-        if note >= STEP_DRUM_NOTE:
-            if value:
-                self._step.drum_key(note - STEP_DRUM_NOTE)
-        elif note < STEP_PAD_NOTE + STEP_PADS:
+        if note < STEP_PAD_NOTE + STEP_PADS:
             self._step.pad(note - STEP_PAD_NOTE, bool(value))
         else:
             self._step.function(note, bool(value))
+
+    def _step_select_value(self, value, sender):
+        self._first_message()
+        if value:
+            self._step.select_pitch(sender.message_identifier())
 
     def _step_mode_value(self, value):
         self._first_message()

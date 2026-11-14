@@ -1,5 +1,20 @@
 # Changelog
 
+## KamoteKeys 0.62 (development snapshot)
+
+Step Mode (SEQ REC), SMK-37, closer to Ableton Move:
+- **OCT −/+ moves the drum keys** by an octave and **SEQ turns them into scale keys** (melodic step sequencing: a key plays its scale note and selects it). Both are remembered **per track** (saved in the Live set); tracks without a Drum Rack start with scale keys.
+- **LENGTH + pad n = n bars**; growing a clip repeats its pattern into the new (empty) bars. Pads show the bars while LENGTH is held.
+- **BARS** (lowest F#, hold): pads show the clip's bars, tap one to show it.
+- **Velocity = the last five white keys** (40 / 60 / 80 / 100 / 120); the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad).
+- **Other sounds on a step** show as a violet tint on the selected sound's empty steps, stronger with more of them.
+- **New colours**, one hue per meaning; the beat marker is gone (it made pad 5 look lit) and steps past the clip end are off.
+- The screen shows the **bar the clip is playing** (BAR 2/4) or its length when stopped, plus the selected note.
+- Key-zone pitches reach the script on channel 13.
+
+Everywhere:
+- **The chord LOCK survives every mode**; the keys keep playing the locked chord in Drum, Pad Scale, Clip and Step Mode. Only the LOCK pad releases it.
+
 ## KamoteKeys 0.61 (development snapshot)
 
 - **Step Mode COPY / PASTE / CLEAR on the lowest octave's black keys (SMK-37):** C# = COPY, D# = PASTE, A# = CLEAR. COPY tap copies the shown page, PASTE tap replaces the shown page with it; with a drum key held they copy / paste just that sound (paste onto another sound works too). CLEAR as before.
