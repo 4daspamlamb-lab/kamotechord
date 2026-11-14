@@ -53,14 +53,14 @@ enum { KK_CLIP_SELECT_KEY = 255, KK_SCENE_LAUNCH_KEY = 30, KK_SCENE_UP_KEY = 32,
 static inline int kk_step_key_function(unsigned key)
 {
     switch (key) {
-    /* 0.70 lowest octave: C BARS, D RESOLUTION, E FOLLOW, F LENGTH, G DRUM;
+    /* 0.73 lowest octave: D RESOLUTION, E FOLLOW, F DRUM, G LENGTH, A BARS;
      * black: C# COPY, D# PASTE, F# / G# page, A# DELETE (hold + step / bar / key).
-     * A and B play notes. */
-    case 0: return KK_STEP_BARS;        /* C  tap: bar view */
+     * C and B play notes. */
     case 2: return KK_STEP_RESOLUTION;  /* D */
     case 4: return KK_STEP_FOLLOW;      /* E */
-    case 5: return KK_STEP_LENGTH;      /* F  hold + pad n = n bars */
-    case 7: return KK_STEP_DRUM;        /* G  hold: pads = Drum Mode pads */
+    case 5: return KK_STEP_DRUM;        /* F  hold: pads = Drum Mode pads */
+    case 7: return KK_STEP_LENGTH;      /* G  hold + pad n = n bars */
+    case 9: return KK_STEP_BARS;        /* A  tap: bar view (DELETE + bar deletes it) */
     case 1: return KK_STEP_COPY;        /* C# tap: copy the next step / key / bar */
     case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the next one; hold: several */
     case 6: return KK_STEP_PAGE_PREV;   /* F# */

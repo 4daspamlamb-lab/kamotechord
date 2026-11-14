@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.73 (development snapshot)
+
+- **Step Mode white keys rearranged (SMK-37):** D RESOLUTION, E FOLLOW, **F DRUM (hold)**, **G LENGTH**, **A BARS**; C and B play notes. In the bar view (A), hold DELETE (A#) and press bars to delete them.
+
 ## KamoteKeys 0.72 (development snapshot)
 
 - **Clip Mode overdub key (SMK-37):** hold the lowest C and press a clip to overdub into it (an empty slot: arm the track and record a new clip); pressing it again ends the overdub. The screen shows OVERDUB while C is held.

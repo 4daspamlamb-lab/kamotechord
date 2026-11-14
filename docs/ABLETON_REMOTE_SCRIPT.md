@@ -124,7 +124,7 @@ Colours: see the table below.
 
 | Keys | Do |
 |---|---|
-| lowest octave, white | C = BARS (tap), D = RESOLUTION, E = FOLLOW, F = LENGTH (hold), G = DRUM (hold); A, B play notes |
+| lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DRUM (hold), G = LENGTH (hold), A = BARS (tap); C, B play notes |
 | lowest octave, black | C# = COPY, D# = PASTE, F# / G# = page ◀ / ▶, A# = DELETE (tap: the page; hold + step / bar / key) |
 | **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
 | top F G A B | velocity 32 / 64 / 96 / 127 |
