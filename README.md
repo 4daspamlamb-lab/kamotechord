@@ -66,7 +66,7 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 
 ## Controls at a glance
 
-Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [Clip Mode](docs/diagrams/SMK37-Clip-Mode.png) · [Step Mode](docs/diagrams/SMK37-Step-Mode.png)
+Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in every mode](docs/diagrams/SMK37-Modes-Table.png) · [play modes](docs/diagrams/SMK37-Play-Modes.png) · [Clip Mode](docs/diagrams/SMK37-Clip-Mode.png) · [Step Mode](docs/diagrams/SMK37-Step-Mode.png) · [startup](docs/diagrams/SMK37-Boot.gif)
 
 ```
  LEFT BLOCK                         RIGHT BLOCK
