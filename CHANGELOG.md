@@ -1,5 +1,10 @@
 # Changelog
 
+## KamoteKeys 0.71 (development snapshot)
+
+- **Remote Script traffic follows the script's port:** the keyboard remembers which port (USB or Bluetooth) the KamoteKeys script greets it on and sends Clip Mode, Step Mode and Ableton messages there, whatever MIDI OUT AUTO would pick (USB and Bluetooth both connected no longer splits them).
+- **Diagnostics shows the Live connection:** `LIVE BLE / USB / NONE` = where the Remote Script answers, and `IN U… B…` = messages received on USB / Bluetooth (BT held 1.5 s).
+
 ## KamoteKeys 0.70 (development snapshot)
 
 Step Mode lowest octave rearranged (SMK-37): white C BARS, D RESOLUTION, E FOLLOW, F LENGTH, G DRUM (A, B play notes); black C# COPY, D# PASTE, **F# / G# page ◀ / ▶**, **A# DELETE**.

@@ -19,7 +19,9 @@ static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
 static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
-static uint8_t copy_info[5];   /* host CC 106..110: clipboard kind, a, b; first track; arrange */
+static uint8_t copy_info[5];
+static uint8_t host_port = 255;          /* port the Remote Script greets on (0.71) */
+static uint32_t rx_count[3];             /* messages received per port, for Diagnostics */   /* host CC 106..110: clipboard kind, a, b; first track; arrange */
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
 static uint32_t revision;
 
@@ -43,6 +45,19 @@ unsigned kk_midi_port_mask(void)
         return din | ((ready & (1U << FM1_MIDI_USB)) ? 1U << FM1_MIDI_USB : 1U << FM1_MIDI_BLE);
     }
 }
+/* 0.71: Remote Script traffic (Clip / Step Mode, Ableton CCs) goes to the
+ * port the script talks on, whatever MIDI OUT AUTO would choose; until the
+ * script has greeted, the normal port choice applies. */
+static unsigned script_ports(void)
+{
+    unsigned ready = fm1_midi_ready_ports();
+    if (host_port < 3 && (ready & (1U << host_port))) return (1U << host_port) | (fm1_midi_output_ports() & (1U << FM1_MIDI_DIN));
+    return kk_midi_port_mask();
+}
+static unsigned is_script_channel(unsigned channel)
+{
+    return channel == KK_CH_CLIP || channel == KK_CH_STEP || channel == KK_CH_STEP_SELECT || channel == KK_CH_ABLETON;
+}
 static void out(const uint8_t *m, size_t n, unsigned ports, unsigned local)
 {
     if (local && local_on) (void)fm1_midi_post(m, n);
@@ -56,7 +71,7 @@ void kk_midi_note_on(unsigned channel, unsigned note, unsigned velocity)
     if (velocity > 127) velocity = 127;
     if (counts[s][note]++) return;          /* already sounding for another owner */
     const uint8_t m[3] = {(uint8_t)(0x90 | channel), (uint8_t)note, (uint8_t)velocity};
-    out(m, 3, kk_midi_port_mask(), channel != KK_CH_CLIP && channel != KK_CH_STEP);
+    out(m, 3, is_script_channel(channel) ? script_ports() : kk_midi_port_mask(), channel != KK_CH_CLIP && channel != KK_CH_STEP);
     ++revision;
 }
 void kk_midi_note_off(unsigned channel, unsigned note)
@@ -74,25 +89,25 @@ void kk_midi_cc(unsigned channel, unsigned controller, unsigned value)
 {
     const uint8_t m[3] = {(uint8_t)(0xb0 | (channel & 15)), (uint8_t)(controller & 127), (uint8_t)(value & 127)};
     /* Ableton commands are external only; they must never edit the synth. */
-    out(m, 3, kk_midi_port_mask(), channel != KK_CH_ABLETON && channel != KK_CH_CLIP && channel != KK_CH_STEP);
+    out(m, 3, is_script_channel(channel & 15) ? script_ports() : kk_midi_port_mask(), channel != KK_CH_ABLETON && channel != KK_CH_CLIP && channel != KK_CH_STEP);
 }
 /* A short note (on + off at once) to the computer only: Step Mode commands. */
 void kk_midi_tap(unsigned channel, unsigned note)
 {
     const uint8_t on[3] = {(uint8_t)(0x90 | (channel & 15)), (uint8_t)(note & 127), 127};
     const uint8_t off[3] = {(uint8_t)(0x80 | (channel & 15)), (uint8_t)(note & 127), 0};
-    out(on, 3, kk_midi_port_mask(), 0); out(off, 3, kk_midi_port_mask(), 0);
+    out(on, 3, script_ports(), 0); out(off, 3, script_ports(), 0);
 }
 /* Several short notes as one group (all on, then all off): a chord pick. */
 void kk_midi_tap_set(unsigned channel, const uint8_t *notes, unsigned count)
 {
     for (unsigned i = 0; i < count; ++i) {
         const uint8_t on[3] = {(uint8_t)(0x90 | (channel & 15)), (uint8_t)(notes[i] & 127), 127};
-        out(on, 3, kk_midi_port_mask(), 0);
+        out(on, 3, script_ports(), 0);
     }
     for (unsigned i = 0; i < count; ++i) {
         const uint8_t off[3] = {(uint8_t)(0x80 | (channel & 15)), (uint8_t)(notes[i] & 127), 0};
-        out(off, 3, kk_midi_port_mask(), 0);
+        out(off, 3, script_ports(), 0);
     }
 }
 void kk_midi_message(const uint8_t *m, size_t n) { out(m, n, kk_midi_port_mask(), 1); }
@@ -133,7 +148,7 @@ unsigned kk_midi_local(void) { return local_on; }
 /* ------------------------------------------------------------- input */
 int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
 {
-    (void)source;
+    if (source < 3) ++rx_count[source];
     if (!m || !n || m[0] < 0x80 || m[0] >= 0xf0) return 0;
     unsigned type = m[0] & 0xf0U, ch = m[0] & 15U;
     unsigned d1 = n > 1 ? m[1] & 127U : 0, d2 = n > 2 ? m[2] & 127U : 0;
@@ -151,6 +166,7 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
             ++input_revision;
         } else if (type == 0xb0 && d1 == KK_CLIP_HELLO_CC) {
             host_protocol = (uint8_t)d2; if (!d2) host_tempo = 0; ++input_revision;
+            host_port = d2 && source < 3 ? (uint8_t)source : 255;
         } else if (type == 0xb0 && d1 >= KK_COPY_KIND_CC && d1 <= KK_HOST_ARRANGE_CC) {
             copy_info[d1 - KK_COPY_KIND_CC] = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_HIGHLIGHT_CC) {
@@ -210,6 +226,8 @@ void kk_midi_step_mode(unsigned on)
 }
 /* The script's clipboard (0.65): kind (KK_COPY_*, +32 copy armed, +64 paste armed). */
 unsigned kk_midi_copy(unsigned *a, unsigned *b) { *a = copy_info[1]; *b = copy_info[2]; return copy_info[0]; }
+unsigned kk_midi_host_port(void) { return host_port; }
+uint32_t kk_midi_rx_count(unsigned port) { return port < 3 ? rx_count[port] : 0; }
 unsigned kk_midi_host_tracks(void) { return copy_info[3]; }
 unsigned kk_midi_arrange(void) { return copy_info[4]; }
 unsigned kk_midi_step_code(unsigned pad) { return pad < 16 ? step_codes[pad] : KK_STEPC_OUTSIDE; }

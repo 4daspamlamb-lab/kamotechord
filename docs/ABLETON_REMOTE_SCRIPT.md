@@ -35,6 +35,8 @@ Without the script, clip slots can still be MIDI-mapped by hand (⌘M, click a s
 
 Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & MIDI, set the KamoteKeys Control Surface **Input and Output to the same port**: the USB port when the keyboard is on USB, its Bluetooth port when it is on Bluetooth. If the Input is the USB port and the keyboard is on Bluetooth, the script never sees the keyboard (Step Mode keys then reach the track as plain notes); if the Output is a different port, the pads get no colours. To use both, add KamoteKeys twice (two Control Surface rows), one with the USB port and one with the Bluetooth port. Since 0.66 the script leaves Step Mode by itself if the keyboard stops reporting it (6 s), so a lost message never leaves it stuck.
 
+**Check it on the keyboard (0.71):** hold BT for 1.5 s (Diagnostics). The green line `LIVE BLE` / `LIVE USB` says where the script answers; red `LIVE NONE` means the script hears nothing from this port. `IN U… B…` counts the messages arriving from the computer on USB / Bluetooth; with Live open and the script working, the Bluetooth count keeps rising on Bluetooth.
+
 ## Clip Mode (CHORD button)
 
 [Diagram](diagrams/SMK37-Clip-Mode.png)

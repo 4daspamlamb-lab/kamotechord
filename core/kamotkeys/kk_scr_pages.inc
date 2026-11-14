@@ -159,7 +159,12 @@ static void draw_diag(void)
     p = append(line, "KEYS "); p = decimal(p, __builtin_popcountll(kk.keys)); p = append(p, "  PADS ");
     p = decimal(p, __builtin_popcount(kk.pads)); p = append(p, "  BTN "); decimal(p, (int)kk.buttons);
     text(8, 174, line, 1, TEXT);
-    p = append(line, "SETTINGS STATUS "); decimal(p, groove_settings_status()); text(8, 188, line, 1, TEXT);
+    /* 0.71: where the Live script answers, and what arrives on each port. */
+    { unsigned hp = kk_midi_host_port();
+      p = append(line, "LIVE "); p = append(p, hp == 1 ? "USB" : hp == 2 ? "BLE" : hp == 0 ? "DIN" : "NONE");
+      p = append(p, " IN U"); p = decimal(p, (int)(kk_midi_rx_count(1) % 100000)); p = append(p, " B");
+      p = decimal(p, (int)(kk_midi_rx_count(2) % 100000)); p = append(p, " SET "); decimal(p, groove_settings_status());
+      text(8, 188, line, 1, hp == 255 ? RED : GREEN); }
 #ifdef KK_DEVICE_SMK37
     p = append(line, "E1 RGB TEST: "); append(p, kk_led_test_name(kk_led_test));
     text(8, 202, line, 1, kk_led_test ? AMBER : CYAN);

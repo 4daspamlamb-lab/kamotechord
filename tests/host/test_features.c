@@ -205,4 +205,13 @@ void test_bluetooth(void)
     ble_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); settle();
     CHECK(kk_midi_clip_state(0) == KK_CLIP_PLAYING, "BLE: clip states from Live");
     tap(KK_BTN_CHORD); host_ready_ports = 6; host_ble_busy = 0; frames(30, 5);
+    /* 0.71: USB and BLE both up, the script greets on BLE: its traffic goes to BLE. */
+    ble_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    CHECK(kk_midi_host_port() == 2 && kk_midi_rx_count(2) > 0, "the script's port is remembered (BLE)");
+    tap(KK_BTN_CHORD); host_clear(); pad(3, 100); pad(3, 0); key(1, 100); key(1, 0);
+    CHECK(ble_count(0x9F, 84 + 2) == 1 && out_count(USB, 0x9F, -1) == 0 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1,
+          "Clip Mode goes to the script's port (BLE), not AUTO's USB");
+    tap(KK_BTN_CHORD);
+    { uint8_t m[3] = {0xBF, KK_CLIP_HELLO_CC, 1}; fm1_app_midi_received(1, m, 3); }
+    CHECK(kk_midi_host_port() == 1, "script greets on USB again: back to USB");
 }

@@ -112,7 +112,7 @@ static void signatures(void)
     if (booting) {
         wanted[W_BOOT] = mixsig(base, now_ms / 30);
         uint32_t t = now_ms - boot_started;
-        wanted[W_BOOT_TEXT] = mixsig(base, t >= KK_BOOT_NAME_AT && t < KK_BOOT_NAME_AT + 400 ? now_ms / 30 : (t >= KK_BOOT_NAME_AT) + 2 * (t >= KK_BOOT_MS));
+        wanted[W_BOOT_TEXT] = mixsig(base, t >= KK_BOOT_NAME_AT && t < KK_BOOT_NAME_AT + 400 ? now_ms / 30 : (uint32_t)((t >= KK_BOOT_NAME_AT) + 2 * (t >= KK_BOOT_MS)));
         return;
     }
     wanted[W_HEADER] = mixsig(base, fm1_midi_ready_ports());
