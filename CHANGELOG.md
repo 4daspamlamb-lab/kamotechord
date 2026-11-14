@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.68 (development snapshot)
+
+- **Fix: Step Mode DRUM view pads now play.** Holding DRUM (G) turns the pads into Drum Mode pads: the same order and colours as FX Drum Mode (pad 1 kick, pad 9 rim, pad 2 snare …, following the key zone's octave), they sound on channel 10 and select the drum for the steps. Before, they only selected the Drum Rack pad in Live, in a Push-style order.
+
 ## KamoteKeys 0.67 (development snapshot)
 
 - **New startup: Bubbles.** White piano keys drop in and bounce, flat bubbles in an earthy pastel palette (coral, apricot, mustard, lime, mint, teal, sky, violet) pop up behind them, the black keys pop, one colour sweep runs over the keys and the name pops in letter by letter; the pads light in the bubble colours. About 1.7 s, still gated by Fader 4. Preview: docs/diagrams/SMK37-Boot.gif.

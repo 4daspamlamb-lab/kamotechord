@@ -130,7 +130,7 @@ Colours: see the table below.
 | OCT − / OCT + | moves the key zone by an octave (remembered per track) |
 | SEQ | key zone = drum keys / **scale keys** (remembered per track; tracks without a Drum Rack start with scale keys) |
 
-- **Key zone**: a key **plays its sound and selects it** for the steps, like tapping a drum pad on Move. With SEQ the white keys play the scale set with Faders 2 / 3 (black keys silent), so melodic tracks can be step-sequenced too. Sounds 13–16 and other Drum Rack banks: hold DRUM and use the pads / page keys.
+- **Key zone**: a key **plays its sound and selects it** for the steps, like tapping a drum pad on Move. With SEQ the white keys play the scale set with Faders 2 / 3 (black keys silent), so melodic tracks can be step-sequenced too. **Hold DRUM (G)**: the pads become Drum Mode pads (same order and colours as FX Drum Mode: pad 1 kick, pad 9 rim, pad 2 snare …, from the key zone's octave); tapping one plays it and selects it for the steps. Let go of DRUM and the pads are steps again.
 - **Other sounds on a step**: an empty step of the selected sound shows a violet tint when other sounds play there, stronger with 2 and 3+ of them.
 - **LENGTH (hold) + pad n** sets the clip to **n bars** (pads show the bars while LENGTH is held). Growing a clip repeats its pattern into the new bars (if they are empty).
 - **BARS (tap F#)**: pads show the clip's bars (teal = in the clip, white = the bar on the pads, green = playing); tap one to show it and return to the pattern, or tap F# again.

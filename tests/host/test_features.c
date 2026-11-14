@@ -84,6 +84,16 @@ void test_step_mode(void)
     host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_clear(); frames(450, 5);
     CHECK(out_count(USB, 0xBD, KK_STEP_SYNC_CC) >= 1 && out_count(BLE, 0xBD, KK_STEP_SYNC_CC) >= 1, "Step Mode heartbeat on every port");
     host_in(0xBD, KK_STEP_KEYS_CC, (uint8_t)keys_were);
+    /* 0.68: DRUM (G) held: pads = Drum Mode pads (same order and colours), they play and select. */
+    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_clear(); key(7, 100); pad(1, 100); pad(1, 0); pad(9, 100); pad(9, 0); pad(2, 100); pad(2, 0);
+    CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x99, 37) == 1 && out_count(USB, 0x99, 38) == 1 &&
+          out_count(USB, 0x9C, 36) == 1 && out_count(USB, 0x9C, 38) == 1 && out_count(USB, 0x9D, 36) == 0,
+          "DRUM held: pad 1 / 9 / 2 = kick 36 / rim 37 / snare 38 on ch 10, selected on ch 13, no step");
+    settle();
+    CHECK(((host_rgb[0] >> 16) & 255) > ((host_rgb[0] >> 8) & 255) * 3 && ((host_rgb[1] >> 16) & 255) > (host_rgb[1] & 255),
+          "DRUM held: Drum Mode colours (kick red %06x, snare orange %06x)", host_rgb[0], host_rgb[1]);
+    key(7, 0); host_clear(); pad(1, 100); pad(1, 0);
+    CHECK(out_count(USB, 0x9D, 36) == 1 && out_count(USB, 0x99, -1) == 0, "DRUM released: pads are steps again");
     /* 0.63: a locked chord + scale keys: a key picks the whole chord. */
     host_in(0xBD, KK_STEP_KEYS_CC, 1);
     kk.chord_lock = 1; kk.latched_mods = kk.chord_mods = KK_MOD_MIN;

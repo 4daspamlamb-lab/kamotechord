@@ -56,6 +56,12 @@ enum { IDLE_CHORD = 250, IDLE_SPARE = 125,   /* spare = half of chord (0.48) */ 
 static uint32_t step_colour(unsigned pad, unsigned *level)
 {
     unsigned code = kk_midi_step_code(pad);
+    if (kk_step_drum_held()) {                                               /* 0.68: DRUM held = Drum Mode pads */
+        unsigned channel;
+        int note = kk_pad_note(pad, &channel);
+        *level = note < 0 ? 0 : kk_pad_lit(pad) ? LIT : note == (int)kk_midi_step_info(KK_STEP_ACTIVE_CC) ? 700 : IDLE_DRUM;
+        return drum_colours[note < 0 ? 8 : kk_drum_family(note)];
+    }
     if (!kk_midi_host_protocol()) { *level = 40; return 0x8090a0; }         /* no script */
     if (kk_pad_lit(pad) && code < KK_STEPC_DRUM_EMPTY) { *level = LIT; return 0x30e8ff; }   /* pressed */
     if (code >= KK_STEPC_NOTE_1 && code <= KK_STEPC_NOTE_6) {                /* note: amber, velocity = brightness */

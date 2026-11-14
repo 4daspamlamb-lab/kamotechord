@@ -75,6 +75,7 @@ enum { KK_PAD_SENSITIVITY_MAX = 7 };
 unsigned kk_pad_curve(unsigned velocity);
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);
+unsigned kk_step_drum_held(void);   /* Step Mode, DRUM key held: pads = Drum Mode pads */
 unsigned kk_pad_lit(unsigned pad);     /* held, or its note is sounding */
 /* Pad Scale played on the keys with chord keys (devices with
  * KK_PAD_SCALE_ON_KEYS, i.e. the FM-1, while in Pad Scale Mode). */

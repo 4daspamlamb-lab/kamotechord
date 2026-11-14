@@ -128,7 +128,8 @@ static void source_press(unsigned id, unsigned velocity)
         hold_release();                                  /* the next key ends the held notes */
         sustained_count = 0;                             /* and a held arpeggio */
     }
-    if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_drum_key(id) >= 0 && s->count)
+    if (kk.mode == KK_MODE_STEP && s->count &&
+        ((id < KK_KEYS && kk_step_drum_key(id) >= 0) || (id >= PAD_SOURCE && s->channel == KK_CH_DRUM)))
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
     if (id >= PAD_SOURCE && kk.mode == KK_MODE_STEP && held_repeat()) audition_start_hits(held_repeat(), fm1_millis());
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {

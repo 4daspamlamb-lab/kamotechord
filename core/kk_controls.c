@@ -100,12 +100,27 @@ unsigned kk_pad_scale_on_keys(void)
 }
 /* Every mode in which the pads are not chord/spare pads. */
 static unsigned pads_reassigned(void) { return (in_pad_mode() && !kk_pad_scale_on_keys()) || kk.mode == KK_MODE_CLIP || kk.mode == KK_MODE_STEP; }
+/* 0.68: Step Mode with DRUM held: the pads are drum pads, laid out, coloured
+ * and played exactly like Drum Mode (FX), from the key zone's octave. */
+unsigned kk_step_drum_held(void)
+{
+    if (kk.mode != KK_MODE_STEP) return 0;
+    for (unsigned k = 0; k < KK_KEYS; ++k)
+        if (((kk.keys >> k) & 1U) && kk_step_key_function(k) == KK_STEP_DRUM) return 1;
+    return 0;
+}
+static int step_drum_octave(void)
+{
+    unsigned raw = kk_midi_step_info(KK_STEP_KEYOCT_CC);
+    return raw ? (int)raw - 64 : 0;
+}
 int kk_pad_note(unsigned pad, unsigned *channel)
 {
     *channel = KK_CH_MELODIC;
     if (kk.mode == KK_MODE_PAD_SCALE) return kk_pad_scale_note(pad, kk.pad_octave, &kk.scale);
     if (kk.mode == KK_MODE_DRUM) { *channel = KK_CH_DRUM; return kk_drum_note(pad, kk.pad_octave); }
     if (kk.mode == KK_MODE_CLIP) { *channel = KK_CH_CLIP; return pad < KK_PADS ? KK_CLIP_NOTE_BASE + (int)pad : -1; }
+    if (kk.mode == KK_MODE_STEP && kk_step_drum_held()) { *channel = KK_CH_DRUM; return kk_drum_note(pad, step_drum_octave()); }
     if (kk.mode == KK_MODE_STEP) { *channel = KK_CH_STEP; return pad < KK_PADS ? KK_STEP_PAD_NOTE + (int)pad : -1; }
     return kk_spare_pad_note(pad);
 }
