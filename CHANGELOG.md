@@ -1,5 +1,11 @@
 # Changelog
 
+## KamoteKeys 0.70 (development snapshot)
+
+Step Mode lowest octave rearranged (SMK-37): white C BARS, D RESOLUTION, E FOLLOW, F LENGTH, G DRUM (A, B play notes); black C# COPY, D# PASTE, **F# / G# page ◀ / ▶**, **A# DELETE**.
+- **DELETE** held + a step / + a bar (BARS view) / + a key clears that step / bar / sound; a tap clears the page.
+- The chord toggle is gone: a locked chord always goes in as a chord.
+
 ## KamoteKeys 0.69 (development snapshot)
 
 - **Fix: Step Mode (and Clip Mode) over Bluetooth.** When the Bluetooth MIDI buffer was momentarily full, the router reset the port and dropped every message until the reset finished, so step pads, function keys, key-zone picks and Step Mode on/off were lost on Bluetooth (USB has a much bigger buffer). KamoteKeys messages now wait in a small queue and go out in order as soon as there is room (SMK-37 and FM-1). New Bluetooth-only test of every Step and Clip Mode message with a full buffer.

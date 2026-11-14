@@ -37,23 +37,24 @@ void test_step_mode(void)
     btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_STEP && kk_led_button(KK_BTN_REC) == 2, "release keeps Step Mode, SEQ REC lit");
     host_clear(); pad(3, 90); pad(3, 0);
     CHECK(out_count(USB, 0x9D, 38) == 1 && out_count(USB, 0x8D, 38) == 1 && host_local_n == 0, "pad 3 -> ch 14 note 38, never the synth");
-    host_clear(); key(7, 100); key(8, 100); key(8, 0); key(10, 100); key(10, 0); key(7, 0);
+    host_clear(); key(7, 100); key(6, 100); key(6, 0); key(8, 100); key(8, 0); key(7, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_DRUM) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_PREV) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_NEXT) == 1 &&
-          out_count(USB, 0x8D, KK_STEP_DRUM) == 1, "0.64: G = DRUM (hold), G# / A# = page");
-    host_clear(); key(2, 100); key(2, 0);
-    CHECK(kk.step_single && host_out_n == 0, "D = chord toggle (keyboard only, nothing sent)");
-    key(2, 100); key(2, 0); CHECK(!kk.step_single, "D again: chords");
+          out_count(USB, 0x8D, KK_STEP_DRUM) == 1, "0.70: G = DRUM (hold), F# / G# = page");
+    host_clear(); key(0, 100); key(0, 0); key(2, 100); key(2, 0); key(4, 100); key(4, 0); key(10, 100); key(10, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x9D, KK_STEP_RESOLUTION) == 1 &&
+          out_count(USB, 0x9D, KK_STEP_FOLLOW) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1 && !kk.step_single,
+          "0.70: C = BARS, D = RES, E = FOLLOW, A# = DELETE; no chord toggle");
+    host_clear(); key(9, 100); key(9, 0); key(11, 100); key(11, 0);
+    CHECK(out_count(USB, 0x90, -1) == 2 && out_count(USB, 0x9D, -1) == 0, "A and B play notes");
     /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
      * BARS = lowest F#; the lowest G# and third-octave C still play. */
     host_clear(); key(29, 100); key(29, 0); key(35, 100); key(35, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x9D, KK_STEP_VEL_4) == 1 && out_count(USB, 0x9D, KK_STEP_NOTE_LEN) == 1 &&
           out_count(USB, 0x9D, KK_STEP_REPEAT_1) == 1 && out_count(USB, 0x9D, KK_STEP_REPEAT_3) == 1, "F..B = vel 1..4, top C = note length, F# / A# = repeat 1 / 3");
-    host_clear(); key(6, 100); key(6, 0); key(24, 100); key(24, 0); key(28, 100); key(28, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x99, 48) == 1 && out_count(USB, 0x99, 52) == 1,
-          "F# = BARS; the key zone runs up to E3 (C3 = 48, E3 = 52)");
-    host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0); key(0, 100); key(0, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
-          "C# = COPY, D# = PASTE, C = CLEAR");
+    host_clear(); key(24, 100); key(24, 0); key(28, 100); key(28, 0);
+    CHECK(out_count(USB, 0x99, 48) == 1 && out_count(USB, 0x99, 52) == 1, "the key zone runs up to E3 (C3 = 48, E3 = 52)");
+    host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0);
+    CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1, "C# = COPY, D# = PASTE");
     /* Second octave = key zone: drum keys (Move-style drum pads). */
     host_clear(); key(12, 100);
     CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x9C, 36) == 1 && out_count(USB, 0x8C, 36) == 1,

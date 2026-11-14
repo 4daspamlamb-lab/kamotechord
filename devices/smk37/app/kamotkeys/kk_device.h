@@ -53,19 +53,19 @@ enum { KK_CLIP_SELECT_KEY = 255, KK_SCENE_LAUNCH_KEY = 30, KK_SCENE_UP_KEY = 32,
 static inline int kk_step_key_function(unsigned key)
 {
     switch (key) {
-    /* 0.64 lowest octave: C CLEAR, D chord toggle, F LENGTH, G DRUM, A RES, B FOLLOW;
-     * black: C# COPY, D# PASTE, F# BARS, G# / A# page. E plays a note. */
-    case 0: return KK_STEP_CLEAR;       /* C  tap: page; + step: that step; + key: that sound */
-    case 2: return KK_STEP_CHORD_TOGGLE;/* D  locked chord keys: chords <-> single notes */
+    /* 0.70 lowest octave: C BARS, D RESOLUTION, E FOLLOW, F LENGTH, G DRUM;
+     * black: C# COPY, D# PASTE, F# / G# page, A# DELETE (hold + step / bar / key).
+     * A and B play notes. */
+    case 0: return KK_STEP_BARS;        /* C  tap: bar view */
+    case 2: return KK_STEP_RESOLUTION;  /* D */
+    case 4: return KK_STEP_FOLLOW;      /* E */
     case 5: return KK_STEP_LENGTH;      /* F  hold + pad n = n bars */
-    case 7: return KK_STEP_DRUM;        /* G  hold: pads = Drum Rack pads */
-    case 9: return KK_STEP_RESOLUTION;  /* A */
-    case 11: return KK_STEP_FOLLOW;     /* B */
-    case 1: return KK_STEP_COPY;        /* C# tap: copy the page; + key: copy that sound */
-    case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the page; + key: onto that sound */
-    case 6: return KK_STEP_BARS;        /* F# tap: bar view */
-    case 8: return KK_STEP_PAGE_PREV;   /* G# */
-    case 10: return KK_STEP_PAGE_NEXT;  /* A# */
+    case 7: return KK_STEP_DRUM;        /* G  hold: pads = Drum Mode pads */
+    case 1: return KK_STEP_COPY;        /* C# tap: copy the next step / key / bar */
+    case 3: return KK_STEP_PASTE;       /* D# tap: paste onto the next one; hold: several */
+    case 6: return KK_STEP_PAGE_PREV;   /* F# */
+    case 8: return KK_STEP_PAGE_NEXT;   /* G# */
+    case 10: return KK_STEP_CLEAR;      /* A# tap: the page; hold + step / bar / key: delete it */
     case 29: return KK_STEP_VEL_1;      /* 0.63: top F G A B = velocity 32 / 64 / 96 / 127 */
     case 31: return KK_STEP_VEL_2;
     case 33: return KK_STEP_VEL_3;

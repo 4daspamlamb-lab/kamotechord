@@ -545,6 +545,11 @@ class StepSequencer(object):
                 self._set_bars(index + 1)                       # 0.62: LENGTH + pad n = n bars
                 self.update()
                 return
+            if self._bars_view and F_CLEAR in self._fn:
+                self._used.add(F_CLEAR)
+                self._clear_bar(index + 1)                      # 0.70: DELETE + bar
+                self.update()
+                return
             if F_CLEAR in self._fn:
                 self._used.add(F_CLEAR)
                 self._clear_step(index)                         # 0.64: CLEAR + step = every note there
@@ -926,6 +931,16 @@ class StepSequencer(object):
                 self._say('clip playing')
         except Exception as error:
             self._log('cannot play the clip: %s' % error)
+
+    def _clear_bar(self, bar):
+        if self._clip is None or bar > self._bars():
+            return
+        try:
+            self._clip.remove_notes_extended(0, 128, self._start() + (bar - 1) * self._bar() - EPS, self._bar())
+            self._say('cleared bar %d' % bar)
+        except Exception as error:
+            self._log('cannot clear the bar: %s' % error)
+        self._dirty = True
 
     def _clear_step(self, index):
         if self._clip is None:

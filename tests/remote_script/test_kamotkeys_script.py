@@ -550,6 +550,16 @@ class StepTest(unittest.TestCase):
         self.clip.is_playing = True; self.press(87); self.assertEqual(slot.fired, 0)   # and stops it
         self.clip.is_playing = False; deliver((0xBD, 127, 0)); self.assertEqual(slot.fired, 0)   # leaving does not play
 
+    def test_delete_bar_in_bar_view(self):
+        """0.70: DELETE (CLEAR) held + a bar in the BARS view clears that bar only."""
+        self.mode(True); self.tap(0)
+        self.fn(63); self.pad(1); self.pad(1, False); self.fn(63, False)   # 2 bars, pattern repeated
+        self.assertEqual(sorted(t for p, t in self.pitches()), [0.0, 4.0])
+        self.press(78)                                                     # BARS view
+        self.fn(68); self.pad(1); self.pad(1, False); self.fn(68, False)  # DELETE + bar 2
+        self.assertEqual(self.pitches(), [(36, 0.0)])
+        self.assertTrue(self.s._step._bars_view)                          # still in the bar view
+
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)
         self.fn(63); self.pad(3); self.pad(3, False); self.fn(63, False)  # 4 bars
