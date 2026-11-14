@@ -1,5 +1,9 @@
 # Changelog
 
+## KamoteKeys 0.74 (development snapshot)
+
+- **DELETE + bar deletes the bar** (Step Mode bar view): the bar is removed, the later bars move up and the clip gets one bar shorter. Hold the bar pad for 3 s to only clear its notes instead. Needs the updated Remote Script.
+
 ## KamoteKeys 0.73 (development snapshot)
 
 - **Step Mode white keys rearranged (SMK-37):** D RESOLUTION, E FOLLOW, **F DRUM (hold)**, **G LENGTH**, **A BARS**; C and B play notes. In the bar view (A), hold DELETE (A#) and press bars to delete them.

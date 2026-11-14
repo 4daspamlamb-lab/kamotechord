@@ -551,14 +551,25 @@ class StepTest(unittest.TestCase):
         self.clip.is_playing = False; deliver((0xBD, 127, 0)); self.assertEqual(slot.fired, 0)   # leaving does not play
 
     def test_delete_bar_in_bar_view(self):
-        """0.70: DELETE (CLEAR) held + a bar in the BARS view clears that bar only."""
+        """0.74: DELETE + bar: a short press deletes the bar (later bars move up,
+        the clip gets shorter); held 3 s it only clears the bar."""
+        import sys; mod = sys.modules[type(self.s._step).__module__]
         self.mode(True); self.tap(0)
-        self.fn(63); self.pad(1); self.pad(1, False); self.fn(63, False)   # 2 bars, pattern repeated
-        self.assertEqual(sorted(t for p, t in self.pitches()), [0.0, 4.0])
+        self.fn(63); self.pad(2); self.pad(2, False); self.fn(63, False)   # 3 bars, kick on beat 1 of each
+        self.drum(2); self.tap(8)                                          # bar 1 snare at beat 3
+        self.press(62); self.drum(6); self.tap(4)                          # page 2: hat at bar 2 beat 2
+        self.press(61)
+        self.assertEqual(self.clip.loop_end, 12.0)
         self.press(78)                                                     # BARS view
-        self.fn(68); self.pad(1); self.pad(1, False); self.fn(68, False)  # DELETE + bar 2
-        self.assertEqual(self.pitches(), [(36, 0.0)])
-        self.assertTrue(self.s._step._bars_view)                          # still in the bar view
+        self.fn(68); self.pad(1); self.pad(1, False); self.fn(68, False)  # DELETE + bar 2 (short)
+        self.assertEqual(self.clip.loop_end, 8.0)                          # one bar shorter
+        self.assertEqual(self.pitches(), [(36, 0.0), (36, 4.0), (38, 2.0)])   # bar 3 moved up, hat gone
+        self.assertTrue(self.s._step._bars_view)
+        self.fn(68); self.pad(1)                                           # DELETE + bar 2 held 3 s
+        self.s._step._bar_delete[1] -= mod.BAR_CLEAR_HOLD + 0.1; self.s.update_display()
+        self.pad(1, False); self.fn(68, False)
+        self.assertEqual(self.clip.loop_end, 8.0)                          # length kept
+        self.assertEqual(self.pitches(), [(36, 0.0), (38, 2.0)])          # bar 2 cleared only
 
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)

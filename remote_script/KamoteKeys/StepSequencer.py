@@ -27,6 +27,7 @@ like Push): tap one to make it the active sound; page keys change the bank.
 from __future__ import absolute_import, print_function, unicode_literals
 
 import math
+import time
 
 import Live
 
@@ -61,6 +62,7 @@ RESOLUTIONS = ((0.25, '1/16'), (0.5, '1/8'), (0.125, '1/32'), (1.0 / 6.0, '1/16T
 VELOCITIES = (32, 64, 96, 127)        # the four velocity keys (0.63)
 PREF_KEY = 'kamotekeys_step'          # per-track key-zone octave and layout
 EPS = 1e-4
+BAR_CLEAR_HOLD = 3.0                   # s: DELETE + bar held this long only clears it (0.74)
 MAX_LENGTH = 4.0 * 64                  # beats: 64 bars of 4/4 is plenty
 
 
@@ -102,6 +104,7 @@ class StepSequencer(object):
         self._zone_held, self._zone_pick = set(), []   # key-zone notes arriving as one pick
         self._note_len = 1             # new notes: sixteenths of a bar (0.63)
         self._bars_view = False        # BARS toggled on: pads show the bars
+        self._bar_delete = None        # [bar, pressed at, cleared already] while DELETE + bar is held
 
     # ------------------------------------------------------------ helpers
     def _log(self, text):
@@ -507,6 +510,10 @@ class StepSequencer(object):
         """Called from update_display (~10 Hz): send only what changed."""
         if not self._active:
             return
+        pending = self._bar_delete
+        if pending is not None and not pending[2] and time.time() - pending[1] >= BAR_CLEAR_HOLD:
+            pending[2] = True
+            self._clear_bar(pending[0])                         # held 3 s: clear only (the bar stays)
         if self._dirty or force:
             self._dirty = False
             self._read_notes()
@@ -529,6 +536,13 @@ class StepSequencer(object):
     def pad(self, index, pressed):
         if not self._active:
             return
+        if not pressed and self._bar_delete is not None and self._bar_delete[0] == index + 1:
+            bar, _, cleared = self._bar_delete
+            self._bar_delete = None
+            if not cleared:
+                self._delete_bar(bar)
+            self.update()
+            return
         if F_DRUM in self._fn:
             if pressed:
                 self._select_drum(self._drum_pad_note(index))
@@ -546,9 +560,9 @@ class StepSequencer(object):
                 self.update()
                 return
             if self._bars_view and F_CLEAR in self._fn:
-                self._used.add(F_CLEAR)
-                self._clear_bar(index + 1)                      # 0.70: DELETE + bar
-                self.update()
+                self._used.add(F_CLEAR)                         # 0.74: release = delete the bar,
+                self._bar_delete = [index + 1, time.time(), False]   # held 3 s = only clear it
+                self._say('delete bar %d (hold 3 s to only clear it)' % (index + 1))
                 return
             if F_CLEAR in self._fn:
                 self._used.add(F_CLEAR)
@@ -931,6 +945,30 @@ class StepSequencer(object):
                 self._say('clip playing')
         except Exception as error:
             self._log('cannot play the clip: %s' % error)
+
+    def _delete_bar(self, bar):
+        """Remove a bar: the later bars move up and the clip gets one bar shorter
+        (a one-bar clip is only cleared)."""
+        if self._clip is None or bar > self._bars():
+            return
+        if self._bars() <= 1:
+            self._clear_bar(bar)
+            return
+        b, start = self._bar(), self._start()
+        cut = start + (bar - 1) * b
+        end = start + self._length()
+        try:
+            later = list(self._clip.get_notes_extended(0, 128, cut + b - EPS, end - cut - b + EPS))
+            self._clip.remove_notes_extended(0, 128, cut - EPS, end - cut + EPS)
+            if later:
+                self._clip.add_new_notes(tuple(self._spec(n.pitch, n.start_time - b, n.duration, n.velocity, n.mute)
+                                               for n in later))
+            self._set_length(self._length() - b)
+            self._page = min(self._page, self._pages() - 1)
+            self._say('deleted bar %d' % bar)
+        except Exception as error:
+            self._log('cannot delete the bar: %s' % error)
+        self._dirty = True
 
     def _clear_bar(self, bar):
         if self._clip is None or bar > self._bars():
