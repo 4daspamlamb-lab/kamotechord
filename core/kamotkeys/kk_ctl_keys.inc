@@ -137,6 +137,12 @@ static void source_press(unsigned id, unsigned velocity)
     if (s->held) { disengage(s); }
     s->held = 1; s->velocity = (uint8_t)velocity; s->order = ++press_order;
     intent(id, s);
+    if (s->modifier == 0x4000U && s->notes[0] == KK_CC_REC_LENGTH) {
+        /* 0.91 SHIFT + top E: fixed record length OFF -> 1 -> 2 -> 4 -> 8 bars (a keyboard setting). */
+        kk.rec_length = (uint8_t)((kk.rec_length + 1U) % 5U);
+        kk_settings_touch(); ++kk.edit_revision;
+        s->modifier = 0; s->count = 0;                   /* nothing is sent */
+    }
     if (id >= PAD_SOURCE && kk.anim_active) { s->count = 0; s->modifier = 0; s->route = ROUTE_NONE; return; }
     if (kk.sustain_on && musical(route_for(id, s)) && new_phrase(id)) {
         hold_release();                                  /* the next key ends the held notes */
@@ -146,8 +152,8 @@ static void source_press(unsigned id, unsigned velocity)
         ((id < KK_KEYS && kk_step_drum_key(id) >= 0) || (id >= PAD_SOURCE && s->channel == KK_CH_DRUM)))
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
     if (id >= PAD_SOURCE && kk.mode == KK_MODE_STEP && held_repeat()) audition_start_hits(held_repeat(), fm1_millis());
-    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
-        track_hold_id = (uint8_t)id; track_hold_next = fm1_millis() + 500U;   /* 0.86: auto-repeat while held */
+    if (s->modifier == 0x4000U && (s->notes[0] == KK_CC_TRACKS_LEFT || s->notes[0] == KK_CC_TRACKS_RIGHT)) {
+        track_hold_id = (uint8_t)id; track_hold_cc = s->notes[0]; track_hold_next = fm1_millis() + 500U;   /* auto-repeat while held */
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {
         /* 0.75 PLAY key: pads select by default; hold PLAY + clip = launch it, or

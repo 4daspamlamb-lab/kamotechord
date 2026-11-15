@@ -355,5 +355,8 @@ static void draw_status(void)
         for (unsigned i = 0, first = 1; i < 9; ++i)
             if (kk.chord_mods & (1U << i)) { if (!first) p = append(p, "+"); p = append(p, mods[i]); first = 0; }
         text_right(234, w->y + 22, buf, 1, ORANGE);
+    } else if (kk_rec_bars()) {   /* 0.91: fixed record length */
+        p = append(buf, "REC "); p = decimal(p, (int)kk_rec_bars()); append(p, kk_rec_bars() > 1 ? " BARS" : " BAR");
+        text_right(234, w->y + 22, buf, 1, RED);
     } else if (!kk_midi_local()) text_right(234, w->y + 22, "SYNTH OFF", 1, DIM);
 }

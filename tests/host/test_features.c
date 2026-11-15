@@ -71,13 +71,13 @@ void test_step_mode(void)
           "0.73: D = RES, E = FOLLOW, G = LENGTH, A = BARS, A# = DELETE");
     host_clear(); key(0, 100); key(0, 0); key(5, 100); key(5, 0);
     CHECK(out_count(USB, 0x90, -1) == 1 && out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "C plays a note, F = DOUBLE (0.80)");
-    /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
-     * BARS = lowest F#; the lowest G# and third-octave C still play. */
-    host_clear(); key(29, 100); key(29, 0); key(35, 100); key(35, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
-    CHECK(out_count(USB, 0x9D, KK_STEP_VEL_1) == 1 && out_count(USB, 0x9D, KK_STEP_VEL_4) == 1 && out_count(USB, 0x9D, KK_STEP_NOTE_LEN) == 1 &&
-          out_count(USB, 0x9D, KK_STEP_REPEAT_1) == 1 && out_count(USB, 0x9D, KK_STEP_REPEAT_3) == 1, "F..B = vel 1..4, top C = note length, F# / A# = repeat 1 / 3");
-    host_clear(); key(24, 100); key(24, 0); key(28, 100); key(28, 0);
-    CHECK(out_count(USB, 0x99, 48) == 1 && out_count(USB, 0x99, 52) == 1, "the key zone runs up to E3 (C3 = 48, E3 = 52)");
+    /* 0.91: the top octave is the Live strip in Step Mode too; the key zone is 16 drum keys. */
+    host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0);
+    CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2 && out_count(USB, CC15, KK_CC_SOLO) == 2 && out_count(USB, 0x9D, -1) == 0,
+          "Step Mode: top A / B = mute / solo, no step functions");
+    host_clear(); key(24, 100); key(24, 0); key(27, 100); key(27, 0); key(28, 100); key(28, 0);
+    CHECK(out_count(USB, 0x99, 48) == 1 && out_count(USB, 0x99, 51) == 1 && out_count(USB, 0x99, 52) == 0,
+          "the key zone runs up to D#3 (16 sounds: 36 .. 51)");
     host_clear(); key(1, 100); key(1, 0); key(3, 100); key(3, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_COPY) == 1 && out_count(USB, 0x9D, KK_STEP_PASTE) == 1, "C# = COPY, D# = PASTE");
     /* Second octave = key zone: drum keys (Move-style drum pads). */
@@ -101,12 +101,12 @@ void test_step_mode(void)
     CHECK(scale_note > 0 && out_count(USB, 0x90, scale_note) == 1 && out_count(USB, 0x9C, scale_note) == 1 && kk_led_button(KK_BTN_SEQ) == 2,
           "scale keys: D plays its scale note on ch 1 and selects it, SEQ lit");
     int keys_were = (int)kk_midi_step_info(KK_STEP_KEYS_CC);
-    /* 0.66: holding a repeat key + a pad previews the sound that many times. */
-    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_in(0xBD, KK_STEP_ACTIVE_CC, 38); host_clear();
-    key(32, 100); pad(5, 90); pad(5, 0); frames(100, 2); key(32, 0);
-    CHECK(out_count(USB, 0x99, 38) == 2 && out_count(USB, 0x89, 38) == 2, "repeat 2x + pad: snare previewed twice (%u)", out_count(USB, 0x99, 38));
-    host_clear(); key(34, 100); pad(5, 90); pad(5, 0); frames(100, 2); key(34, 0);
-    CHECK(out_count(USB, 0x99, 38) == 3, "then 3x: three times (%u)", out_count(USB, 0x99, 38));
+    /* 0.91: hold a step + E1 / E2 / E3 = its velocity / length / repeats (ch 14 CC 20 / 21 / 22). */
+    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_clear(); unsigned bpm_was = kk.bpm, root_was = kk.scale.root;
+    pad(5, 90); kk.encoder[0] = 2; kk.encoder[1] = -1; kk.encoder[2] = 1; frames(3, 20); groove_midi_poll();
+    CHECK(out_count(USB, 0xBD, KK_STEP_EDIT_CC) == 1 && out_count(USB, 0xBD, KK_STEP_EDIT_CC + 1) == 1 && out_count(USB, 0xBD, KK_STEP_EDIT_CC + 2) == 1 &&
+          kk.bpm == bpm_was && kk.scale.root == root_was, "step held: E1-E3 edit the step, not BPM / key");
+    pad(5, 0);
     host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_clear(); frames(450, 5);
     CHECK(out_count(USB, 0xBD, KK_STEP_SYNC_CC) >= 1 && out_count(BLE, 0xBD, KK_STEP_SYNC_CC) >= 1, "Step Mode heartbeat on every port");
     host_in(0xBD, KK_STEP_KEYS_CC, (uint8_t)keys_were);
@@ -222,11 +222,11 @@ void test_bluetooth(void)
     /* Clip Mode over Bluetooth. */
     tap(KK_BTN_CHORD); host_clear();
     host_ble_busy = 2; pad(3, 100); pad(3, 0); key(1, 100); key(1, 0); key(2, 100); key(2, 0);
-    host_ble_busy = 1; key(10, 100); pad(4, 100); pad(4, 0); key(10, 0); key(30, 100); key(30, 0); key(33, 100); key(33, 0);
+    host_ble_busy = 1; key(10, 100); pad(4, 100); pad(4, 0); key(10, 0); key(36, 100); key(30, 100); key(30, 0); key(29, 100); key(29, 0); key(36, 0);
     frames(20, 5);
     CHECK(ble_count(0x9F, 84 + 2) == 1 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1 && ble_count(0x9F, KK_CLIP_ARRANGE_NOTE) == 1 &&
           ble_count(0x9F, 68 + 3) == 1 && ble_count(0xBE, KK_CC_SCENE_LAUNCH) == 2 && ble_count(0xBE, KK_CC_TRACKS_LEFT) == 2,
-          "BLE: clip select, COPY, ARRANGE, DELETE, scene launch, track view");
+          "BLE: clip select, COPY, ARRANGE, DELETE, SHIFT scene launch / track");
     ble_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); settle();
     CHECK(kk_midi_clip_state(0) == KK_CLIP_PLAYING, "BLE: clip states from Live");
     tap(KK_BTN_CHORD); host_ready_ports = 6; host_ble_busy = 0; frames(30, 5);
@@ -262,7 +262,21 @@ void test_top_keys_and_key_memory(void)
           out_count(USB, CC15, KK_CC_FINISH) == 0 && out_count(USB, CC15, KK_CC_CLIP_DELETE) == 0 &&
           out_count(USB, CC15, KK_CC_QUANTIZE) == 0 && out_count(USB, CC15, KK_CC_ARM) == 0,
           "SHIFT + G# / A# / F / G = scene up / down, track left / right");
-    host_clear(); key(33, 100); key(33, 0); CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "SHIFT + A still mutes");
+    host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0); key(30, 100); key(30, 0);
+    CHECK(out_count(USB, CC15, KK_CC_CLIP_DUPLICATE) == 2 && out_count(USB, CC15, KK_CC_LOOP_DOUBLE) == 2 && out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2,
+          "0.91 SHIFT + A / B / F# = duplicate clip / double loop / launch scene");
+    /* SHIFT + E: fixed length OFF -> 1 -> 2 -> 4 -> 8 -> OFF, nothing sent; KNOB BANK sends it first. */
+    host_clear(); unsigned lens[6];
+    for (unsigned i = 0; i < 6; ++i) { lens[i] = kk_rec_bars(); key(28, 100); key(28, 0); }
+    CHECK(lens[0] == 0 && lens[1] == 1 && lens[2] == 2 && lens[3] == 4 && lens[4] == 8 && lens[5] == 0 && host_out_n == 0,
+          "SHIFT + E cycles the fixed length silently");
+    key(28, 100); key(28, 0); key(28, 100); key(28, 0);   /* the loop left 1 bar: two more = 4 bars */
+    key(36, 0); host_clear(); tap(KK_BTN_KNOB_BANK); groove_midi_poll();
+    CHECK(out_count(USB, CC15, KK_CC_REC_LENGTH) == 1 && last_out(USB, CC15, 2) == (KK_CC_REC_LENGTH | 4 << 8) && out_count(USB, CC15, KK_CC_RECORD) == 2,
+          "KNOB BANK: length 4 then Session Record");
+    { uint8_t saved[16]; kamotkeys_settings_read(saved); kk.rec_length = 0;
+      CHECK(kamotkeys_settings_apply(saved) == 0 && kk_rec_bars() == 4, "fixed length saved"); kk.rec_length = 0; }
+    key(36, 100);
     key(36, 0);
     /* 0.90: PATCH + top G = arm without disarming the others; the Patch page stays closed. */
     host_clear(); btn(KK_BTN_PATCH, 1); key(31, 100); key(31, 0); btn(KK_BTN_PATCH, 0);
@@ -274,16 +288,16 @@ void test_top_keys_and_key_memory(void)
     tap(KK_BTN_SEQ); host_clear(); key(33, 100); key(33, 0);
     CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "Key Scale: top A = MUTE too"); tap(KK_BTN_SEQ);
     tap(KK_BTN_REC); host_clear(); key(33, 100); key(33, 0);
-    CHECK(out_count(USB, CC15, KK_CC_MUTE) == 0 && out_count(USB, 0x9D, -1) == 1, "Step Mode keeps its top keys"); tap(KK_BTN_REC);
-    /* Clip Mode: holding top B repeats the track move every 0.5 s. */
-    tap(KK_BTN_CHORD); host_clear(); key(35, 100);
-    CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 1, "top B press: one track right");
+    CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2 && out_count(USB, 0x9D, -1) == 0, "0.91 Step Mode: top A = MUTE too"); tap(KK_BTN_REC);
+    /* Holding SHIFT + G repeats the track move every 0.5 s (any mode). */
+    tap(KK_BTN_CHORD); host_clear(); key(36, 100); key(31, 100);
+    CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 1, "SHIFT + G press: one track right");
     host_ms += 400; frames(2, 1); CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 1, "no repeat before 0.5 s");
     host_ms += 200; frames(2, 1); host_ms += 500; frames(2, 1); host_ms += 500; frames(2, 1);
     unsigned presses = 0;
     for (unsigned i = 0; i < host_out_n; ++i) presses += host_out[i].b[0] == CC15 && host_out[i].b[1] == KK_CC_TRACKS_RIGHT && host_out[i].b[2] == 127;
     CHECK(presses == 4, "held 1.6 s: 3 repeats (%u presses)", presses);
-    key(35, 0); host_clear(); host_ms += 600; frames(2, 1); CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 0, "released: stops");
+    key(31, 0); key(36, 0); host_clear(); host_ms += 600; frames(2, 1); CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 0, "released: stops");
     tap(KK_BTN_CHORD);
     /* Pad Scale: a key lights the pads with the same note in any octave. */
     kk.scale.scale = 0; kk.scale.root = 0; tap(KK_BTN_SCALE); settle();

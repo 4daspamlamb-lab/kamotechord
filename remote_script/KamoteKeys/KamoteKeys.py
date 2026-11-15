@@ -61,6 +61,8 @@ CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by valu
 CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track volume / macro 1 (else Send A)
 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE = 44, 45, 47, 48, 49, 50   # 0.86 top keys (46 unused since 0.88)
 CC_ARM_ADD = 51                          # 0.90: PATCH + top G: arm without disarming the others
+CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH = 52, 53, 54   # 0.91: SHIFT + A / B; fixed length (bars, 0 = off)
+STEP_EDIT_CC = 20                        # 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats
 CC_FX = (40, 41, 42, 43)                 # 0.82: K4-K7 relative: filter, delay, reverb, reverb decay
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
@@ -79,7 +81,8 @@ CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO,
-                 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE, CC_ARM_ADD) + CC_FX
+                 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE, CC_ARM_ADD,
+                 CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH) + CC_FX
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
@@ -103,6 +106,7 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._names_sent = {}            # 0.81: slot -> name last sent
         self._seltrack_sent = None
+        self._rec_bars = 0               # 0.91: fixed record length in bars (from the keyboard)
         self._clip_notes_sent = set()     # 0.89: selected clip's sounding notes, as sent
         self._note_cache = (None, 0, [])  # (clip, tick, [(pitch, start, end)])
         self._ticks = 0
@@ -141,6 +145,11 @@ class KamoteKeys(ControlSurface):
                 button = ButtonElement(True, MIDI_NOTE_TYPE, STEP_SELECT_CHANNEL, note)
                 button.add_value_listener(self._step_select_value, identify_sender=True)
                 self._step_select.append(button)
+            self._step_edit = []                 # 0.91: hold a step + E1 / E2 / E3
+            for cc in range(STEP_EDIT_CC, STEP_EDIT_CC + 3):
+                button = ButtonElement(True, MIDI_CC_TYPE, STEP_CHANNEL, cc)
+                button.add_value_listener(self._step_edit_value, identify_sender=True)
+                self._step_edit.append(button)
             self._step_mode = ButtonElement(True, MIDI_CC_TYPE, STEP_CHANNEL, STEP_MODE_CC)
             self._step_mode.add_value_listener(self._step_mode_value)
             self._transport_buttons = []
@@ -250,9 +259,13 @@ class KamoteKeys(ControlSurface):
         self._first_message()
         note = sender.message_identifier()
         if note < STEP_PAD_NOTE + STEP_PADS:
-            self._step.pad(note - STEP_PAD_NOTE, bool(value))
+            self._step.pad(note - STEP_PAD_NOTE, bool(value), value)
         else:
             self._step.function(note, bool(value))
+
+    def _step_edit_value(self, value, sender):
+        self._first_message()
+        self._step.knob(sender.message_identifier() - STEP_EDIT_CC, value - 64)
 
     def _step_select_value(self, value, sender):
         self._first_message()
@@ -286,6 +299,8 @@ class KamoteKeys(ControlSurface):
             self._track_macro(value)
         elif cc in CC_FX:
             self._fx(CC_FX.index(cc), value - 64)
+        elif cc == CC_REC_LENGTH:
+            self._rec_bars = value               # sent just before Session Record (0.91)
         elif value:                      # act on press; release is ignored
             self._transport(cc)
 
@@ -660,6 +675,54 @@ class KamoteKeys(ControlSurface):
             self._status('KamoteKeys: %s %s' % (track.name, 'armed (only this one)' if arm else 'disarmed'))
         except Exception as error:
             self._status('KamoteKeys: arm: %s' % error)
+
+    def _fixed_record(self):
+        """Record exactly self._rec_bars bars into the selected empty slot of an
+        armed track; False = not applicable (use normal Session Record)."""
+        song = self.song()
+        if not self._rec_bars or song.session_record:
+            return False
+        slot = self._selected_slot()
+        try:
+            track = slot.canonical_parent if slot is not None else None
+            if slot is None or slot.has_clip or not getattr(track, 'arm', False):
+                return False
+            beats = self._rec_bars * 4.0 * song.signature_numerator / float(song.signature_denominator)
+            slot.fire(record_length=beats)
+            self._status('KamoteKeys: recording %d bar%s' % (self._rec_bars, '' if self._rec_bars == 1 else 's'))
+            return True
+        except Exception as error:
+            self.log_message('KamoteKeys: fixed-length record: %s' % error)
+            return False
+
+    def _duplicate_selected(self):
+        """SHIFT + A (0.91): copy the selected clip into the next empty slot below and select it."""
+        song = self.song()
+        slot = self._selected_slot()
+        try:
+            if slot is None or not slot.has_clip:
+                return
+            slots = list(slot.canonical_parent.clip_slots)
+            i = next((k for k, x in enumerate(slots) if self._same(x, slot)), None)
+            target = next((x for x in slots[i + 1:] if not x.has_clip), None) if i is not None else None
+            if target is None:
+                self._status('KamoteKeys: no empty slot below')
+                return
+            slot.duplicate_clip_to(target)
+            song.view.highlighted_clip_slot = target
+            self._status('KamoteKeys: clip duplicated')
+        except Exception as error:
+            self._status('KamoteKeys: duplicate: %s' % error)
+
+    def _double_selected(self):
+        """SHIFT + B (0.91): the selected clip's loop twice as long, notes copied."""
+        slot = self._selected_slot()
+        try:
+            if slot is not None and slot.has_clip:
+                slot.clip.duplicate_loop()
+                self._status('KamoteKeys: loop doubled')
+        except Exception as error:
+            self._status('KamoteKeys: double loop: %s' % error)
 
     def _selected_slot(self):
         try:
@@ -1127,7 +1190,14 @@ class KamoteKeys(ControlSurface):
         elif cc == CC_RECORD:
             # Session Record: records new clips in armed tracks at the selected
             # scene, or overdubs the playing clips; a second press stops it.
-            song.session_record = not song.session_record
+            # 0.91: with a fixed length, an empty selected slot on an armed
+            # track records exactly that many bars and then loops by itself.
+            if not self._fixed_record():
+                song.session_record = not song.session_record
+        elif cc == CC_CLIP_DUPLICATE:
+            self._duplicate_selected()
+        elif cc == CC_LOOP_DOUBLE:
+            self._double_selected()
 
     def disconnect(self):
         self._step.disconnect()

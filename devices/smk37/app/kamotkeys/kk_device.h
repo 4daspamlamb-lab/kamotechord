@@ -26,12 +26,12 @@ enum { KK_VELOCITY_DEFAULT = 100 };
 #define KK_CLIP_PRESS_SELECT 1
 enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6 /* F#: PLAY (hold / tap, 0.75) */, KK_CLIP_ARRANGE_KEY = 2, /* D: Scene Arrange (0.77) */
        KK_CLIP_STOP_KEY = 8,   /* G#: STOP (hold + clips, or tap: the selected clip), 0.77 */
-       KK_TRACKS_LEFT_KEY = 33, KK_TRACKS_RIGHT_KEY = 35, KK_CLIP_MOVE_KEY = 29,  /* top F held + top G# / A#: move the clip (0.76) */                                        /* top A / B: 8-track view (0.67) */
+       KK_TRACKS_LEFT_KEY = 255, KK_TRACKS_RIGHT_KEY = 255, KK_CLIP_MOVE_KEY = 4,   /* 0.91: tracks via SHIFT + F / G; MOVE = low E (hold + G# / A#) */  /* top F held + top G# / A#: move the clip (0.76) */                                        /* top A / B: 8-track view (0.67) */
        KK_CLIP_DELETE_KEY = 10, KK_CLIP_OVERDUB_KEY = 0 };   /* 0.72: lowest C held + clip = OVERDUB */
 /* The third black key (F#) held + clip = SELECT (select the slot, arm its
  * track); the fourth (G#) = launch the selected scene; the last two black
  * keys (top G#, A#) = scene up, scene down. */
-enum { KK_CLIP_SELECT_KEY = 255, KK_SCENE_LAUNCH_KEY = 30, KK_SCENE_UP_KEY = 32, KK_SCENE_DOWN_KEY = 34 };
+enum { KK_CLIP_SELECT_KEY = 255, KK_SCENE_LAUNCH_KEY = 255, KK_SCENE_UP_KEY = 255, KK_SCENE_DOWN_KEY = 255 };   /* 0.91: scenes via SHIFT */
 
 /* Knob labels as printed on the screen (E1..E7). */
 #define KK_K1 "E1"
@@ -68,14 +68,8 @@ static inline int kk_step_key_function(unsigned key)
     case 6: return KK_STEP_PAGE_PREV;   /* F# */
     case 8: return KK_STEP_PAGE_NEXT;   /* G# */
     case 10: return KK_STEP_CLEAR;      /* A# tap: the page; hold + step / bar / key: delete it */
-    case 29: return KK_STEP_VEL_1;      /* 0.63: top F G A B = velocity 32 / 64 / 96 / 127 */
-    case 31: return KK_STEP_VEL_2;
-    case 33: return KK_STEP_VEL_3;
-    case 35: return KK_STEP_VEL_4;
-    case 36: return KK_STEP_NOTE_LEN;   /* top C hold: pads = note length (1-16 sixteenths of a bar) */
-    case 30: return KK_STEP_REPEAT_1;   /* top F# G# A#: hold + a pad = 1 / 2 / 3 hits per step */
-    case 32: return KK_STEP_REPEAT_2;
-    case 34: return KK_STEP_REPEAT_3;
+    /* 0.91: the top octave is the Live strip; velocity, length and repeats
+     * are hold a step + E1 / E2 / E3. */
     default: return -1;
     }
 }
@@ -83,13 +77,15 @@ static inline int kk_step_key_function(unsigned key)
 /* Step Mode drum keys (0.60, like Move's drum pads): the second octave,
  * C = the first drum of the bank (36 = kick). Each plays its sound and
  * selects it for the steps. -1 = not a drum key. */
-static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key <= 28 ? (int)key - 12 : -1; }   /* 0.63: C2..E3 */
+static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key <= 27 ? (int)key - 12 : -1; }   /* 0.91: C2..D#3 = 16 drum keys */
 /* 0.86: top-octave Live keys outside Clip and Step Mode (the selected track /
  * clip in Live): -1 = a normal key, 0 = silent, else the channel 15 CC sent
  * (127 on press, 0 on release). Black from the right: A# DELETE, G# FINISH &
  * NEXT, F# PLAY / STOP; white from the right: C = SHIFT (0.88, silent),
  * B SOLO, A MUTE, G ARM, F QUANTIZE; E plays notes. With C held: G# / A# =
- * scene up / down, F / G = track left / right (kk_top_shift_cc). */
+ * scene up / down, F / G = track left / right, F# launch scene, A duplicate
+ * clip, B double loop, E fixed record length (0.91; kk_top_shift_cc). The strip
+ * is the same in every mode (0.91). */
 enum { KK_TOP_SHIFT_KEY = 36 };
 static inline int kk_top_key_cc(unsigned key)
 {
@@ -112,6 +108,10 @@ static inline int kk_top_shift_cc(unsigned key)
     case 34: return KK_CC_SCENE_DOWN;
     case 29: return KK_CC_TRACKS_LEFT;
     case 31: return KK_CC_TRACKS_RIGHT;
+    case 30: return KK_CC_SCENE_LAUNCH;        /* 0.91 */
+    case 33: return KK_CC_CLIP_DUPLICATE;
+    case 35: return KK_CC_LOOP_DOUBLE;
+    case 28: return KK_CC_REC_LENGTH;          /* handled on the keyboard: fixed-length cycle */
     default: return -1;
     }
 }

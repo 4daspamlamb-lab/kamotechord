@@ -78,6 +78,16 @@ static void main_input(void)
         for (unsigned i = 3; i < 7; ++i) (void)take(i);
         return;
     }
+#ifndef KK_DEVICE_FM1
+    if (kk.mode == KK_MODE_STEP && kk_step_pads_held()) {
+        /* 0.91 hold a step + E1 / E2 / E3 = its velocity / length / repeats (the script edits it). */
+        static const char *const what[3] = {"STEP VELOCITY", "STEP LENGTH", "STEP REPEATS"};
+        for (unsigned i = 0; i < 3; ++i) if ((d = take(i))) {
+            kk_midi_cc(KK_CH_STEP, KK_STEP_EDIT_CC + i, (unsigned)clampi(64 + d, 0, 127));
+            popup_value(what[i], d > 0 ? "+" : "-");
+        }
+    }
+#endif
     if ((d = take(0))) {
         int step = d > 2 || d < -2 ? d * 2 : d;
         if (kk_midi_host_tempo_x10()) {                /* 0.79: sets Live's tempo */

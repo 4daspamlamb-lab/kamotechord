@@ -23,7 +23,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
     d[3] = (uint8_t)(kk.arp_on | (15U - kk.brightness_level) << 2);   /* 0.77: bits 2..5 = 15 - brightness */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
     d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = kk.arp.octaves;
-    d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)kk_midi_local();
+    d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)(kk_midi_local() | kk.rec_length << 1);   /* 0.91: bits 1-3 = fixed length */
 #ifdef KK_DEVICE_FM1
     d[10] = kk.scale.scale; d[14] = kk.scale.root; d[15] = kk.velocity;
 #else
@@ -46,7 +46,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || (!keyed && d[3] > 63) ||
         (!keyed && d[4] >= KK_ARP_MODES) ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
-        d[9] < 1 || d[9] > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || d[13] > 1)
+        d[9] < 1 || d[9] > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || (d[13] >> 1) > 4)
         return -1;
 #ifdef KK_DEVICE_FM1
     if (d[10] >= KK_SCALES || d[14] > 11 || d[15] < 1 || d[15] > 127) return -1;
@@ -56,7 +56,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     kk.bpm = (uint16_t)bpm;
     kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, d[5], d[6], d[7], d[8], d[9]};   /* 0.80: no LATCH */
     kk.program = d[11];
-    kk_midi_set_ports(d[12]); kk_midi_set_local(d[13]);
+    kk_midi_set_ports(d[12]); kk_midi_set_local(d[13] & 1U); kk.rec_length = (uint8_t)(d[13] >> 1);
 #ifdef KK_DEVICE_FM1
     kk.scale.scale = d[10]; kk.scale.root = d[14]; kk.velocity = d[15];
 #else

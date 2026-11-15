@@ -106,13 +106,14 @@ void test_031(void)
     key(6, 100); key(6, 0); key(6, 100); key(6, 0); CHECK(!kk.clip_play, "tap F# twice: cancelled");
     host_clear(); tap(KK_BTN_ARP); key(6, 100); pad(3, 100); frames(300, 2); pad(3, 0); key(6, 0); tap(KK_BTN_ARP);
     CHECK(out_count(USB, 0x9F, 38) == 1, "ARP does not touch clip launches");
-    /* 0.75: G held + top G# / A# = move Live's selected clip up / down (CC 33 / 34). */
-    host_clear(); key(29, 100); key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(29, 0);
+    /* 0.91: MOVE = low E held + top G# / A# = move Live's selected clip up / down (CC 33 / 34). */
+    host_clear(); key(4, 100); key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(4, 0);
     CHECK(out_count(USB, CC15, KK_CC_CLIP_UP) == 2 && out_count(USB, CC15, KK_CC_CLIP_DOWN) == 2 &&
-          out_count(USB, CC15, KK_CC_SCENE_UP) == 0 && out_count(USB, 0x90, -1) == 0, "top F + top G# / A#: move the clip up / down, top F silent");
-    host_clear(); key(7, 100); key(7, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low G plays a note again");
+          out_count(USB, CC15, KK_CC_SCENE_UP) == 0 && out_count(USB, 0x90, -1) == 0, "low E + top G# / A#: move the clip up / down, low E silent");
     host_clear(); key(32, 100); key(32, 0);
-    CHECK(out_count(USB, CC15, KK_CC_SCENE_UP) == 2, "without G: scene up as before");
+    CHECK(out_count(USB, CC15, KK_CC_FINISH) == 2, "without MOVE: top G# = finish & next (Live strip in Clip Mode too)");
+    host_clear(); key(36, 100); key(32, 100); key(32, 0); key(36, 0);
+    CHECK(out_count(USB, CC15, KK_CC_SCENE_UP) == 2, "SHIFT + G#: scene up");
     host_in(0xBF, KK_CLIP_HELLO_CC, 1);
     host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_RECORDING);
     host_in(0xBF, KK_CLIP_STATE_CC + 2, KK_CLIP_STOPPED); host_in(0xBF, KK_CLIP_STATE_CC + 3, KK_CLIP_QUEUED);
@@ -150,10 +151,10 @@ void test_031(void)
     host_clear(); key(2, 100); key(2, 0); key(8, 100); key(8, 0);
     CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1 &&
           out_count(USB, 0x9F, KK_CLIP_STOP_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_STOP_NOTE) == 1, "0.77: D = Scene Arrange (102), G# = STOP (103)");
-    host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0);
+    host_clear(); key(36, 100); key(29, 100); key(29, 0); key(31, 100); key(31, 0); key(36, 0);
     CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
-          "0.67: top A / B: track view left / right (CC 31 / 32), no notes");
-    host_clear(); key(4, 100); key(4, 0); CHECK(out_count(USB, 0x90, -1) == 1, "E plays a note in Clip Mode");
+          "0.91: SHIFT + F / G: track left / right (CC 31 / 32), no notes");
+    host_clear(); key(5, 100); key(5, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low F plays a note in Clip Mode");
     /* 0.67: Step Mode entered from Clip Mode returns to Clip Mode; PARA there plays the clip. */
     tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP, "SEQ REC from Clip Mode -> Step Mode");
     host_clear(); tap(KK_BTN_PARA);
@@ -167,9 +168,9 @@ void test_031(void)
           "Scene Arrange: track on bright green, off dim (%06x / %06x)", host_rgb[0], host_rgb[1]);
     frames(40, 5); shot("17c_scene_arrange");
     host_in(0xBF, KK_HOST_ARRANGE_CC, 0); host_in(0xBF, KK_HOST_TRACKS_CC, 0);
-    host_clear(); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(30, 100); key(30, 0);
+    host_clear(); key(36, 100); key(34, 100); key(34, 0); key(32, 100); key(32, 0); key(30, 100); key(30, 0); key(36, 0);
     CHECK(out_count(USB, CC15, KK_CC_SCENE_DOWN) == 2 && out_count(USB, CC15, KK_CC_SCENE_UP) == 2 &&
-          out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "top A# / G# / F# -> scene down / up / launch, no notes");
+          out_count(USB, CC15, KK_CC_SCENE_LAUNCH) == 2 && out_count(USB, 0x90, -1) == 0, "SHIFT + A# / G# / F# -> scene down / up / launch, no notes");
     host_in(0xBF, KK_COPY_KIND_CC, KK_COPY_CLIP | 64); host_in(0xBF, KK_COPY_A_CC, 3); host_in(0xBF, KK_COPY_B_CC, 2);
     { unsigned ca, cb; CHECK(kk_midi_copy(&ca, &cb) == (KK_COPY_CLIP | 64) && ca == 3 && cb == 2, "clipboard from the script"); }
     frames(40, 5); shot("17b_clip_paste");

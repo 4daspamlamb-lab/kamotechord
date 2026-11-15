@@ -165,7 +165,7 @@ static void signatures(void)
     }
     wanted[W_PIANO] = h;
     h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);
-    h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U);
+    h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U + kk.rec_length * 256U);
     h = mixsig(h, kk_velocity_override()); h = mixsig(h, kk.chord_mods | kk.chord_lock << 12); h = mixsig(h, kk_midi_local());
     if (popup_until && (int32_t)(now_ms - popup_until) < 0) h = strsig(mixsig(h, 77), popup);
     if (kk.anim_active) h = mixsig(mixsig(h, kk.anim_pattern + 100U), kk.anim_speed / 10U);
@@ -301,6 +301,15 @@ void groove_screen_control(void)
 
     page_input();
     static uint8_t ripple_shown;
+    static uint8_t rec_shown = 255;
+    if (kk.rec_length != rec_shown) {
+        if (rec_shown != 255 && !booting) {
+            char b[24], *q = append(b, "FIXED LENGTH ");
+            if (kk_rec_bars()) { q = decimal(q, (int)kk_rec_bars()); append(q, kk_rec_bars() > 1 ? " BARS" : " BAR"); } else append(q, "OFF");
+            say(b, 1500);
+        }
+        rec_shown = kk.rec_length;
+    }
     if (kk.ripple != ripple_shown) { ripple_shown = kk.ripple; if (!booting) say(kk.ripple ? "RIPPLE LIGHTS ON" : "RIPPLE LIGHTS OFF", 1500); }
     follow_notes();
     if (kk.page == KK_PAGE_PATCH) refresh_patch_name();

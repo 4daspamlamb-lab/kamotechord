@@ -25,6 +25,7 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
     uint8_t ripple;                          /* SMK-37 ripple lights (3 x SEQ REC), not saved */
+    uint8_t rec_length;                      /* 0.91: fixed record length 0 off, 1..4 = 1 / 2 / 4 / 8 bars (saved) */
     uint8_t arp_page_used;                   /* 0.82: a knob turned while ARP held: close the page on release */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
@@ -76,6 +77,8 @@ unsigned kk_velocity_override(void);   /* 0 = natural, else 1..127 */
  * most sensitive (light hits give high velocity). Endpoints are kept. */
 enum { KK_PAD_SENSITIVITY_MAX = 10, KK_PAD_SENSITIVITY_DEFAULT = 10 };   /* 0.80: 10 = MAX */
 unsigned kk_pad_curve(unsigned velocity);
+unsigned kk_rec_bars(void);                         /* 0.91: fixed record length in bars, 0 = off */
+unsigned kk_step_pads_held(void);                   /* 0.91: Step Mode: a step pad is held */
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);
 unsigned kk_step_drum_held(void);

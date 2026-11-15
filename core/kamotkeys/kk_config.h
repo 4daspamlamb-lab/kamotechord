@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.90" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.91" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -101,6 +101,7 @@ enum {
     KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
     KK_STEP_KEYOCT_CC = 103, KK_STEP_KEYS_CC = 104, KK_STEP_BAR_CC = 105, KK_STEP_BARS_CC = 106,
     KK_STEP_INFO_LAST = 106,
+    KK_STEP_EDIT_CC = 20,     /* 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats, 64 + knob steps */
     KK_STEP_SYNC_CC = 127
 };
 /* Clipboard kinds (0.65): clip (A = track, B = scene), step (A = step, B = page),
@@ -143,7 +144,10 @@ enum {
     KK_CC_MUTE = 48,
     KK_CC_ARM = 49,
     KK_CC_QUANTIZE = 50,
-    KK_CC_ARM_ADD = 51,       /* 0.90: PATCH + top G: arm without disarming the others */
+    KK_CC_ARM_ADD = 51,
+    KK_CC_CLIP_DUPLICATE = 52, /* 0.91: SHIFT + A: duplicate the selected clip (slot below) */
+    KK_CC_LOOP_DOUBLE = 53,   /* 0.91: SHIFT + B: double the selected clip's loop */
+    KK_CC_REC_LENGTH = 54,    /* 0.91: fixed record length in bars (0 = off), sent before KNOB BANK */       /* 0.90: PATCH + top G: arm without disarming the others */
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

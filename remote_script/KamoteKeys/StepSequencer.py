@@ -562,7 +562,9 @@ class StepSequencer(object):
                 self._send(cc, value)
 
     # ------------------------------------------------------------- input
-    def pad(self, index, pressed):
+    def pad(self, index, pressed, velocity=0):
+        if pressed and velocity:
+            self._velocity = velocity            # 0.91: new steps take the pad's velocity (Fader 1)
         if not self._active:
             return
         if not pressed and self._bar_delete is not None and self._bar_delete[0] == index + 1:
@@ -737,6 +739,44 @@ class StepSequencer(object):
         except Exception as error:
             self._log('cannot tie: %s' % error)
         self._dirty = True
+
+    def knob(self, which, delta):
+        """0.91: hold step pads + E1 / E2 / E3 = their velocity / length /
+        repeats. Nothing held: E2 sets the length of new steps."""
+        if not self._active or not delta:
+            return
+        targets = list(self._held)
+        if not targets:
+            if which == 1:
+                self._note_len = max(1, min(16, self._note_len + (1 if delta > 0 else -1)))
+                self._say('new steps: length %d/16' % self._note_len)
+            return
+        if not self._ensure_clip():
+            return
+        try:
+            for index in targets:
+                t, step = self._step_time(index), self._step()
+                notes = list(self._clip.get_notes_extended(self._pitch, 1, t - EPS, step))
+                if not notes:
+                    continue
+                if which == 0:
+                    for n in notes:
+                        n.velocity = max(1, min(127, int(n.velocity) + 4 * delta))
+                    self._clip.apply_note_modifications(notes)
+                    self._say('velocity %d' % int(notes[0].velocity))
+                elif which == 1:
+                    for n in notes:
+                        n.duration = max(step / 4.0, min(self._length() - (n.start_time - self._start()), n.duration + step * delta))
+                    self._clip.apply_note_modifications(notes)
+                    self._say('length %.2f steps' % (notes[0].duration / step))
+                else:
+                    hits = max(1, min(3, len(notes) + (1 if delta > 0 else -1)))
+                    self._ratchet(index, hits)
+                self._consumed.add(index)
+        except Exception as error:
+            self._log('cannot edit the step: %s' % error)
+        self._dirty = True
+        self.update()
 
     def _set_velocity(self, velocity):
         targets = [i for i in self._held]

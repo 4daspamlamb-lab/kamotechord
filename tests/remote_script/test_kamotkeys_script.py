@@ -75,6 +75,7 @@ def deliver(msg):
 class Clip(object):
     def __init__(self, slot): self.slot = slot; self.is_playing = False; self.is_triggered = False; self.is_recording = False
     def quantize(self, grid, amount): self.slot.track.log.append(('quantize', grid, amount))
+    def duplicate_loop(self): self.slot.track.log.append('double loop')
     def fire(self):
         if self.is_recording: self.is_recording = False; self.is_playing = True; self.slot.track.log.append('finish')
         else: self.is_triggered = True; self.slot.track.log.append('fire')
@@ -83,9 +84,9 @@ class Slot(object):
     def __init__(self, track): self.track = track; self.clip = None; self.is_triggered = False; self.will_record_on_start = False
     @property
     def has_clip(self): return self.clip is not None
-    def fire(self):
+    def fire(self, record_length=None):
         if self.clip: self.clip.fire()
-        else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record')
+        else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record' if record_length is None else ('record', record_length))
     @property
     def canonical_parent(self): return self.track
     def stop(self): self.track.log.append('stop')
@@ -129,7 +130,7 @@ class Song(object):
     def __init__(self, n):
         self._tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
         self.scenes = [Scene(self) for _ in range(4)]; self.view = View(); self.view.selected_scene = self.scenes[0]
-    is_playing = False; metronome = False; tempo = 120.0
+    is_playing = False; metronome = False; tempo = 120.0; signature_numerator = 4; signature_denominator = 4
     def continue_playing(self): self.calls.append('continue'); self.is_playing = True
     def start_playing(self): self.calls.append('start')
     def stop_playing(self): self.calls.append('stop')
@@ -224,6 +225,18 @@ class T(unittest.TestCase):
         deliver((0xBE, 32, 127)); deliver((0xBE, 28, 127))       # track right, scene down
         self.s.update_display()
         self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
+
+    def test_fixed_length_duplicate_double(self):
+        press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))
+        t = self.song._tracks[1]; v = self.song.view
+        v.selected_track = self.song.visible_tracks[1]; v.highlighted_clip_slot = t.clip_slots[0]; t.arm = True
+        deliver((0xBE, 54, 4)); press(25)                                              # 4 bars, KNOB BANK
+        self.assertIn(('record', 16.0), t.log); self.assertFalse(self.song.session_record)
+        deliver((0xBE, 54, 0)); t.clip_slots[1].clip = None; v.highlighted_clip_slot = t.clip_slots[1]; press(25)
+        self.assertTrue(self.song.session_record); press(25)                            # length off: normal Session Record
+        slot = t.clip_slots[0]; slot.clip = Clip(slot); t.clip_slots[1].clip = Clip(t.clip_slots[1]); v.highlighted_clip_slot = slot
+        press(52); self.assertIs(t.clip_slots[2].clip, slot.clip); self.assertIs(v.highlighted_clip_slot, t.clip_slots[2])   # next empty slot
+        press(53); self.assertIn('double loop', t.log)
 
     def test_arm_only_selected_unless_patch(self):
         press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))
@@ -594,6 +607,15 @@ class StepTest(unittest.TestCase):
         c = self.codes(); self.assertEqual(len(c), 16)
         self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
         self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
+
+    def test_hold_step_knobs_edit_it(self):
+        self.mode(True); deliver((0x9D, 36, 90)); deliver((0x8D, 36, 0))           # pad velocity -> new step velocity
+        self.assertEqual([n.velocity for n in self.clip.notes], [90])
+        self.pad(0); deliver((0xBD, 20, 64 - 5)); deliver((0xBD, 21, 65)); self.pad(0, False)
+        n = self.clip.notes[0]; self.assertEqual((n.velocity, n.duration), (70, 0.5))   # E1 -20, E2 +1 step; still on
+        self.pad(0); deliver((0xBD, 22, 65)); self.pad(0, False)
+        self.assertEqual(len(self.clip.notes), 2)                                       # E3: repeats 2x
+        deliver((0xBD, 21, 65)); self.assertEqual(self.s._step._note_len, 2)             # nothing held: new-step length
 
     def test_steps_write_real_notes(self):
         self.mode(True); self.tap(0); self.tap(4)

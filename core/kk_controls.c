@@ -166,12 +166,17 @@ static void intent(unsigned id, struct source *s)
         return;
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_MOVE_KEY)) return;   /* no note */
-    if (id < KK_KEYS && kk.mode != KK_MODE_CLIP && kk.mode != KK_MODE_STEP && kk_top_key_cc(id) >= 0) {
-        /* 0.86: top-octave Live keys (solo, finish, play, delete, mute, arm, quantize). */
+    unsigned shifted = KK_TOP_SHIFT_KEY < KK_KEYS && id != KK_TOP_SHIFT_KEY && sources[KK_TOP_SHIFT_KEY].held && kk_top_shift_cc(id) >= 0;
+    if (id < KK_KEYS && (kk_top_key_cc(id) >= 0 || shifted)) {
+        /* 0.86 top-octave Live keys; 0.91: the same strip in every mode. */
         int cc = kk_top_key_cc(id);
-        /* 0.88: top C held = SHIFT: G# / A# scene up / down, F / G track left / right. */
-        if (KK_TOP_SHIFT_KEY < KK_KEYS && id != KK_TOP_SHIFT_KEY && sources[KK_TOP_SHIFT_KEY].held && kk_top_shift_cc(id) >= 0)
-            cc = kk_top_shift_cc(id);
+        /* 0.88: top C held = SHIFT (scenes, tracks, scene launch, duplicate, double, fixed length). */
+        if (shifted) cc = kk_top_shift_cc(id);
+        /* 0.91 Clip Mode: MOVE (low E) held + G# / A# = move the selected clip up / down. */
+        if (kk.mode == KK_MODE_CLIP && (unsigned)KK_CLIP_MOVE_KEY < (unsigned)KK_KEYS && ((kk.keys >> (KK_CLIP_MOVE_KEY % 64U)) & 1U)) {
+            if (kk_top_shift_cc(id) == KK_CC_SCENE_UP) cc = KK_CC_CLIP_UP;
+            else if (kk_top_shift_cc(id) == KK_CC_SCENE_DOWN) cc = KK_CC_CLIP_DOWN;
+        }
         if (cc == KK_CC_ARM && (kk.buttons & (1U << KK_BTN_PATCH))) cc = KK_CC_ARM_ADD;   /* 0.90 */
         if (cc > 0) { s->modifier = 0x4000U; s->channel = KK_CH_ABLETON; s->notes[0] = (uint8_t)cc; }
         return;
@@ -472,6 +477,13 @@ static unsigned animation_speed(void)
 #include "kamotkeys/kk_ctl_buttons.inc"
 #include "kamotkeys/kk_ctl_keys.inc"
 /* --------------------------------------------------------------- query */
+unsigned kk_rec_bars(void) { return kk.rec_length ? 1U << (kk.rec_length - 1U) : 0; }
+unsigned kk_step_pads_held(void)
+{
+    for (unsigned p = 0; p < KK_PADS; ++p)
+        if (sources[PAD_SOURCE + p].held && sources[PAD_SOURCE + p].channel == KK_CH_STEP) return 1;
+    return 0;
+}
 unsigned kk_pad_lit(unsigned pad)
 {
     if (pad >= KK_PADS) return 0;
