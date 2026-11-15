@@ -25,7 +25,7 @@ void test_ripple(void)
     CHECK(host_rgb[1] != 0 && host_rgb[1] != idle, "ripple reaches the neighbouring pad (%06x)", host_rgb[1]);
     pad(1, 0); frames(60, 25);
     CHECK(host_rgb[6] == idle, "ripple fades away (%06x vs %06x)", host_rgb[6], idle);
-    host_clear(); key(36, 100); key(36, 0);
+    host_clear(); key(24, 100); key(24, 0);
     CHECK(out_count(USB, ON1, -1) == 1, "keys still play with ripples on");
     frames(150, 10); show_on(); show_off(); show_on(); show_off(); show_on(); show_off();
     CHECK(!kk.ripple, "three quick starts again -> off");
@@ -239,4 +239,52 @@ void test_bluetooth(void)
     tap(KK_BTN_CHORD);
     { uint8_t m[3] = {0xBF, KK_CLIP_HELLO_CC, 1}; fm1_app_midi_received(1, m, 3); }
     CHECK(kk_midi_host_port() == 1, "script greets on USB again: back to USB");
+}
+
+/* 0.86: top-octave Live keys, track auto-repeat, Pad Scale octave lighting, key / scale saved. */
+void test_top_keys_and_key_memory(void)
+{
+    boot();
+    static const struct { uint8_t key, cc; } map[] = {
+        {34, KK_CC_SOLO}, {32, KK_CC_FINISH}, {30, KK_CC_CLIP_PLAY}, {36, KK_CC_FINISH_RECORD},
+        {35, KK_CC_CLIP_DELETE}, {33, KK_CC_MUTE}, {31, KK_CC_ARM}, {28, KK_CC_QUANTIZE}};
+    for (unsigned i = 0; i < sizeof map / sizeof map[0]; ++i) {
+        host_clear(); key(map[i].key, 100); key(map[i].key, 0);
+        CHECK(out_count(USB, CC15, map[i].cc) == 2 && out_count(USB, ON1, -1) == 0,
+              "Normal: top key %u -> CC %u press + release, no note", map[i].key, map[i].cc);
+    }
+    host_clear(); key(29, 100); key(29, 0); CHECK(host_out_n == 0, "top F: silent");
+    host_clear(); key(25, 100); key(25, 0); CHECK(out_count(USB, ON1, -1) == 1, "top C# still plays");
+    tap(KK_BTN_SEQ); host_clear(); key(33, 100); key(33, 0);
+    CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "Key Scale: top A = MUTE too"); tap(KK_BTN_SEQ);
+    tap(KK_BTN_REC); host_clear(); key(33, 100); key(33, 0);
+    CHECK(out_count(USB, CC15, KK_CC_MUTE) == 0 && out_count(USB, 0x9D, -1) == 1, "Step Mode keeps its top keys"); tap(KK_BTN_REC);
+    /* Clip Mode: holding top B repeats the track move every 0.5 s. */
+    tap(KK_BTN_CHORD); host_clear(); key(35, 100);
+    CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 1, "top B press: one track right");
+    host_ms += 400; frames(2, 1); CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 1, "no repeat before 0.5 s");
+    host_ms += 200; frames(2, 1); host_ms += 500; frames(2, 1); host_ms += 500; frames(2, 1);
+    unsigned presses = 0;
+    for (unsigned i = 0; i < host_out_n; ++i) presses += host_out[i].b[0] == CC15 && host_out[i].b[1] == KK_CC_TRACKS_RIGHT && host_out[i].b[2] == 127;
+    CHECK(presses == 4, "held 1.6 s: 3 repeats (%u presses)", presses);
+    key(35, 0); host_clear(); host_ms += 600; frames(2, 1); CHECK(out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 0, "released: stops");
+    tap(KK_BTN_CHORD);
+    /* Pad Scale: a key lights the pads with the same note in any octave. */
+    kk.scale.scale = 0; kk.scale.root = 0; tap(KK_BTN_SCALE); settle();
+    unsigned lit_before = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit_before += kk_pad_lit(p);
+    key(12, 100);   /* a C, octaves below the pads */
+    unsigned lit = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit += kk_pad_lit(p);
+    CHECK(lit_before == 0 && lit >= 2, "Pad Scale: playing C lights the C pads (%u)", lit);
+    key(12, 0); tap(KK_BTN_SCALE);
+    /* Key and scale are saved (SMK-37). */
+    kk.scale.scale = 10; kk.scale.root = 9;
+    uint8_t saved[16]; kamotkeys_settings_read(saved);
+    kk.scale.scale = 0; kk.scale.root = 0;
+    CHECK(kamotkeys_settings_apply(saved) == 0 && kk.scale.scale == 10 && kk.scale.root == 9, "A Minor Pentatonic restored");
+    kk.scale.root = 11; kamotkeys_settings_read(saved); kk.scale.root = 0;
+    CHECK(kamotkeys_settings_apply(saved) == 0 && kk.scale.root == 11, "root B (bit 3) restored");
+    saved[3] &= 0x3F; saved[4] = 0; kk.scale.scale = 3;
+    CHECK(kamotkeys_settings_apply(saved) == 0 && kk.scale.scale == 3, "older record: key / scale untouched");
+    saved[3] |= 0x80; saved[4] = 30; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid scale rejected");
+    kk.scale.scale = 0; kk.scale.root = 0;
 }

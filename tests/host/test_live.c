@@ -63,9 +63,9 @@ void test_031(void)
     CHECK(after_pad == 1 && host_rgb_changes == 2, "key presses change no pad colour (%u, %u)", after_pad, host_rgb_changes);
 
     /* Spare pads are not lit by chords from the keys (the 0.30 'random lights'). */
-    pad(1, 100); key(31, 100); settle();   /* G5 major: G B D = 79 83 86 -> 86 is spare pad 7's note */
+    kk_set_octave(1); pad(1, 100); key(19, 100); settle();   /* G5 major: G B D = 79 83 86 -> 86 is spare pad 7's note */
     CHECK(kk_midi_count(0, 86) == 1 && !kk_pad_lit(6), "spare pad 7 stays idle while a chord sounds 86");
-    key(31, 0); pad(1, 0);
+    key(19, 0); pad(1, 0); kk_set_octave(0);
 
     /* Clip Mode. */
     host_clear(); tap(KK_BTN_CHORD);

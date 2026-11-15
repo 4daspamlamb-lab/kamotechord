@@ -74,6 +74,7 @@ def deliver(msg):
 
 class Clip(object):
     def __init__(self, slot): self.slot = slot; self.is_playing = False; self.is_triggered = False; self.is_recording = False
+    def quantize(self, grid, amount): self.slot.track.log.append(('quantize', grid, amount))
     def fire(self):
         if self.is_recording: self.is_recording = False; self.is_playing = True; self.slot.track.log.append('finish')
         else: self.is_triggered = True; self.slot.track.log.append('fire')
@@ -85,6 +86,8 @@ class Slot(object):
     def fire(self):
         if self.clip: self.clip.fire()
         else: self.is_triggered = True; self.will_record_on_start = True; self.track.log.append('record')
+    @property
+    def canonical_parent(self): return self.track
     def stop(self): self.track.log.append('stop')
     def delete_clip(self): self.clip = None; self.track.log.append('delete')
     def fire_logged(self): self.track.log.append('fire')
@@ -103,7 +106,7 @@ class Chain(object):
     def __init__(self, devices): self.devices = devices
 
 class Track(object):
-    def __init__(self): self._live_ptr = id(self); self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
+    def __init__(self): self._live_ptr = id(self); self.name = 'Track'; self.arm = False; self.solo = False; self.mute = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
 
 class Scene(object):
     def __init__(self, song): self.song = song
@@ -219,6 +222,28 @@ class T(unittest.TestCase):
         deliver((0xBE, 32, 127)); deliver((0xBE, 28, 127))       # track right, scene down
         self.s.update_display()
         self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
+
+    def test_top_keys_act_on_selected_track_and_clip(self):
+        press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))
+        t = self.song._tracks[1]; v = self.song.view
+        v.selected_track = self.song.visible_tracks[1]; slot = t.clip_slots[0]; v.highlighted_clip_slot = slot
+        press(44); self.assertTrue(t.solo); press(44); self.assertFalse(t.solo)          # A# SOLO
+        press(48); self.assertTrue(t.mute)                                              # A MUTE
+        press(49); self.assertTrue(t.arm); press(49); self.assertFalse(t.arm)           # G ARM
+        press(45); self.assertNotIn('record', t.log)                                    # F# on an empty, unarmed slot: nothing
+        slot.clip = Clip(slot); press(45); self.assertIn('fire', t.log)                 # F# launches
+        slot.clip.is_playing = True; press(45); self.assertIn('stop', t.log)            # ... and stops
+        press(50); self.assertIn(('quantize', 5, 1.0), t.log)                           # E QUANTIZE (1/16)
+        press(47); self.assertIsNone(slot.clip)                                         # B DELETE
+
+    def test_finish_and_record_next(self):
+        t, n = self.song._tracks[1], self.song._tracks[2]; v = self.song.view
+        v.selected_track = self.song.visible_tracks[1]; v.highlighted_clip_slot = t.clip_slots[0]
+        rec = t.clip_slots[0]; rec.clip = Clip(rec); rec.clip.is_recording = True
+        n.clip_slots[0].clip = Clip(n.clip_slots[0])                                    # next track's slot 1 is taken
+        deliver((0xBE, 46, 127)); deliver((0xBE, 46, 0))                                 # top C
+        self.assertIn('finish', t.log); self.assertTrue(n.arm)
+        self.assertIn('record', n.log); self.assertTrue(n.clip_slots[1].is_triggered)   # records in the next empty slot
 
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)

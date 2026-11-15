@@ -166,6 +166,12 @@ static void intent(unsigned id, struct source *s)
         return;
     }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_MOVE_KEY)) return;   /* no note */
+    if (id < KK_KEYS && kk.mode != KK_MODE_CLIP && kk.mode != KK_MODE_STEP && kk_top_key_cc(id) >= 0) {
+        /* 0.86: top-octave Live keys (solo, finish, play, delete, mute, arm, quantize). */
+        int cc = kk_top_key_cc(id);
+        if (cc > 0) { s->modifier = 0x4000U; s->channel = KK_CH_ABLETON; s->notes[0] = (uint8_t)cc; }
+        return;
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
         s->modifier = 0x4000U; s->channel = KK_CH_ABLETON;   /* 0.66: move the 8-track view */
         s->notes[0] = (uint8_t)(id == KK_TRACKS_LEFT_KEY ? KK_CC_TRACKS_LEFT : KK_CC_TRACKS_RIGHT);
@@ -481,7 +487,12 @@ unsigned kk_pad_lit(unsigned pad)
      * notes coming back from the host (Ableton). */
     unsigned channel;
     int note = kk_pad_note(pad, &channel);
-    return note >= 0 && (kk_midi_count(channel, (unsigned)note) || kk_midi_remote(channel, (unsigned)note));
+    if (note < 0) return 0;
+    if (kk_midi_count(channel, (unsigned)note) || kk_midi_remote(channel, (unsigned)note)) return 1;
+    if (kk.mode == KK_MODE_PAD_SCALE)   /* 0.86: the same note in any octave (keys sit lower than the pads) */
+        for (unsigned n = (unsigned)note % 12U; n < 128; n += 12)
+            if (kk_midi_count(channel, n) || kk_midi_remote(channel, n)) return 1;
+    return 0;
 }
 
 #include "kamotkeys/kk_ctl_engine.inc"

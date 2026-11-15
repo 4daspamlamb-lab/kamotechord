@@ -84,6 +84,26 @@ static inline int kk_step_key_function(unsigned key)
  * C = the first drum of the bank (36 = kick). Each plays its sound and
  * selects it for the steps. -1 = not a drum key. */
 static inline int kk_step_drum_key(unsigned key) { return key >= 12 && key <= 28 ? (int)key - 12 : -1; }   /* 0.63: C2..E3 */
+/* 0.86: top-octave Live keys outside Clip and Step Mode (the selected track /
+ * clip in Live): -1 = a normal key, 0 = silent, else the channel 15 CC sent
+ * (127 on press, 0 on release). Black from the right: A# SOLO, G# FINISH &
+ * NEXT, F# PLAY / STOP; white from the right: C FINISH & RECORD NEXT,
+ * B DELETE, A MUTE, G ARM, F (nothing), E QUANTIZE. */
+static inline int kk_top_key_cc(unsigned key)
+{
+    switch (key) {
+    case 34: return KK_CC_SOLO;
+    case 32: return KK_CC_FINISH;
+    case 30: return KK_CC_CLIP_PLAY;
+    case 36: return KK_CC_FINISH_RECORD;
+    case 35: return KK_CC_CLIP_DELETE;
+    case 33: return KK_CC_MUTE;
+    case 31: return KK_CC_ARM;
+    case 29: return 0;
+    case 28: return KK_CC_QUANTIZE;
+    default: return -1;
+    }
+}
 
 /* 16 RGB pads (ripple lights, light shows). */
 #define KK_HAS_RGB_PADS 1

@@ -145,6 +145,9 @@ static void source_press(unsigned id, unsigned velocity)
         ((id < KK_KEYS && kk_step_drum_key(id) >= 0) || (id >= PAD_SOURCE && s->channel == KK_CH_DRUM)))
         kk_midi_tap_set(KK_CH_STEP_SELECT, s->notes, s->count);   /* the script selects this pitch / chord */
     if (id >= PAD_SOURCE && kk.mode == KK_MODE_STEP && held_repeat()) audition_start_hits(held_repeat(), fm1_millis());
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_TRACKS_LEFT_KEY || id == KK_TRACKS_RIGHT_KEY)) {
+        track_hold_id = (uint8_t)id; track_hold_next = fm1_millis() + 500U;   /* 0.86: auto-repeat while held */
+    }
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {
         /* 0.75 PLAY key: pads select by default; hold PLAY + clip = launch it, or
          * tap PLAY and the next clip pressed is launched. Tapping again cancels. */

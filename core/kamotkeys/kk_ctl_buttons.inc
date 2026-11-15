@@ -10,6 +10,8 @@ static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
 #ifndef KK_DEVICE_FM1
 static uint8_t chord_used, chord_back, chord_step_from;   /* 0.80: momentary Clip Mode */
 #endif
+static uint8_t track_hold_id = 255;                  /* 0.86: top A / B held in Clip Mode */
+static uint32_t track_hold_next;
 static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
 static uint32_t show_since, show_taps[3];           /* 0.77: last three light-show starts */
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
@@ -162,6 +164,15 @@ static void button(unsigned id, unsigned down, uint32_t now)
 /* Long presses are detected while still held. */
 static void long_presses(uint32_t now)
 {
+    /* 0.86: holding top A / B in Clip Mode moves one more track every 0.5 s. */
+    if (track_hold_id < KK_KEYS) {
+        if (!sources[track_hold_id].held || kk.mode != KK_MODE_CLIP) track_hold_id = 255;
+        else if ((int32_t)(now - track_hold_next) >= 0) {
+            unsigned cc = track_hold_id == KK_TRACKS_LEFT_KEY ? KK_CC_TRACKS_LEFT : KK_CC_TRACKS_RIGHT;
+            ableton(cc, 0); ableton(cc, 127);
+            track_hold_next = now + 500U;
+        }
+    }
     static const uint8_t ids[2] = {KK_BTN_ARP, KK_BTN_BT};
     static const uint8_t pages[2] = {KK_PAGE_ARP, KK_PAGE_DIAG};
     static const uint16_t limits[2] = {600, 1500};

@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.85" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.86" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -135,6 +135,13 @@ enum {
     KK_CC_FX_DELAY = 41,   /* relative: value = 64 + knob steps */
     KK_CC_FX_REVERB = 42,
     KK_CC_FX_DECAY = 43,
+    KK_CC_SOLO = 44,          /* 0.86 top-octave Live keys (selected track / clip) */
+    KK_CC_CLIP_PLAY = 45,     /* launch / stop the selected clip */
+    KK_CC_FINISH_RECORD = 46, /* finish, select + arm the next track, record there */
+    KK_CC_CLIP_DELETE = 47,
+    KK_CC_MUTE = 48,
+    KK_CC_ARM = 49,
+    KK_CC_QUANTIZE = 50,
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

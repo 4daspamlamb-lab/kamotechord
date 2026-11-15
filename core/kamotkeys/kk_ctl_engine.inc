@@ -28,12 +28,23 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     d[10] = kk.scale.scale; d[14] = kk.scale.root; d[15] = kk.velocity;
 #else
     d[10] = kk.repeat_division; d[14] = kk.rgb_timing; d[15] = kk.pad_sensitivity;
+    /* 0.86: key and scale (E2 / E3) in the byte LATCH used: d[4] = scale |
+     * root bits 0-2 << 5; d[3] bit 6 = root bit 3, bit 7 = "key / scale saved". */
+    d[4] = (uint8_t)(kk.scale.scale | (kk.scale.root & 7U) << 5);
+    d[3] = (uint8_t)(d[3] | 0x80U | ((kk.scale.root >> 3) & 1U) << 6);
 #endif
 }
 int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
 {
     unsigned bpm = d[1] | (unsigned)d[2] << 8;
-    if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || d[3] > 63 || d[4] >= KK_ARP_MODES ||
+#ifdef KK_DEVICE_FM1
+    unsigned keyed = 0;
+#else
+    unsigned keyed = d[3] & 0x80U, key_root = (d[4] >> 5) | ((d[3] >> 6) & 1U) << 3;   /* 0.86 */
+    if (keyed && ((d[4] & 31U) >= KK_SCALES || key_root > 11)) return -1;
+#endif
+    if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || (!keyed && d[3] > 63) ||
+        (!keyed && d[4] >= KK_ARP_MODES) ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
         d[9] < 1 || d[9] > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || d[13] > 1)
         return -1;
@@ -53,10 +64,11 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     kk.rgb_timing = d[14]; smk37_rgb_timing(kk.rgb_timing);
     kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
     if (kk.pad_sensitivity == 7) kk.pad_sensitivity = KK_PAD_SENSITIVITY_MAX;   /* 0.80: the old maximum becomes the new MAX */
+    if (keyed) { kk.scale.scale = (uint8_t)(d[4] & 31U); kk.scale.root = (uint8_t)key_root; }   /* 0.86 */
 #endif
     kk.clip_play = 0;
     kk_set_brightness(15U - ((d[3] >> 2) & 15U));
-    if (kk.arp_on != (d[3] & 1U)) { kk.arp_on = d[3] & 1U; reroute_all(); }   /* bit 1: old select/play switch, ignored */
+    if (kk.arp_on != (d[3] & 1U)) { kk.arp_on = d[3] & 1U; reroute_all(); }   /* bit 1: old select/play switch, ignored; bits 6-7: key (0.86) */
     kk_perform_guard();
     ++kk.edit_revision;
     return 0;
