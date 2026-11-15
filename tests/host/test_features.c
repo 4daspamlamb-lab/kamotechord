@@ -246,14 +246,14 @@ void test_top_keys_and_key_memory(void)
 {
     boot();
     static const struct { uint8_t key, cc; } map[] = {
-        {34, KK_CC_SOLO}, {32, KK_CC_FINISH}, {30, KK_CC_CLIP_PLAY}, {36, KK_CC_FINISH_RECORD},
-        {35, KK_CC_CLIP_DELETE}, {33, KK_CC_MUTE}, {31, KK_CC_ARM}, {28, KK_CC_QUANTIZE}};
+        {34, KK_CC_CLIP_DELETE}, {32, KK_CC_FINISH}, {30, KK_CC_CLIP_PLAY}, {36, KK_CC_FINISH_RECORD},
+        {35, KK_CC_SOLO}, {33, KK_CC_MUTE}, {31, KK_CC_ARM}, {29, KK_CC_QUANTIZE}};   /* 0.87 order */
     for (unsigned i = 0; i < sizeof map / sizeof map[0]; ++i) {
         host_clear(); key(map[i].key, 100); key(map[i].key, 0);
         CHECK(out_count(USB, CC15, map[i].cc) == 2 && out_count(USB, ON1, -1) == 0,
               "Normal: top key %u -> CC %u press + release, no note", map[i].key, map[i].cc);
     }
-    host_clear(); key(29, 100); key(29, 0); CHECK(host_out_n == 0, "top F: silent");
+    host_clear(); key(28, 100); key(28, 0); CHECK(out_count(USB, ON1, -1) == 1, "top E plays a note again (0.87)");
     host_clear(); key(25, 100); key(25, 0); CHECK(out_count(USB, ON1, -1) == 1, "top C# still plays");
     tap(KK_BTN_SEQ); host_clear(); key(33, 100); key(33, 0);
     CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "Key Scale: top A = MUTE too"); tap(KK_BTN_SEQ);
