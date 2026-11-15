@@ -284,7 +284,7 @@ void test_display(void)
     show_on(); fader(0, 70);
     for (unsigned p = 0; p < 8; ++p) {
         frames(60, 5); char name[32]; snprintf(name, sizeof name, "15_lightshow_%u", kk.anim_pattern + 1); shot(name);
-        btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_FADER_BANK, 1);
+        show_off(); host_ms += 1300; show_on();   /* 0.92: GLOBE again = next pattern (not 3 quick presses) */
     }
     show_off();
 }

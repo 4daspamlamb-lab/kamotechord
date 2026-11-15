@@ -68,13 +68,13 @@ void test_buttons(void)
 {
     boot();
     static const struct { unsigned id, cc; } momentary[] = {
-        {KK_BTN_PLAY, KK_CC_FINISH}, {KK_BTN_GLOBE, 21}, {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
+        {KK_BTN_PARA, 23}, {KK_BTN_RIGHT, 27}};
     /* HOME (LEFT) = Undo on release (0.51: it doubles as a shift for PARA). */
     host_clear(); btn(KK_BTN_LEFT, 1);
     CHECK(out_count(USB, CC15, 24) == 0 && kk_led_button(KK_BTN_LEFT) == 2, "HOME press: lit, Undo waits for release");
     btn(KK_BTN_LEFT, 0);
     CHECK(out_count(USB, CC15, 24) == 2 && last_out(USB, CC15, 0) == 24 && last_out(USB, CC15, 1) == (24 | 127 << 8), "HOME release -> Undo 127/0");
-    for (unsigned i = 0; i < 4; ++i) {
+    for (unsigned i = 0; i < 2; ++i) {
         host_clear(); btn(momentary[i].id, 1);
         CHECK(out_count(USB, CC15, momentary[i].cc) == 1 && last_out(USB, CC15, 0) == (int)(momentary[i].cc | 127 << 8), "press cc %u", momentary[i].cc);
         CHECK(kk_led_button(momentary[i].id) == 2, "momentary bright %u", momentary[i].id);
@@ -93,8 +93,10 @@ void test_buttons(void)
     CHECK(out_count(USB, CC15, 22) == 0 && kk_led_button(KK_BTN_FADER_BANK) == 2, "capture press: lit, waits for release");
     btn(KK_BTN_FADER_BANK, 0);
     CHECK(out_count(USB, CC15, 22) == 2 && last_out(USB, CC15, 0) == 22, "capture release -> 127/0");
-    host_clear(); show_on(); show_off();
-    CHECK(out_count(USB, CC15, 22) == 0 && out_count(USB, CC15, 25) == 0, "KNOB + FADER BANK together send neither");
+    host_clear(); show_on();
+    CHECK(kk.anim_active && host_out_n == 0, "0.92: GLOBE held = light show, no Ableton message");
+    show_off(); CHECK(!kk.anim_active, "GLOBE released: show ends");
+    host_clear(); btn(KK_BTN_PLAY, 1); btn(KK_BTN_PLAY, 0); CHECK(host_out_n == 0, "0.92: SEQ PLAY does nothing");
     /* 0.51: PARA = Play/Pause (CC 23); HOME (LEFT) + PARA = metronome (CC 26),
      * and HOME then sends no Undo. */
     host_clear(); unsigned page = kk.page, mode = kk.mode;

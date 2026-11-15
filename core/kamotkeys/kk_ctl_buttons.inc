@@ -67,6 +67,38 @@ static void button(unsigned id, unsigned down, uint32_t now)
         } else if (held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
 #endif
         return;
+#ifdef KK_HAS_RGB_PADS
+    /* 0.92 SMK-37: SEQ PLAY does nothing (finish & next = top G#); GLOBE is the
+     * light-show (RGB) button: held = light show, each new press = next
+     * pattern, three quick presses = ripple lights on / off. Stop = PARA. */
+    case KK_BTN_PLAY: return;
+    case KK_BTN_GLOBE:
+        if (down) {
+            show_combo = 1; show_since = now; show_ripple_done = 0;
+            show_taps[0] = show_taps[1]; show_taps[1] = show_taps[2]; show_taps[2] = now ? now : 1;
+            if (show_taps[0] && now - show_taps[0] <= 1200U) {
+                kk.ripple = !kk.ripple; show_ripple_done = 1;
+                if (kk.ripple) kk_led_ripple(2, 0, 127);       /* giant ripple from the middle */
+                show_taps[0] = show_taps[1] = show_taps[2] = 0;
+                kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 2) % KK_ANIMATIONS);   /* undo the quick taps' pattern steps */
+                kk.anim_active = 0; ++kk.edit_revision;
+                return;
+            }
+            kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);
+            consume(PAD_SOURCE, SOURCES);              /* pads stop making sound */
+            kk.anim_active = 1; kk.anim_phase = 0;
+            mods_refresh();
+        } else { kk.anim_active = 0; show_combo = 0; }
+        return;
+    case KK_BTN_FADER_BANK:
+    case KK_BTN_KNOB_BANK: {
+        if (down) return;                              /* sent on release, as before */
+        unsigned cc = id == KK_BTN_KNOB_BANK ? KK_CC_RECORD : KK_CC_CAPTURE;
+        if (cc == KK_CC_RECORD) ableton(KK_CC_REC_LENGTH, kk_rec_bars());   /* 0.91: fixed length (0 = off) first */
+        ableton(cc, 127); ableton(cc, 0);
+        return;
+    }
+#else
     case KK_BTN_PLAY: ableton(KK_CC_FINISH, down ? 127 : 0); return;   /* 0.77: finish the clip, next track */
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
     /* 0.59: KNOB BANK + FADER BANK held together = the light show (each new
@@ -108,6 +140,7 @@ static void button(unsigned id, unsigned down, uint32_t now)
         ableton(cc, 127); ableton(cc, 0);
         return;
     }
+#endif
     /* HOME (LEFT): Undo, sent on release unless PARA was pressed while it was
      * held (HOME + PARA = metronome). */
     case KK_BTN_LEFT:

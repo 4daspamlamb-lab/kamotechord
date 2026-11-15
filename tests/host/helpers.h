@@ -31,8 +31,8 @@ static inline void pad(unsigned n, unsigned vel) { smk37_control_event(SMK37_PAD
 static inline void btn(unsigned id, unsigned down) { host_ms += 1; smk37_control_event(SMK37_BUTTON, id, (int)down); groove_midi_poll(); }
 static inline void tap(unsigned id) { btn(id, 1); btn(id, 0); }
 /* 0.59: KNOB BANK + FADER BANK held together = light show. */
-static inline void show_on(void) { btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); }
-static inline void show_off(void) { btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_KNOB_BANK, 0); }
+static inline void show_on(void) { btn(KK_BTN_GLOBE, 1); }    /* 0.92: GLOBE = light show */
+static inline void show_off(void) { btn(KK_BTN_GLOBE, 0); }
 static inline void fader(unsigned id, unsigned v) { smk37_control_event(SMK37_FADER, id, (int)v); }
 static inline void pedal(unsigned v) { smk37_control_event(SMK37_PEDAL, 0, (int)v); groove_midi_poll(); }
 static inline void boot(void)
