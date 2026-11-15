@@ -236,15 +236,6 @@ class T(unittest.TestCase):
         press(50); self.assertIn(('quantize', 5, 1.0), t.log)                           # E QUANTIZE (1/16)
         press(47); self.assertIsNone(slot.clip)                                         # B DELETE
 
-    def test_finish_and_record_next(self):
-        t, n = self.song._tracks[1], self.song._tracks[2]; v = self.song.view
-        v.selected_track = self.song.visible_tracks[1]; v.highlighted_clip_slot = t.clip_slots[0]
-        rec = t.clip_slots[0]; rec.clip = Clip(rec); rec.clip.is_recording = True
-        n.clip_slots[0].clip = Clip(n.clip_slots[0])                                    # next track's slot 1 is taken
-        deliver((0xBE, 46, 127)); deliver((0xBE, 46, 0))                                 # top C
-        self.assertIn('finish', t.log); self.assertTrue(n.arm)
-        self.assertIn('record', n.log); self.assertTrue(n.clip_slots[1].is_triggered)   # records in the next empty slot
-
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)
         self.assertEqual(len([m for m in self.s.sent if m[0] == 0xBF and STATE_CC <= m[1] < STATE_CC + 16]), 16)

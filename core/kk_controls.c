@@ -169,6 +169,9 @@ static void intent(unsigned id, struct source *s)
     if (id < KK_KEYS && kk.mode != KK_MODE_CLIP && kk.mode != KK_MODE_STEP && kk_top_key_cc(id) >= 0) {
         /* 0.86: top-octave Live keys (solo, finish, play, delete, mute, arm, quantize). */
         int cc = kk_top_key_cc(id);
+        /* 0.88: top C held = SHIFT: G# / A# scene up / down, F / G track left / right. */
+        if (KK_TOP_SHIFT_KEY < KK_KEYS && id != KK_TOP_SHIFT_KEY && sources[KK_TOP_SHIFT_KEY].held && kk_top_shift_cc(id) >= 0)
+            cc = kk_top_shift_cc(id);
         if (cc > 0) { s->modifier = 0x4000U; s->channel = KK_CH_ABLETON; s->notes[0] = (uint8_t)cc; }
         return;
     }

@@ -59,7 +59,7 @@ CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scen
 CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLAY = finish clip, next track
 CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by value - 64 BPM
 CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track volume / macro 1 (else Send A)
-CC_SOLO, CC_CLIP_PLAY, CC_FINISH_RECORD, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE = 44, 45, 46, 47, 48, 49, 50   # 0.86 top keys
+CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE = 44, 45, 47, 48, 49, 50   # 0.86 top keys (46 unused since 0.88)
 CC_FX = (40, 41, 42, 43)                 # 0.82: K4-K7 relative: filter, delay, reverb, reverb decay
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
@@ -78,7 +78,7 @@ CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO,
-                 CC_SOLO, CC_CLIP_PLAY, CC_FINISH_RECORD, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE) + CC_FX
+                 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE) + CC_FX
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
@@ -679,26 +679,6 @@ class KamoteKeys(ControlSurface):
         except Exception as error:
             self._status('KamoteKeys: quantize: %s' % error)
 
-    def _finish_and_record(self):
-        """Top C: finish, select and arm the next track, and record there at once
-        (the selected scene, or the next empty slot below it)."""
-        song = self.song()
-        before = song.view.selected_track
-        self._finish_and_next()
-        if self._same(song.view.selected_track, before):
-            return                                    # last track: nothing to record on
-        try:
-            slots = list(song.view.selected_track.clip_slots)
-            hl = song.view.highlighted_clip_slot
-            start = next((i for i, x in enumerate(slots) if self._same(x, hl)), 0)
-            target = next((s for s in slots[start:] if not s.has_clip), None)
-            if target is not None:
-                song.view.highlighted_clip_slot = target
-                target.fire()
-                self._status('KamoteKeys: recording on %s' % song.view.selected_track.name)
-        except Exception as error:
-            self._status('KamoteKeys: record next: %s' % error)
-
     # ------------------------------------------------- move a clip (0.75)
     def _move_clip(self, delta):
         """Move Live's selected clip one scene up / down (into an empty slot;
@@ -1059,8 +1039,6 @@ class KamoteKeys(ControlSurface):
             self._toggle_track(cc)
         elif cc == CC_CLIP_PLAY:
             self._play_selected()
-        elif cc == CC_FINISH_RECORD:
-            self._finish_and_record()
         elif cc == CC_CLIP_DELETE:
             self._delete_selected()
         elif cc == CC_QUANTIZE:

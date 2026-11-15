@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.87" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.88" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -137,7 +137,6 @@ enum {
     KK_CC_FX_DECAY = 43,
     KK_CC_SOLO = 44,          /* 0.86 top-octave Live keys (selected track / clip) */
     KK_CC_CLIP_PLAY = 45,     /* launch / stop the selected clip */
-    KK_CC_FINISH_RECORD = 46, /* finish, select + arm the next track, record there */
     KK_CC_CLIP_DELETE = 47,
     KK_CC_MUTE = 48,
     KK_CC_ARM = 49,

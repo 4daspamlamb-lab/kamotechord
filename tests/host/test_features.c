@@ -246,7 +246,7 @@ void test_top_keys_and_key_memory(void)
 {
     boot();
     static const struct { uint8_t key, cc; } map[] = {
-        {34, KK_CC_CLIP_DELETE}, {32, KK_CC_FINISH}, {30, KK_CC_CLIP_PLAY}, {36, KK_CC_FINISH_RECORD},
+        {34, KK_CC_CLIP_DELETE}, {32, KK_CC_FINISH}, {30, KK_CC_CLIP_PLAY},
         {35, KK_CC_SOLO}, {33, KK_CC_MUTE}, {31, KK_CC_ARM}, {29, KK_CC_QUANTIZE}};   /* 0.87 order */
     for (unsigned i = 0; i < sizeof map / sizeof map[0]; ++i) {
         host_clear(); key(map[i].key, 100); key(map[i].key, 0);
@@ -254,6 +254,16 @@ void test_top_keys_and_key_memory(void)
               "Normal: top key %u -> CC %u press + release, no note", map[i].key, map[i].cc);
     }
     host_clear(); key(28, 100); key(28, 0); CHECK(out_count(USB, ON1, -1) == 1, "top E plays a note again (0.87)");
+    /* 0.88: top C = SHIFT (silent); held: G# / A# scene up / down, F / G track left / right. */
+    host_clear(); key(36, 100); CHECK(host_out_n == 0, "top C alone: silent");
+    key(32, 100); key(32, 0); key(34, 100); key(34, 0); key(29, 100); key(29, 0); key(31, 100); key(31, 0);
+    CHECK(out_count(USB, CC15, KK_CC_SCENE_UP) == 2 && out_count(USB, CC15, KK_CC_SCENE_DOWN) == 2 &&
+          out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 &&
+          out_count(USB, CC15, KK_CC_FINISH) == 0 && out_count(USB, CC15, KK_CC_CLIP_DELETE) == 0 &&
+          out_count(USB, CC15, KK_CC_QUANTIZE) == 0 && out_count(USB, CC15, KK_CC_ARM) == 0,
+          "SHIFT + G# / A# / F / G = scene up / down, track left / right");
+    host_clear(); key(33, 100); key(33, 0); CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "SHIFT + A still mutes");
+    key(36, 0); host_clear(); key(32, 100); key(32, 0); CHECK(out_count(USB, CC15, KK_CC_FINISH) == 2, "SHIFT released: G# = finish again");
     host_clear(); key(25, 100); key(25, 0); CHECK(out_count(USB, ON1, -1) == 1, "top C# still plays");
     tap(KK_BTN_SEQ); host_clear(); key(33, 100); key(33, 0);
     CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "Key Scale: top A = MUTE too"); tap(KK_BTN_SEQ);
