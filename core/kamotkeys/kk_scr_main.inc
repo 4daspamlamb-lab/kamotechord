@@ -93,7 +93,7 @@ static void draw_pads(void)
     const struct widget *w = &widgets[W_PIANO];
     fill(0, w->y, 240, w->h, BG);
     for (unsigned pad = 0; pad < KK_PADS; ++pad) {
-        int x = 1 + (int)(pad % 8) * 30, y = w->y + 3 + (int)(pad / 8) * 32;
+        int x = 1 + (int)(pad % 8) * 30, y = kk.mode == KK_MODE_CLIP ? w->y + 2 + (int)(pad / 8) * 38 : w->y + 3 + (int)(pad / 8) * 32;
         unsigned channel;
         int note = kk_pad_note(pad, &channel);
         uint16_t base = c565(kk_led_pad_base(pad));
@@ -112,19 +112,20 @@ static void draw_pads(void)
             continue;
         }
         if (kk.mode == KK_MODE_CLIP) {
-            /* Track.scene, scene following the Remote Script's grid position. */
-            unsigned scene = kk_midi_host_scene() + pad / 8 + 1;
-            char *q = label;
-            if (scene < 10) *q++ = 'T';
-            *q++ = (char)('1' + pad % 8); *q++ = '.';
-            decimal(q, (int)(scene > 99 ? 99 : scene));
+            /* 0.81: real track number (follows the 8-track view) and the first
+             * letters of the track's name on taller tiles. */
+            unsigned track = kk_midi_host_tracks() + pad % 8 + 1;
+            decimal(label, (int)(track > 999 ? 999 : track));
+            char shortname[5]; const char *full = kk_midi_track_name(pad % 8);
+            unsigned k = 0; while (k < 4 && full[k]) { shortname[k] = full[k]; ++k; } shortname[k] = 0;
             unsigned level, st = kk_midi_clip_state(pad);
             uint16_t c = c565(kk_led_pad_base(pad));
             (void)level;
             unsigned strong = st == KK_CLIP_PLAYING || st == KK_CLIP_RECORDING || st == KK_CLIP_QUEUED ||
                               st == KK_CLIP_QUEUED_RECORD || lit;
-            pill(x, y, 28, 30, blend565(PANEL, c, strong ? 220 : st == KK_CLIP_STOPPED ? 110 : 25));
-            text_center(x + 14, y + 12, label, 1, strong ? BG : TEXT);
+            pill(x, y, 28, 36, blend565(PANEL, c, strong ? 220 : st == KK_CLIP_STOPPED ? 110 : 25));
+            text_center(x + 14, y + 7, label, 1, strong ? BG : TEXT);
+            if (shortname[0]) text_center(x + 14, y + 21, shortname, 1, strong ? BG : DIM);
             continue;
         }
         if (note < 0) strcpy(label, "--");
@@ -253,19 +254,26 @@ static void draw_big(void)
         return;
     }
     if (kk.mode == KK_MODE_CLIP) {
+        /* 0.81: clip state small, Live's selected track (number + name) big. */
         static const char *const states[] = {"EMPTY", "STOPPED", "PLAYING", "QUEUED", "RECORDING", "QUEUED REC", "EMPTY (ARMED)"};
         unsigned st = kk_midi_clip_state(kk.clip_pad);
         const char *name = !kk_midi_host_protocol() ? "CLIPS" : st < 7 ? states[st] : "--";
         static const uint16_t colours[7] = {DIM, C565(60, 120, 255), GREEN, AMBER, RED, RED, DIM};
-        text_center(120, w->y + 14, name, text_width(name, 3) <= 228 ? 3 : 2,
-                    kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
-        char *p = append(buf, "TRACK "); p = decimal(p, (int)(kk_midi_host_tracks() + kk.clip_pad % 8 + 1));
-        p = append(p, "  SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
+        text_center(120, w->y + 3, name, 2, kk_midi_host_protocol() && st < 7 ? colours[st] : TEXT);
+        if (!kk_midi_host_protocol()) { text_center(120, w->y + 30, "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM); return; }
+        unsigned track = kk_midi_selected_track();
+        if (!track) track = kk_midi_host_tracks() + kk.clip_pad % 8 + 1;
+        char *p = decimal(buf, (int)track);
+        if (kk_midi_track_name(8)[0]) { p = append(p, " "); append(p, kk_midi_track_name(8)); }
+        unsigned size = text_width(buf, 3) <= 228 ? 3 : text_width(buf, 2) <= 228 ? 2 : 1;
+        text_center(120, w->y + 21 + (3 - (int)size) * 4, buf, size, TEXT);
+        p = append(buf, "SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
+        p = append(p, "  TRACKS "); p = decimal(p, (int)kk_midi_host_tracks() + 1); p = append(p, "-"); p = decimal(p, (int)kk_midi_host_tracks() + 8);
 #ifdef KK_CLIP_PRESS_SELECT
-        p = append(p, kk.clip_play ? "  PADS: PLAY" : "  PADS: SELECT");   /* PLAY while the PLAY key is held / tapped */
+        p = append(p, kk.clip_play ? "  PLAY" : "  SELECT");   /* what a pad press does */
 #endif
-        text_center(120, w->y + 42, kk_midi_host_protocol() ? buf : "LOAD THE KAMOTEKEYS REMOTE SCRIPT", 1, DIM);
-        copy_line(w->y + 55);
+        text_center(120, w->y + 47, buf, 1, TEXT);
+        copy_line(w->y + 57);
         return;
     }
     const char *name = big_name[0] ? big_name : "--";
@@ -287,6 +295,12 @@ static void draw_scale(void)
 {
     const struct widget *w = &widgets[W_SCALE];
     fill(0, w->y, 240, w->h, BG);
+    if (w->h < 20) {   /* 0.81 Clip Mode: slim bar */
+        fill(6, w->y + 1, 228, 12, PANEL);
+        int k = text(12, w->y + 3, kk_note_name(kk.scale.root), 1, CYAN);
+        text(k + 6, w->y + 3, kk_scale_name(kk.scale.scale), 1, TEXT);
+        return;
+    }
     fill(6, w->y + 1, 228, 22, PANEL);
     int x = text(12, w->y + 5, kk_note_name(kk.scale.root), 2, CYAN);
     const char *name = kk_scale_name(kk.scale.scale);

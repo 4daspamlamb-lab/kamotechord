@@ -138,14 +138,34 @@ class T(unittest.TestCase):
     def press(self, pad, ch=15): deliver((0x90 | ch, 36 + pad, 127)); deliver((0x80 | ch, 36 + pad, 0))
     def state(self, pad): return [m[2] for m in self.s.sent if m[0] == 0xBF and m[1] == STATE_CC + pad][-1]
 
-    def test_track_keys_move_one_track_even_with_few_tracks(self):
-        from KamoteKeys.KamoteKeys import TRACKS_CC
-        deliver((0xBE, 32, 127)); deliver((0xBE, 32, 0))          # 6 tracks: still moves
-        self.assertEqual(self.s._track, 1)
-        self.assertIn((0xBF, TRACKS_CC, 1), self.s.sent)
-        for _ in range(9): deliver((0xBE, 32, 127)); deliver((0xBE, 32, 0))
-        self.assertEqual(self.s._track, 5)                        # stops at the last track
-        deliver((0xBE, 31, 127)); deliver((0xBE, 31, 0)); self.assertEqual(self.s._track, 4)
+    def sel(self):
+        return next(i for i, t in enumerate(self.song._tracks) if t._live_ptr == getattr(self.song.view.selected_track, '_live_ptr', None))
+
+    def test_track_keys_select_tracks_view_follows_never_past_end(self):
+        right = lambda: (deliver((0xBE, 32, 127)), deliver((0xBE, 32, 0)))
+        left = lambda: (deliver((0xBE, 31, 127)), deliver((0xBE, 31, 0)))
+        right(); self.assertEqual((self.sel(), self.s._track), (1, 0))   # 6 tracks: selection moves, view stays
+        self.song._tracks += [type(self.song._tracks[0])() for _ in range(6)]   # 12 tracks
+        for _ in range(6): right()
+        self.assertEqual((self.sel(), self.s._track), (7, 0))            # still inside tracks 1-8
+        right(); self.assertEqual((self.sel(), self.s._track), (8, 1))   # view follows
+        for _ in range(10): right()
+        self.assertEqual((self.sel(), self.s._track), (11, 4))           # end: last 8 tracks, no jump back
+        self.assertIn((0xBF, 109, 4), self.s.sent)
+        left(); self.assertEqual((self.sel(), self.s._track), (10, 4))   # moving back inside the view: view stays
+        for _ in range(7): left()
+        self.assertEqual((self.sel(), self.s._track), (3, 3))
+
+    def test_track_names_for_the_screen(self):
+        from KamoteKeys.KamoteKeys import NAME_CC, CHAR_CC, SELTRACK_CC
+        self.song._tracks[2].name = 'Bass \u00e9 very long name'
+        self.song.view.selected_track = self.song.visible_tracks[2]
+        self.s.sent.clear(); self.s.update_display()
+        i = self.s.sent.index((0xBF, NAME_CC, 2))
+        chars = ''.join(chr(m[2]) for m in self.s.sent[i + 1:i + 13])
+        self.assertEqual(chars, 'Bass ? very ')                         # ASCII only, 12 characters
+        self.assertIn((0xBF, NAME_CC, 8), self.s.sent); self.assertIn((0xBF, SELTRACK_CC, 3), self.s.sent)
+        self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])   # only changes
 
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)
@@ -303,11 +323,11 @@ class T(unittest.TestCase):
         deliver((0xBE, 30, 127)); deliver((0xBE, 30, 0))                 # top F#: launch scene 1
         self.assertIn('fire', self.song._tracks[0].log); self.assertNotIn('fire', self.song._tracks[1].log)
         self.assertIn('stop all', self.song._tracks[1].log)
-        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 1)       # 0.80: moves even with 6 tracks
-        deliver((0xBE, 31, 127)); self.assertEqual(self.s._track, 0)
         self.song._tracks += [type(self.song._tracks[0])() for _ in range(4)]
-        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 1); self.assertIn((0xBF, 109, 1), self.s.sent)
-        deliver((0xBE, 31, 127)); self.assertEqual(self.s._track, 0)
+        for _ in range(8): deliver((0xBE, 32, 127))                      # 0.81: select track 9 -> view 2-9
+        self.assertEqual(self.s._track, 1); self.assertIn((0xBF, 109, 1), self.s.sent)
+        for _ in range(8): deliver((0xBE, 31, 127))
+        self.assertEqual(self.s._track, 0)
 
     def test_step_mode_times_out_without_heartbeat(self):
         import sys; kk_mod = sys.modules[type(self.s).__module__]
@@ -352,7 +372,7 @@ class T(unittest.TestCase):
 
     def test_sync_request_resends_everything(self):
         self.s.sent.clear(); deliver((0xBF, 127, 127))
-        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 26)   # hello, scene, tracks, arrange, tempo x2, highlight, 16 states, clipboard x3
+        self.assertIn((0xBF, HELLO_CC, 1), self.s.sent); self.assertEqual(len(self.s.sent), 26 + 6 * 6 + 2 + 1 + 1)   # hello, scene, tracks, arrange, tempo x2, highlight, 16 states, clipboard x3; 0.81: 8 names + selected (none) + track number
 
     def test_only_changes_are_sent(self):
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])

@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.80" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.81" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -53,7 +53,13 @@ enum {
     /* host -> device (0.55): first scene shown on the 8 x 2 grid (0 based). */
     KK_HOST_SCENE_CC = 104,
     /* host -> device (0.57): pad of Live's highlighted slot (0..15), 127 = none. */
-    KK_HOST_HIGHLIGHT_CC = 105
+    KK_HOST_HIGHLIGHT_CC = 105,
+    /* host -> device (0.81): track names. CC 111 = start the name of slot
+     * 0..7 (the 8 tracks shown) or 8 (Live's selected track); each CC 112
+     * adds one ASCII character (32..126). CC 113 = selected track number
+     * (1 based, 0 = none). */
+    KK_HOST_NAME_CC = 111, KK_HOST_CHAR_CC = 112, KK_HOST_SELTRACK_CC = 113,
+    KK_TRACK_NAME_LEN = 12
 };
 enum {
     KK_CLIP_EMPTY = 0, KK_CLIP_STOPPED = 1, KK_CLIP_PLAYING = 2, KK_CLIP_QUEUED = 3,

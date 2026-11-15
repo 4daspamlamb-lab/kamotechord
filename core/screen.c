@@ -44,7 +44,7 @@ static uint16_t blend565(uint16_t a, uint16_t b, unsigned t /* 0..255 toward b *
 /* ----------------------------------------------------------- UI state */
 enum { W_HEADER, W_INFO, W_BIG, W_SCALE, W_PIANO, W_STATUS, W_BODY, W_BOOT, W_BOOT_TEXT, W_FULL, WIDGETS };
 struct widget { uint8_t x, y, w, h; };
-static const struct widget widgets[WIDGETS] = {
+static struct widget widgets[WIDGETS] = {   /* 0.81: W_SCALE / W_PIANO change in Clip Mode */
     {0, 0, 240, 20}, {0, 20, 240, 28}, {0, 48, 240, 66}, {0, 114, 240, 24},
     {0, 138, 240, 68}, {0, 206, 240, 34}, {0, 20, 240, 220}, {0, 52, 240, 136}, {0, 196, 240, 30}, {0, 0, 240, 240}};
 static uint32_t wanted[WIDGETS], drawn[WIDGETS];
@@ -52,7 +52,9 @@ static unsigned active_mask;                         /* widgets of the current p
 static int job = -1; static unsigned job_row; static uint32_t job_sig;
 
 static uint32_t boot_started, frame_ms, guard_ms, popup_until, now_ms;
-static unsigned booting, shown_page = 255, shown_dim;
+static unsigned booting, shown_page = 255, shown_dim, shown_layout;
+/* 0.81 Clip Mode layout: a slim key / scale bar, taller pad tiles with names. */
+static unsigned clip_layout(void) { return kk.page == KK_PAGE_MAIN && kk.mode == KK_MODE_CLIP; }
 static char popup[28];
 static unsigned battery_adc;
 #ifndef KK_DEVICE_FM1
@@ -145,13 +147,18 @@ static void signatures(void)
         for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
     { unsigned ca, cb, ck = kk_midi_copy(&ca, &cb); h = mixsig(mixsig(mixsig(h, ck), ca), cb | (unsigned)kk.clip_play << 8); }
     h = mixsig(h, kk_midi_host_tracks() | kk_midi_arrange() << 8);
+    if (kk.mode == KK_MODE_CLIP) h = mixsig(strsig(h, kk_midi_track_name(8)), kk_midi_selected_track() | (uint32_t)kk_midi_host_highlight() << 8);
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
     h = mixsig(h, kk.scale.scale * 16U + kk.scale.root); h = mixsig(h, (uint32_t)kk_active_octave());
     for (unsigned i = 0; i < sounding_n; ++i) h = mixsig(h, sounding[i]);
     if (kk.mode >= KK_MODE_PAD_SCALE) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_pad_lit(p));
-    if (kk.mode == KK_MODE_CLIP) { for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p)); h = mixsig(h, kk_midi_host_scene()); }
+    if (kk.mode == KK_MODE_CLIP) {
+        for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_clip_state(p));
+        h = mixsig(mixsig(h, kk_midi_host_scene()), kk_midi_host_tracks());
+        for (unsigned t = 0; t < 8; ++t) h = strsig(h, kk_midi_track_name(t));
+    }
     if (kk.mode == KK_MODE_STEP) {
         for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_midi_step_code(p) | (unsigned)kk_pad_lit(p) << 8);
         for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c));
@@ -297,6 +304,12 @@ void groove_screen_control(void)
     if (kk.ripple != ripple_shown) { ripple_shown = kk.ripple; if (!booting) say(kk.ripple ? "RIPPLE LIGHTS ON" : "RIPPLE LIGHTS OFF", 1500); }
     follow_notes();
     if (kk.page == KK_PAGE_PATCH) refresh_patch_name();
+    if (!booting && clip_layout() != shown_layout) {
+        shown_layout = clip_layout();
+        widgets[W_SCALE].y = 114; widgets[W_SCALE].h = shown_layout ? 14 : 24;
+        widgets[W_PIANO].y = shown_layout ? 128 : 138; widgets[W_PIANO].h = shown_layout ? 78 : 68;
+        shown_page = 255;                                /* full redraw with the new geometry */
+    }
     if (!booting && (kk.page != shown_page || kk.screen_dim != shown_dim)) {
         if (kk.page != shown_page && kk.page == KK_PAGE_BT) { ble_view = ble_action = ble_forget = 0; ble_result = 0; }
         shown_page = kk.page; shown_dim = kk.screen_dim;

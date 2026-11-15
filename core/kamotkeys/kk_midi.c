@@ -17,6 +17,8 @@ static volatile uint8_t clip_states[16] = {
 static volatile uint8_t host_protocol;
 static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
+static char track_names[9][KK_TRACK_NAME_LEN + 1];   /* 0.81: slots 0..7 shown, 8 = selected */
+static uint8_t name_slot = 255, name_pos, sel_track;
 static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
 static uint8_t copy_info[5];
@@ -169,6 +171,17 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
             host_port = d2 && source < 3 ? (uint8_t)source : 255;
         } else if (type == 0xb0 && d1 >= KK_COPY_KIND_CC && d1 <= KK_HOST_ARRANGE_CC) {
             copy_info[d1 - KK_COPY_KIND_CC] = (uint8_t)d2; ++input_revision;
+        } else if (type == 0xb0 && d1 == KK_HOST_NAME_CC) {
+            name_slot = (uint8_t)(d2 < 9 ? d2 : 255); name_pos = 0;
+            if (name_slot < 9) track_names[name_slot][0] = 0;
+            ++input_revision;
+        } else if (type == 0xb0 && d1 == KK_HOST_CHAR_CC) {
+            if (name_slot < 9 && name_pos < KK_TRACK_NAME_LEN && d2 >= 32 && d2 < 127) {
+                track_names[name_slot][name_pos++] = (char)d2; track_names[name_slot][name_pos] = 0;
+                ++input_revision;
+            }
+        } else if (type == 0xb0 && d1 == KK_HOST_SELTRACK_CC) {
+            sel_track = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_HIGHLIGHT_CC) {
             host_highlight = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_SCENE_CC) {
@@ -205,12 +218,15 @@ void kk_midi_remote_clear(void)
     for (unsigned s = 0; s < 2; ++s) for (unsigned k = 0; k < 128; ++k) remote_notes[s][k] = 0;
     for (unsigned p = 0; p < 16; ++p) clip_states[p] = KK_CLIP_UNKNOWN;
     host_protocol = 0; host_tempo = 0; host_scene = 0; host_highlight = 127;
+    memset(track_names, 0, sizeof track_names); name_slot = 255; sel_track = 0;
     for (unsigned p = 0; p < 16; ++p) step_codes[p] = KK_STEPC_OUTSIDE;
     for (unsigned i = 0; i < sizeof step_info; ++i) step_info[i] = 0;
     ++input_revision;
 }
 unsigned kk_midi_host_tempo_x10(void) { return host_protocol ? host_tempo : 0; }
 unsigned kk_midi_host_scene(void) { return host_protocol ? host_scene : 0; }
+const char *kk_midi_track_name(unsigned slot) { return host_protocol && slot < 9 ? track_names[slot] : ""; }
+unsigned kk_midi_selected_track(void) { return host_protocol ? sel_track : 0; }
 int kk_midi_host_highlight(void) { return host_protocol && host_highlight < 16 ? host_highlight : -1; }
 unsigned kk_midi_clip_state(unsigned pad) { return pad < 16 ? clip_states[pad] : KK_CLIP_UNKNOWN; }
 unsigned kk_midi_host_protocol(void) { return host_protocol; }

@@ -78,6 +78,8 @@ TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
+NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
+NAME_LEN = 12
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
 
 
@@ -93,6 +95,8 @@ class KamoteKeys(ControlSurface):
         self._arrangement = None         # {scene index: set(track indexes)}, loaded lazily
         self._step_seen = 0.0            # last Step Mode heartbeat
         self._highlight_sent = None
+        self._names_sent = {}            # 0.81: slot -> name last sent
+        self._seltrack_sent = None
         self._ticks = 0
         self._received = False
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
@@ -547,21 +551,34 @@ class KamoteKeys(ControlSurface):
 
     # ------------------------------------------------- tracks view (0.66)
     def _move_tracks(self, delta):
-        # 0.80: one track per press, down to the last track (also with 8 or
-        # fewer tracks), and Live selects the first track of the view and
-        # draws the session box, so every press visibly does something.
-        tracks = list(self.song().visible_tracks)
-        new = max(0, min(max(0, len(tracks) - 1), self._track + delta))
-        if new != self._track:
-            self._track = new
-            self._send_all()
+        # 0.81: like Move: A / B select the previous / next track; the
+        # 8-track view follows it but never shows past the last track (Live's
+        # session box cannot either, which made the view jump back before).
+        song = self.song()
+        tracks = list(song.visible_tracks)
+        if not tracks:
+            return
+        current = next((i for i, x in enumerate(tracks) if self._same(x, song.view.selected_track)), None)
+        target = max(0, min(len(tracks) - 1, (self._track if current is None else current) + delta))
         try:
-            if tracks:
-                self.song().view.selected_track = tracks[self._track]
+            song.view.selected_track = tracks[target]
         except Exception:
             pass
+        last = max(0, len(tracks) - TRACKS)
+        view = self._track
+        if target < view:
+            view = target
+        elif target >= view + TRACKS:
+            view = target - TRACKS + 1
+        view = max(0, min(last, view))
+        if view != self._track:
+            self._track = view
+            self._send_all()
+        else:
+            self._send_highlight()
+            self._send_names()
         self._show_ring()
-        self._status('KamoteKeys: tracks %d-%d' % (self._track + 1, self._track + TRACKS))
+        self._status('KamoteKeys: track %d (view %d-%d)' % (target + 1, self._track + 1, self._track + TRACKS))
 
     def _show_ring(self):
         try:
@@ -742,6 +759,35 @@ class KamoteKeys(ControlSurface):
             self._highlight_sent = pad
             self._send_midi((0xB0 | CLIP_CHANNEL, HIGHLIGHT_CC, pad))
 
+    # ---------------------------------------------- track names (0.81)
+    @staticmethod
+    def _ascii(name):
+        text = ''.join(c if 32 <= ord(c) < 127 else '?' for c in str(name or ''))
+        return text[:NAME_LEN]
+
+    def _send_names(self, force=False):
+        """Names of the 8 tracks shown (slots 0-7) and of Live's selected track (slot 8)."""
+        try:
+            song = self.song()
+            tracks = list(song.visible_tracks)
+            shown = tracks[self._track:self._track + TRACKS]
+            selected = song.view.selected_track
+            names = [self._ascii(t.name) for t in shown] + [''] * (TRACKS - len(shown))
+            names.append(self._ascii(getattr(selected, 'name', '')))
+            number = next((i + 1 for i, x in enumerate(tracks) if self._same(x, selected)), 0)
+        except Exception:
+            return
+        for slot, name in enumerate(names):
+            if force or self._names_sent.get(slot) != name:
+                self._names_sent[slot] = name
+                self._send_midi((0xB0 | CLIP_CHANNEL, NAME_CC, slot))
+                for c in name:
+                    self._send_midi((0xB0 | CLIP_CHANNEL, CHAR_CC, ord(c)))
+        number = min(number, 127)
+        if force or number != self._seltrack_sent:
+            self._seltrack_sent = number
+            self._send_midi((0xB0 | CLIP_CHANNEL, SELTRACK_CC, number))
+
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
         self._send_midi((0xB0 | CLIP_CHANNEL, SCENE_CC, min(self._scene, 127)))
@@ -749,6 +795,7 @@ class KamoteKeys(ControlSurface):
         self._send_midi((0xB0 | CLIP_CHANNEL, ARRANGE_CC, int(self._arrange)))
         self._send_tempo(force=True)
         self._send_highlight(force=True)
+        self._send_names(force=True)
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
         self._step.send_all()
@@ -768,6 +815,7 @@ class KamoteKeys(ControlSurface):
             self._send_state(pad)
         self._send_tempo()
         self._send_highlight()
+        self._send_names()
         if self._step.active and time.time() - self._step_seen > STEP_TIMEOUT:
             self.log_message('KamoteKeys: no Step Mode heartbeat, leaving Step Mode')
             self._step.set_active(False)     # keyboard gone or switched port: never stay stuck in Step Mode

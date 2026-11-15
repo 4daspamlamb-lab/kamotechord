@@ -46,6 +46,8 @@ unsigned kk_midi_host_protocol(void);                      /* 0 = no script */
 unsigned kk_midi_host_tempo_x10(void);
 /* First Live scene shown on the clip grid (0 based), from the Remote Script. */
 unsigned kk_midi_host_scene(void);
+const char *kk_midi_track_name(unsigned slot);   /* 0.81: 0..7 shown tracks, 8 = selected; "" if unknown */
+unsigned kk_midi_selected_track(void);            /* 0.81: Live's selected track, 1 based, 0 = none */
 /* Pad of Live's highlighted (selected) clip slot on the grid, or -1. */
 int kk_midi_host_highlight(void);
 /* Step Mode (0.58): tell the script Step Mode starts (1) or ends (0); pad

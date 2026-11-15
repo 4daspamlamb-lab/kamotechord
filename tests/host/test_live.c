@@ -1,3 +1,4 @@
+#include <string.h>
 /* SPDX-License-Identifier: GPL-3.0-only WITH GPL-3.0-linking-exception
  * KamoteKeys host tests: 0.31+: Ableton feedback, Clip Mode, host notes, light show timing. */
 #include "helpers.h"
@@ -70,6 +71,26 @@ void test_031(void)
     host_clear(); tap(KK_BTN_CHORD);
     CHECK(kk.mode == KK_MODE_CLIP && kk_led_button(KK_BTN_CHORD) == 2, "CHORD -> Clip Mode");
     CHECK(out_count(USB, 0xBF, KK_CLIP_SYNC_CC) == 1, "entering Clip Mode asks Live for the state");
+    /* 0.81: track names from the script (CC 111 slot, CC 112 characters, CC 113 selected track). */
+    {
+        static const char *const names[9] = {"Drums", "Bass", "Keys", "Lead", "Pad", "Vox", "FX", "Perc", "Bass"};
+        host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_HOST_TRACKS_CC, 4);
+        for (unsigned t = 0; t < 9; ++t) {
+            host_in(0xBF, KK_HOST_NAME_CC, (uint8_t)t);
+            for (const char *c = names[t]; *c; ++c) host_in(0xBF, KK_HOST_CHAR_CC, (uint8_t)*c);
+        }
+        host_in(0xBF, KK_HOST_SELTRACK_CC, 6);
+        for (unsigned p = 0; p < 16; ++p) host_in(0xBF, (uint8_t)(KK_CLIP_STATE_CC + p), (uint8_t)(p % 3 ? KK_CLIP_STOPPED : KK_CLIP_PLAYING));
+        host_in(0xBF, KK_HOST_NAME_CC, 3); for (const char *c = "A very long track"; *c; ++c) host_in(0xBF, KK_HOST_CHAR_CC, (uint8_t)*c);
+        CHECK(!strcmp(kk_midi_track_name(1), "Bass") && !strcmp(kk_midi_track_name(3), "A very long ") && kk_midi_selected_track() == 6,
+              "track names stored (12 characters max), selected track 6");
+        frames(60, 5); shot("13_clip_mode_names");
+        host_in(0xBF, KK_CLIP_HELLO_CC, 0);
+        CHECK(kk_midi_track_name(1)[0] == 0 || !kk_midi_host_protocol(), "no script: no names");
+        host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_HOST_TRACKS_CC, 0);
+        tap(KK_BTN_CHORD); frames(30, 5); CHECK(kk.mode == KK_MODE_NORMAL, "back to Normal");
+        frames(30, 5); shot("14_normal_after_clip"); tap(KK_BTN_CHORD); host_clear();
+    }
     /* 0.65: a plain press selects (note 84+) until F# toggles pads to play (36+). */
     host_clear(); pad(3, 110);
     CHECK(out_count(USB, 0x9F, 84 + 2) == 1 && host_local_n == 0, "pad 3 -> select note 86 ch16 (default), never the synth");
