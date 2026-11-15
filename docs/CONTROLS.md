@@ -7,11 +7,11 @@
  ┌──────────────┬──────────────┐    ┌───────┬─────────────┬────────┬────────┬────────┬────────┐
  │ [0] KNOB BANK│[1] FADER BANK│    │ [6]   │ [7]         │ [8]    │ [9]    │ [10]   │ [11]   │
  │ Rec/Overdub  │ Capture MIDI │    │ ARP   │ NOTE REPEAT │ SCALE  │ CHORD  │ GLOBE  │ BT     │
- │ CC25 mom.    │ CC22         │    │       │ SUSTAIN     │ PadScl │ Clip   │ Stop   │ menu   │
+ │ CC25 mom.    │ CC22         │    │       │ SUSTAIN     │ PadScl │ Clip   │ Lights │ menu   │
  ├──────────────┼──────────────┤    ├───────┼─────────────┼────────┼────────┼────────┼────────┤
  │ [2] ◀ LEFT   │ [3] RIGHT ▶  │    │ [12]  │ [13]        │ [14]   │ [15]   │ [16]   │ [17]   │
  │ Undo CC24    │ Redo CC27    │    │ PATCH │ PARA Play/Ps│ FX     │ SEQ    │ PLAY   │ REC    │
- ├──────────────┼──────────────┤    │       │             │ Drum   │ KeyScl │ CC20   │ lights │
+ ├──────────────┼──────────────┤    │       │             │ Drum   │ KeyScl │ —      │ Step   │
  │ [4] OCT −    │ [5] OCT +    │    └───────┴─────────────┴────────┴────────┴────────┴────────┘
  └──────────────┴──────────────┘
  [n] = scanner button index in app/board/scan.c (btnmap order)

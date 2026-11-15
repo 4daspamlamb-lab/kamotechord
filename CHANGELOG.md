@@ -1,5 +1,10 @@
 # Changelog
 
+## KamoteKeys 0.92 (development snapshot)
+
+- **GLOBE is the light-show (RGB) button:** hold = light show, press again = next pattern, three quick presses = ripple lights. KNOB BANK + FADER BANK no longer start it.
+- GLOBE no longer sends Stop (PARA stops); SEQ PLAY does nothing (finish & next track = top G#). SMK-37 only; FM-1 unchanged.
+
 ## KamoteKeys 0.91 (development snapshot)
 
 - **One Live strip in every mode** (Clip and Step included): top F quantize, F# play / stop, G arm, G# finish & next, A mute, A# delete, B solo, C SHIFT.

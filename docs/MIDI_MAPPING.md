@@ -20,8 +20,7 @@ All values are identical on USB and Bluetooth. Which port(s) carry them depends 
 
 | Function | CC | Button | Values |
 |---|---|---|---|
-| Start | 20 | SEQ PLAY | 127 press / 0 release |
-| Stop | 21 | GLOBE | 127 press / 0 release |
+| Stop | 21 | FM-1 only (GLO); on the SMK-37 PARA stops | 127 press / 0 release |
 | Capture MIDI | 22 | FADER BANK | 127 press / 0 release |
 | Play/Pause | 23 | PARA (FM-1: SAVE tap) | 127 press / 0 release; the script stops, or continues from the stop position |
 | Undo | 24 | ◀ LEFT (FM-1: HOME + OCT −) | 127 then 0 on release (not after ◀ + PARA, not in the BT menu) |
@@ -132,7 +131,7 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 
 Channel 14 never reaches the internal synth.
 
-**0.77:** channel 15 CC 23 (PARA) = Start / Stop like the spacebar; CC 35 = master volume (Fader 4, value 0–127 → Live master 0 … 0 dB); CC 36 = finish & next track (SEQ PLAY); CC 33 / 34 = move the selected clip up / down; channel 16 note 103 = Clip Mode STOP key (press / release).
+**0.77:** channel 15 CC 23 (PARA) = Start / Stop like the spacebar; CC 35 = master volume (Fader 4, value 0–127 → Live master 0 … 0 dB); CC 36 = finish & next track (top G#; FM-1: PLAY); CC 33 / 34 = move the selected clip up / down; channel 16 note 103 = Clip Mode STOP key (press / release).
 
 **Copy / paste (0.65).** Keyboard → Live: channel 16 notes 100 / 101 = Clip Mode COPY / PASTE (press / release); in Step Mode COPY / PASTE are the channel 14 function notes 67 / 77. Live → keyboard, channel 16: CC 106 = clipboard kind (0 none, 1 clip, 2 step, 3 sound, 4 bar; +32 copy waiting, +64 paste waiting), CC 107 / 108 = its numbers (clip: track, scene; step: step, page; sound: note, page; bar: bar).
 

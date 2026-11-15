@@ -74,12 +74,12 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
  LEFT BLOCK                         RIGHT BLOCK
  ┌────────────┬────────────┐        ┌──────┬────────────┬───────┬───────┬───────┬──────┐
  │ KNOB BANK  │ FADER BANK │        │ ARP  │ NOTE REPEAT│ SCALE │ CHORD │ GLOBE │  BT  │
- │ Sess.Rec * │ Capture *  │        │ arp  │ sustain    │ PadScl│ Clip  │ Stop  │ menu │
+ │ Sess.Rec   │ Capture    │        │ arp  │ sustain    │ PadScl│ Clip  │Lights*│ menu │
  ├────────────┼────────────┤        ├──────┼────────────┼───────┼───────┼───────┼──────┤
  │   ◀ LEFT   │  RIGHT ▶   │        │PATCH │   PARA     │  FX   │  SEQ  │ PLAY  │ REC  │
- │ HOME/Undo  │  Redo      │        │patch │ Start/Stop │ Drum  │KeyScl │Finish │ Step │
+ │ HOME/Undo  │  Redo      │        │patch │ Start/Stop │ Drum  │KeyScl │  —    │ Step │
  ├────────────┼────────────┤        └──────┴────────────┴───────┴───────┴───────┴──────┘
- │   OCT −    │   OCT +    │        * both held = light show; 3 quick = ripple lights
+ │   OCT −    │   OCT +    │        * GLOBE held = light show; 3 quick presses = ripple lights
  └────────────┴────────────┘
 ```
 
@@ -89,18 +89,17 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
 | NOTE REPEAT | **SUSTAIN** on/off: notes hold until the next key; with ARP on it holds the arpeggio | |
 | SCALE | Pad Scale Mode on/off | |
 | CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | **Clip Mode while held**: back to the previous mode on release (also after a quick CHORD + pad) |
-| GLOBE | Ableton **Stop** (CC 21) | |
+| GLOBE | **Light show** while held; each new press = next pattern (Fader 1 = speed) | 3 quick presses: **ripple lights** on/off (a giant ring from the middle when they turn on) |
 | BT | Open/close the Bluetooth menu | 1.5 s: diagnostics (incl. the battery reading) |
 | PATCH | Open/close the patch page | |
 | PARA | Ableton **Start / Stop**, like the spacebar (CC 23). In Step Mode: make the clip and play / stop it | |
 | PATCH + PARA (or ◀ + PARA) | Ableton **metronome** on/off (CC 26) | |
 | FX | Drum Mode on/off | |
 | SEQ | Key Scale Mode on/off | |
-| SEQ PLAY | **Finish & next track** (CC 36): ends the recording on the selected track (the clip keeps playing), then selects and arms the next track at the same scene | |
+| SEQ PLAY | nothing (finish & next track is the top G#) | |
 | SEQ REC | **Step Mode** on/off (drum step sequencer) | |
 | KNOB BANK | Ableton **Session Record** (CC 25, sent on release) | |
 | FADER BANK | Ableton **Capture MIDI** (CC 22, sent on release) | |
-| KNOB BANK + FADER BANK | **Light show** while held; each new press = next pattern | 3 quick presses: **ripple lights** on/off (a giant ring from the middle when they turn on) |
 | ◀ LEFT (HOME) | Ableton **Undo** (CC 24, sent on release so ◀ + PARA can toggle the metronome). In the BT menu: HOME (back) | |
 | RIGHT ▶ | Ableton **Redo** (CC 27). In the BT menu: SAVE (OK) | |
 | OCT − / OCT + | Octave −4 … +4. Keyboard starts at **−2**; in Pad Scale/Drum Mode they move the pad octave (starts at 0) | |
@@ -114,7 +113,7 @@ In **every mode** the top octave is the same **Live strip**: it controls the tra
 | top **F** | **Quantize** the selected clip (Live's record quantization, else 1/16) | track ◀ (hold: repeats) |
 | top **F#** | **Launch / stop** the selected clip (an empty slot on an armed track records) | **launch** the selected scene |
 | top **G** | **Arm** only the selected track (PATCH + G: arm it as well) | track ▶ (hold: repeats) |
-| top **G#** | **Finish & next track** (same as SEQ PLAY) | scene ▲ |
+| top **G#** | **Finish & next track**: ends the recording (the clip keeps playing), selects and arms the next track | scene ▲ |
 | top **A** | **Mute** the selected track | **duplicate** the clip into the next empty slot below |
 | top **A#** | **Delete** the selected clip | scene ▼ |
 | top **B** | **Solo** the selected track | **double** the clip's loop |
@@ -257,11 +256,11 @@ Button LEDs are single-colour on/off LEDs. KamoteKeys adds a **dim** level (1/8 
 
 - enabled buttons are dim when idle and bright while pressed;
 - ARP, NOTE REPEAT (Sustain), SCALE, SEQ, FX and CHORD stay bright while their function or mode is active, and **SCALE shows only Pad Scale, SEQ shows only Key Scale**;
-- KNOB BANK and FADER BANK light while pressed or while the light show runs; SEQ REC in Step Mode; BT while its menu is open;
+- KNOB BANK and FADER BANK light while pressed; GLOBE while the light show runs; SEQ REC in Step Mode; BT while its menu is open;
 
-**Ripple lights**: start the light show **three times quickly** (KNOB BANK + FADER BANK, within about 1 s) to toggle them; turning them on sends a giant rainbow ring out from the middle. The pads and keys keep working normally, and every press flashes white where you pressed and sends a wide coloured ring (with an inner echo ring) across the pads (keys map left to right onto the pad columns). Not saved.
+**Ripple lights**: press **GLOBE three times quickly** (within about 1 s) to toggle them; turning them on sends a giant rainbow ring out from the middle. The pads and keys keep working normally, and every press flashes white where you pressed and sends a wide coloured ring (with an inner echo ring) across the pads (keys map left to right onto the pad columns). Not saved.
 
-**Light show** (hold KNOB BANK + FADER BANK together; each new press of the second one selects the next pattern; nothing is sent to Ableton): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While it runs the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second); brightness follows the Patch page setting. Changing the speed never restarts the pattern.
+**Light show** (hold **GLOBE**; each new press selects the next pattern; nothing is sent to Ableton): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While it runs the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second); brightness follows the Patch page setting. Changing the speed never restarts the pattern.
 
 ## Bluetooth and USB MIDI
 
@@ -295,8 +294,7 @@ Note Offs always go to every port, so a port change between Note On and Note Off
 
    | Live action | Button | CC (ch. 15) |
    |---|---|---|
-   | Finish & next track | SEQ PLAY | 36 |
-   | Stop | GLOBE | 21 |
+   | Finish & next track | top G# | 36 |
    | Capture MIDI | FADER BANK | 22 |
    | Start / Stop (spacebar) | PARA | 23 |
    | Undo | ◀ (on release) | 24 |

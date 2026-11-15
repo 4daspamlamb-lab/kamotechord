@@ -73,7 +73,7 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | **D** (white) | **Scene Arrange** on / off (below) |
 | **SHIFT + top F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
 | the rest of the top octave | the Live strip, as in every mode (below) |
-| **SEQ PLAY** (any mode) | **finish & next track** (0.77): ends the recording on the selected track (the clip keeps playing), selects and arms the next track at the same scene |
+| **top G#** (any mode) | **finish & next track**: ends the recording on the selected track (the clip keeps playing), selects and arms the next track at the same scene |
 
 The screen shows the clip state, **Live's selected track (number and name)**, the scene and the 8 tracks in view, and the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held. The pad map shows each pad's track number and the first letters of its name. **Hold CHORD** in any mode for Clip Mode only while it is held.
 
@@ -105,8 +105,6 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 
 | Button | CC (ch. 15) | Script action (on press) |
 |---|---|---|
-| SEQ PLAY | 20 | Play |
-| GLOBE | 21 | Stop |
 | FADER BANK | 22 | Capture MIDI |
 | PARA (FM-1: SAVE tap) | 23 | **Play/Pause**: stops, or continues from where it stopped |
 | ◀ | 24 | Undo |
@@ -114,7 +112,7 @@ Tracks are Live's visible tracks 1–8 (as in Session View); scenes 1–2. The L
 | KNOB BANK | 25 | **Session Record** on/off: records new clips on armed tracks at the selected scene, or overdubs playing clips |
 | ▶ | 27 | Redo |
 
-All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK send on release since 0.59, because holding both runs the light show).
+All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK on release). SEQ PLAY and GLOBE send nothing on the SMK-37 (GLOBE is the light-show button); FM-1: see docs/FM1.md.
 
 ## Step Mode: drum step sequencer (0.58)
 

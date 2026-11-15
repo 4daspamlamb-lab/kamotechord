@@ -39,8 +39,8 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 | Control | Does |
 |---|---|
 | **PARA** | Start / Stop, like the spacebar |
-| **SEQ PLAY** | Finish the clip being recorded and go to the next track (armed) |
-| **GLOBE** | Stop |
+| **GLOBE** | Light show while held (press again: next pattern; 3 quick presses: ripple lights) |
+| **SEQ PLAY** | nothing (finish & next track = top G#) |
 | **KNOB BANK** | Session Record (record / overdub) |
 | **FADER BANK** | Capture MIDI |
 | **◀ / ▶** | Undo / Redo (◀ + PARA or PATCH + PARA = metronome) |
@@ -99,8 +99,8 @@ Key and scale (E2 / E3) are remembered after power-off.
 - **FX**: the pads are GM drums on channel 10 (kick top left, rim below it, snare next …), coloured by drum type. OCT moves them by an octave.
 
 ### Lights
-- **Light show**: hold **KNOB BANK + FADER BANK** together. Press one of them again for the next pattern; Fader 1 sets the speed.
-- **Ripple lights**: start the light show **three times quickly** to turn ripples on (again to turn them off). Turning them on sends a big rainbow ring from the middle; every press then flashes and sends a coloured ring across the pads.
+- **Light show**: hold **GLOBE**. Press it again for the next pattern; Fader 1 sets the speed.
+- **Ripple lights**: press **GLOBE three times quickly** to turn ripples on (again to turn them off). Turning them on sends a big rainbow ring from the middle; every press then flashes and sends a coloured ring across the pads.
 
 ---
 
@@ -124,7 +124,7 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 
 **Build a song from loops (Scene Arrange):** press the low **D**. The two pad rows are two scenes; tap pads to choose which tracks play in each scene (green on, dim off). Launch a scene with SHIFT + top F#: exactly those tracks play, each with its one clip, so editing a clip changes every scene. Press D again to leave.
 
-**Record a band one track at a time:** select the first track's slot (pad), press **KNOB BANK** to record, play, then press **SEQ PLAY**: the clip keeps looping and the next track is armed and selected. Press KNOB BANK again to record it, and so on.
+**Record a band one track at a time:** select the first track's slot (pad), press **KNOB BANK** to record, play, then press top **G#**: the clip keeps looping and the next track is armed and selected. Press KNOB BANK again to record it, and so on.
 
 ---
 
