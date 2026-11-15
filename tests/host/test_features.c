@@ -29,6 +29,17 @@ void test_ripple(void)
     CHECK(!kk.ripple, "three quick starts again -> off");
 }
 
+/* 0.79: K1 changes Live's tempo while Live is the clock. */
+void test_k1_live_tempo(void)
+{
+    boot(); host_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    host_in(0xBF, KK_HOST_TEMPO_MSB_CC, 1200 >> 7); host_in(0xBF, KK_HOST_TEMPO_LSB_CC, 1200 & 127);
+    host_clear(); kk_edit_bpm(2);
+    CHECK(last_out(USB, CC15, 0) == (KK_CC_TEMPO | 66 << 8), "K1 +2 with Live connected -> CC 37 = 66");
+    unsigned bpm = kk.bpm; host_in(0xBF, KK_CLIP_HELLO_CC, 0); kk_edit_bpm(1);
+    CHECK(kk.bpm == bpm + 1, "without Live: the keyboard's own tempo");
+}
+
 /* 0.58: Step Mode (hold CHORD): pads and function keys on channel 14,
  * colours from the Remote Script. */
 void test_step_mode(void)

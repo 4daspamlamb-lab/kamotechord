@@ -120,4 +120,5 @@ void test_step_mode(void);
 void test_live_tempo(void);
 
 void test_bluetooth(void);
+void test_k1_live_tempo(void);
 #endif

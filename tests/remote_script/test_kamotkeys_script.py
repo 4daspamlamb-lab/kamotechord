@@ -316,6 +316,12 @@ class T(unittest.TestCase):
         deliver((0xBE, 33, 127))                                         # up again
         self.assertIs(t.clip_slots[0].clip, clip); self.assertIsNone(t.clip_slots[1].clip)
 
+    def test_k1_changes_live_tempo(self):
+        """0.79: K1 sends CC 37 = 64 + steps; Live's tempo follows."""
+        self.song.tempo = 120.0
+        deliver((0xBE, 37, 66)); self.assertEqual(self.song.tempo, 122.0)
+        deliver((0xBE, 37, 60)); self.assertEqual(self.song.tempo, 118.0)
+
     def test_master_finish_next_and_stop(self):
         """0.77: Fader 4 = Live master, SEQ PLAY = finish + next track, G# = STOP."""
         vol = types.SimpleNamespace(value=0.0)

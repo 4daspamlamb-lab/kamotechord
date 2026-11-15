@@ -57,6 +57,7 @@ TRACKS_CC, ARRANGE_CC = 109, 110       # first track shown, Scene Arrange on (to
 CC_TRACKS_LEFT, CC_TRACKS_RIGHT = 31, 32
 CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scene up / down
 CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLAY = finish clip, next track
+CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by value - 64 BPM
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
 ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
@@ -73,7 +74,7 @@ CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
-                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH)
+                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -263,6 +264,8 @@ class KamoteKeys(ControlSurface):
         cc = sender.message_identifier()
         if cc == CC_MASTER:
             self._master(value)          # a fader: every value counts
+        elif cc == CC_TEMPO:
+            self._nudge_tempo(value - 64)
         elif value:                      # act on press; release is ignored
             self._transport(cc)
 
@@ -397,6 +400,17 @@ class KamoteKeys(ControlSurface):
         self._status('KamoteKeys: launch scene %s' % ('?' if index is None else index + 1))
 
     # --------------------------------------------- 0.77 transport helpers
+    def _nudge_tempo(self, delta):
+        """K1 on the keyboard (0.79): Live's tempo in whole BPM steps."""
+        if not delta:
+            return
+        song = self.song()
+        try:
+            song.tempo = max(20.0, min(999.0, round(song.tempo) + delta))
+            self._send_tempo()
+        except Exception as error:
+            self.log_message('KamoteKeys: tempo: %s' % error)
+
     def _master(self, value):
         """Fader 4: Live's master volume (top = 0 dB)."""
         try:

@@ -384,7 +384,12 @@ void kk_set_octave(int octave)
 static int clampi(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 void kk_edit_bpm(int delta)
 {
-    if (kk_midi_host_tempo_x10()) return;              /* Ableton sets the tempo */
+    if (kk_midi_host_tempo_x10()) {
+        /* 0.79: Live is the clock: K1 changes Live's tempo (it comes back to us). */
+        int step = clampi(delta, -63, 63);
+        kk_midi_cc(KK_CH_ABLETON, KK_CC_TEMPO, (unsigned)(64 + step));
+        return;
+    }
     int next = clampi((int)kk.bpm + delta, 30, 300);
     if (next != kk.bpm) { kk.bpm = (uint16_t)next; kk_settings_touch(); }
 }

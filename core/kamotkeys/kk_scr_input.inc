@@ -75,8 +75,12 @@ static void main_input(void)
         return;
     }
     if ((d = take(0))) {
-        if (kk_midi_host_tempo_x10()) say("TEMPO FOLLOWS ABLETON", 1200);
-        else { kk_edit_bpm(d > 2 || d < -2 ? d * 2 : d); decimal(v, kk.bpm); popup_value("TEMPO", v); }
+        int step = d > 2 || d < -2 ? d * 2 : d;
+        if (kk_midi_host_tempo_x10()) {                /* 0.79: sets Live's tempo */
+            kk_edit_bpm(step);
+            int bpm = (int)(kk_midi_host_tempo_x10() + 5) / 10 + step;
+            decimal(v, bpm < 20 ? 20 : bpm > 999 ? 999 : bpm); popup_value("LIVE TEMPO", v);
+        } else { kk_edit_bpm(step); decimal(v, kk.bpm); popup_value("TEMPO", v); }
     }
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
