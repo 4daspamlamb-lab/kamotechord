@@ -24,6 +24,7 @@ static uint32_t fx_revision;
 static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
 static uint8_t copy_info[5];
+static uint8_t rx_port = 255;            /* 0.84: last computer port anything arrived on */
 static uint8_t host_port = 255;          /* port the Remote Script greets on (0.71) */
 static uint32_t rx_count[3];             /* messages received per port, for Diagnostics */   /* host CC 106..110: clipboard kind, a, b; first track; arrange */
 static uint8_t ports_mode = KK_PORTS_AUTO, local_on = 1;
@@ -43,10 +44,19 @@ unsigned kk_midi_port_mask(void)
     case KK_PORTS_ALL: return outputs;
     case KK_PORTS_USB: return din | (1U << FM1_MIDI_USB);
     case KK_PORTS_BLE: return din | (1U << FM1_MIDI_BLE);
-    default:
+    default: {
         /* AUTO: one computer-facing port only, so a Mac that sees both the
-         * USB and the Bluetooth port never receives every command twice. */
+         * USB and the Bluetooth port never receives every command twice.
+         * 0.84: the port the computer actually talks on wins: the one the
+         * Remote Script greets on, else the last one anything arrived on
+         * (Live's clock, notes ...). Only with no traffic yet: USB when it
+         * is connected, else Bluetooth. A USB cable that only charges no
+         * longer steals the notes from Bluetooth. */
+        unsigned computer = (1U << FM1_MIDI_USB) | (1U << FM1_MIDI_BLE);
+        if (host_port < 3 && ((1U << host_port) & computer & ready)) return din | (1U << host_port);
+        if (rx_port < 3 && ((1U << rx_port) & computer & ready)) return din | (1U << rx_port);
         return din | ((ready & (1U << FM1_MIDI_USB)) ? 1U << FM1_MIDI_USB : 1U << FM1_MIDI_BLE);
+    }
     }
 }
 /* 0.71: Remote Script traffic (Clip / Step Mode, Ableton CCs) goes to the
@@ -153,6 +163,7 @@ unsigned kk_midi_local(void) { return local_on; }
 int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
 {
     if (source < 3) ++rx_count[source];
+    if (source < 3 && (source == FM1_MIDI_USB || source == FM1_MIDI_BLE)) rx_port = (uint8_t)source;
     if (!m || !n || m[0] < 0x80 || m[0] >= 0xf0) return 0;
     unsigned type = m[0] & 0xf0U, ch = m[0] & 15U;
     unsigned d1 = n > 1 ? m[1] & 127U : 0, d2 = n > 2 ? m[2] & 127U : 0;

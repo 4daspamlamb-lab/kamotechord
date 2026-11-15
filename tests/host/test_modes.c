@@ -83,6 +83,13 @@ void test_spare_and_refcount(void)
     kk_midi_set_ports(KK_PORTS_ALL); host_clear(); key(0, 100); key(0, 0);
     CHECK(out_count(BLE, ON1, 48) == 1 && out_count(USB, ON1, 48) == 1, "ALL sends both");
     kk_midi_set_ports(KK_PORTS_AUTO);
+    /* 0.84: AUTO follows the port the computer talks on (USB only charging, Live on Bluetooth). */
+    { uint8_t fe = 0xFE; fm1_app_midi_received(2, &fe, 1); }
+    host_clear(); key(0, 100); key(0, 0);
+    CHECK(out_count(BLE, ON1, 48) == 1 && out_count(USB, ON1, -1) == 0, "AUTO: traffic on BLE -> notes on BLE although USB is connected");
+    { uint8_t fe = 0xFE; fm1_app_midi_received(1, &fe, 1); }
+    host_clear(); key(0, 100); key(0, 0);
+    CHECK(out_count(USB, ON1, 48) == 1 && out_count(BLE, ON1, -1) == 0, "AUTO: traffic on USB -> back to USB");
     /* 0.54: SUSTAIN holds released notes until the next key (no CC 64);
      * keys pressed together are held together. */
     host_clear(); tap(KK_BTN_NOTE_REPEAT);

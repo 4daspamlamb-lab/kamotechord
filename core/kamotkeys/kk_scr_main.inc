@@ -45,7 +45,9 @@ static void draw_piano(void)
     fill(0, w->y, 240, w->h, BG);
     fill(0, PIANO_TOP - 2, 240, 1, PANEL2);
     int offset = piano_offset;
-    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys();
+    /* 0.84: Normal Mode with nothing sounding also marks the chosen scale
+     * (root cyan, other scale notes teal). */
+    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys() || (kk.mode == KK_MODE_NORMAL && !sounding_n);
     for (int y = clip_y0; y < clip_y1; ++y) {
         if (y < PIANO_TOP || y >= PIANO_TOP + WHITE_H) continue;
         int ky = y - PIANO_TOP;

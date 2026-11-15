@@ -202,13 +202,10 @@ class T(unittest.TestCase):
         self.assertGreater(fx(3, 10), 30); self.assertAlmostEqual(rev.parameters[2].value, 0.4)  # sustain = decay
         self.assertEqual(fx(1, 3), 127)                                    # no delay on this track
 
-    def test_session_box_flashes_two_seconds(self):
-        import time
-        deliver((0xBE, 32, 127))
-        self.assertTrue(any(c[0] == 'ring' and c[1] >= 0 for c in self.song.calls if isinstance(c, tuple)))
-        self.s._ring_until = time.time() - 0.1; self.s.update_display()
-        self.assertEqual([c for c in self.song.calls if isinstance(c, tuple)][-1], ('ring', -1, -1, -1, -1, False))
-        self.assertIsNone(self.s._ring_until)
+    def test_no_session_box(self):
+        deliver((0xBE, 32, 127)); deliver((0xBE, 28, 127))       # track right, scene down
+        self.s.update_display()
+        self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
 
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)

@@ -86,7 +86,6 @@ FX_NONE = 127
 FILTER_CLASSES = ('AutoFilter', 'AutoFilter2')
 DELAY_CLASSES = ('Delay', 'Echo', 'PingPongDelay', 'FilterDelay', 'SimpleDelay', 'GrainDelay')
 REVERB_CLASSES = ('Reverb', 'Hybrid')
-RING_SECONDS = 2.0                       # 0.82: Live's session box shows this long after a move
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
 
 
@@ -104,7 +103,6 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._names_sent = {}            # 0.81: slot -> name last sent
         self._seltrack_sent = None
-        self._ring_until = None          # 0.82: hide the session box after RING_SECONDS
         self._ticks = 0
         self._received = False
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
@@ -402,10 +400,10 @@ class KamoteKeys(ControlSurface):
             self.song().view.selected_scene = scenes[self._scene]
         except Exception:
             pass
-        # 0.83: keep Live's selected track inside the 8-track view, so Live
-        # does not scroll between the selected slot and the session box.
+        # Keep Live's selected track inside the 8-track view. (0.84: no session
+        # box any more: Live scrolled its window to the box, then back, on
+        # every move. Live now only scrolls to keep the selected track in sight.)
         self._keep_selected_in_view()
-        self._show_ring()
         self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
 
     def _launch_scene(self):
@@ -667,7 +665,6 @@ class KamoteKeys(ControlSurface):
         else:
             self._send_highlight()
             self._send_names()
-        self._show_ring()
         self._status('KamoteKeys: track %d (view %d-%d)' % (target + 1, self._track + 1, self._track + TRACKS))
 
     def _keep_selected_in_view(self):
@@ -688,21 +685,6 @@ class KamoteKeys(ControlSurface):
         if view != self._track:
             self._track = view
             self._send_all()
-
-    def _show_ring(self):
-        """Live's session box around the pads' 8 x 2 slots, for RING_SECONDS (0.82)."""
-        try:
-            self._c_instance.set_session_highlight(self._track, self._scene, TRACKS, SCENES, False)
-            self._ring_until = time.time() + RING_SECONDS
-        except Exception:
-            pass
-
-    def _hide_ring(self):
-        self._ring_until = None
-        try:
-            self._c_instance.set_session_highlight(-1, -1, -1, -1, False)
-        except Exception:
-            pass
 
     # ------------------------------------------------ Scene Arrange (0.66)
     # One clip per track; each scene stores which tracks play. Launching the
@@ -924,8 +906,6 @@ class KamoteKeys(ControlSurface):
         ControlSurface.update_display(self)
         # Polling catches every change: mouse, other controllers, follow
         # actions, project loads and track insertion or reordering.
-        if self._ring_until is not None and time.time() >= self._ring_until:
-            self._hide_ring()
         self._ticks += 1
         if self._ticks >= FULL_REFRESH_TICKS:
             self._ticks = 0
