@@ -1,0 +1,114 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#14161b;color:#e8e8ec;font:14px/1.35 -apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.wrap{width:1560px;padding:28px 36px}
+h1{font-size:26px;margin:0 0 4px}h1 span{color:#ff5a6a}
+.sub{color:#9aa0ab;margin-bottom:22px}
+h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab;margin:22px 0 10px}
+.row{display:flex;gap:28px;align-items:flex-start}
+.pads{display:grid;grid-template-columns:repeat(8,64px);gap:8px}
+.pad{height:58px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#111}
+.pad small{font-weight:500;font-size:10px;opacity:.75}
+.leg{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:center;font-size:13px}
+.sw{width:18px;height:18px;border-radius:4px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{border:1px solid #3a3f4a;border-radius:6px;padding:6px 10px;font-size:12px;color:#8a909b}
+.b.on{background:#ff5a6a;color:#fff;border-color:#ff5a6a;box-shadow:0 0 14px #ff5a6a88;font-weight:700}
+.tips{columns:2;column-gap:36px;font-size:13.5px}.tips li{margin-bottom:6px;break-inside:avoid}
+kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weight:600}
+</style></head><body><div class="wrap">
+<h1><span style="color:#3b82f6">CHORD</span> · Clip Mode (Ableton clip launcher)</h1>
+<div class="sub">KamoteKeys 0.91 · SMK-37 · tap CHORD to enter / leave (lit), hold CHORD for Clip Mode only while held · needs the KamoteKeys Remote Script · pads = 8 tracks × 2 scenes of Live's session view</div>
+
+<h2>Buttons</h2>
+<div class="btns"><div class="b on" style="background:#3b82f6;border-color:#3b82f6;box-shadow:0 0 14px #3b82f688">CHORD · Clip Mode on/off (lit)</div><div class="b">KNOB BANK · Session Record</div><div class="b">FADER BANK · Capture MIDI</div><div class="b">SEQ PLAY · finish clip, next track</div><div class="b">PARA · Start / Stop</div><div class="b">GLOBE · Stop</div><div class="b">◀ Undo / ▶ Redo</div><div class="b">hold CHORD · Clip Mode while held</div></div>
+
+<h2>Keyboard</h2>
+<svg id="kb" width="1490" height="250"></svg>
+
+<h2>With SHIFT held (top C) · moving around</h2>
+<div class="row" style="align-items:center">
+<svg id="shiftk" width="580" height="270"></svg>
+<ul class="tips" style="columns:1;flex:1">
+<li><b>Hold top C</b> (SHIFT) and press:</li>
+<li><kbd>G#</kbd> / <kbd>A#</kbd> = <b>scene ▲ / ▼</b> · <kbd>F#</kbd> = <b>launch</b> the selected scene</li>
+<li><kbd>F</kbd> / <kbd>G</kbd> = <b>track ◀ / ▶</b> (keep holding: one more every 0.5 s); the 8 tracks shown follow</li>
+<li><kbd>A</kbd> = <b>duplicate</b> the selected clip into the next empty slot below · <kbd>B</kbd> = <b>double</b> its loop</li>
+<li><kbd>E</kbd> = <b>fixed record length</b> OFF → 1 → 2 → 4 → 8 bars</li>
+<li><b>MOVE a clip:</b> hold the <kbd>low E</kbd> instead of SHIFT and press <kbd>G#</kbd> / <kbd>A#</kbd> = move the selected clip one scene up / down.</li>
+</ul>
+</div>
+<div class="row">
+<div><h2>Pads = clip slots (top row = scene 1, bottom = scene 2; tracks 1–8) · press = SELECT (default) or PLAY</h2><div class="pads" id="pads"></div></div>
+<div><h2>Pad colours</h2><div class="leg">
+<div class="sw" style="background:#00ff40"></div><div>playing</div>
+<div class="sw" style="background:#1050ff"></div><div>clip, stopped</div>
+<div class="sw" style="background:#ffa000"></div><div>queued to play (blinks)</div>
+<div class="sw" style="background:#ff0000"></div><div>recording (queued record blinks)</div>
+<div class="sw" style="background:#a040ff"></div><div>Live's selected slot (a playing one pulses violet)</div>
+<div class="sw" style="background:#4a1010"></div><div>empty slot on an armed track</div>
+<div class="sw" style="background:#b0b0b0;opacity:.35"></div><div>empty slot</div>
+<div class="sw" style="background:linear-gradient(90deg,#00ff40 50%,#5a2200 50%)"></div><div>SCENE ARRANGE: track on / off in that scene</div>
+</div></div></div>
+
+<h2>Moves</h2>
+<ul class="tips">
+<li><b>Pad press</b>: <b>SELECT</b> (slot + arm its track; KNOB BANK records there). <b>PLAY (F#)</b>: hold + clips = launch / stop them; or tap F# and the next clip pressed is launched.</li><li><b>Hold MOVE (low E) + top G# / A#</b>: move Live's selected clip one scene up / down (it stays selected).</li>
+<li><b>Live strip + SHIFT</b> (hold top C): F / G = previous / next track (hold: one more every 0.5 s), G# / A# = scene up / down, F# = launch the selected scene, A = duplicate clip, B = double loop, E = fixed record length. Without SHIFT: F quantize, F# play / stop, G arm, G# finish &amp; next, A mute, A# delete, B solo.</li>
+<li><b>Hold OVERDUB (lowest C) + pad</b>: overdub into that clip (an empty slot: arm and record a new clip); tapping the pad again ends the overdub.</li>
+<li><b>COPY (C#)</b> tap or hold, then a clip · <b>PASTE (D#)</b> tap = next pad, hold = several pads.</li>
+<li><b>Hold DELETE (A#) + pad</b>: delete that clip.</li>
+<li><b>Hold STOP (G#) + clips</b>: stop them; tap G#: stop the selected clip.</li><li><b>D: SCENE ARRANGE</b> on / off. The two rows are two scenes; tap a pad to turn that track <b>on (green)</b> or <b>off (dim orange)</b> in that scene (dark = the track has no clip). Each track keeps <b>one clip</b>: a scene plays the track's clip from that scene, or the nearest one above / below. Saved in the Live set.</li>
+<li><b>SHIFT + F#</b>: launch the selected scene: with an arrangement it plays exactly the chosen tracks' clips and stops the others (edit a clip once, every scene hears it). <b>SHIFT + G# / A#</b>: scene up / down.</li>
+<li>Screen: clip state, <b>selected track number + name</b> (big), scene, the 8 tracks shown, SELECT / PLAY, clipboard (COPIED T3 S2); the pad map shows track numbers and names.</li><li><b>Mix the selected track</b>: Fader 2 volume, Fader 3 Macro 1 (or Send A), E4–E7 filter / delay / reverb / sustain.</li>
+<li><b>Hold CHORD</b> from any mode: Clip Mode while held (launch, select, record), back to where you were on release. From Clip Mode press <b>SEQ REC</b> to step-sequence the selected slot.</li>
+</ul>
+</div>
+<script>
+const W=['C','D','E','F','G','A','B'],BL={0:'C#',1:'D#',3:'F#',4:'G#',5:'A#'};
+const CTRL={blue:'#3b82f6',drum:'#f59e0b',vel:'#a855f7',play:'#3a3f4a'};
+// label, colour per key index 0..36
+const lab={0:['OVERDUB','hold + pad'],1:['COPY','tap/hold'],3:['PASTE','tap/hold'],6:['PLAY','hold / tap'],4:['MOVE','hold'],8:['STOP','hold / tap'],2:['ARRANGE','toggle'],10:['DELETE','+ pad'],29:['QUANT','',CTRL.vel],30:['PLAY','/ stop',CTRL.vel],31:['ARM','',CTRL.vel],32:['FINISH','& next',CTRL.vel],33:['MUTE','',CTRL.vel],34:['DELETE','clip',CTRL.vel],35:['SOLO','',CTRL.vel],36:['SHIFT','hold',CTRL.vel]};
+function col(k){if(!lab[k])return null;return k==2?'#16a34a':k==8?'#dc2626':k<12?(k==6?CTRL.drum:CTRL.blue):'#22c55e'}
+const svg=document.getElementById('kb'),ns='http://www.w3.org/2000/svg';
+function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e}
+const ww=66,wh=200,x0=10,y0=40;let wi=0,whites=[],blacks=[];
+for(let k=0;k<37;k++){const n=k%12,isB=[1,3,6,8,10].includes(n);if(!isB){whites.push([k,x0+wi*ww]);wi++}else blacks.push([k,x0+wi*ww-21])}
+for(const [k,x] of whites){const c=col(k);el('rect',{x,y:y0,width:ww-3,height:wh,rx:5,fill:c?c+'33':'#d9dbe0',stroke:c||'#888','stroke-width':c?2:1});
+ if(c){el('rect',{x:x+3,y:y0+wh-58,width:ww-9,height:52,rx:4,fill:c});const L=lab[k];el('text',{x:x+ww/2-1.5,y:y0+wh-34,'text-anchor':'middle','font-size':11.5,'font-weight':700,fill:'#fff'},L[0]);el('text',{x:x+ww/2-1.5,y:y0+wh-17,'text-anchor':'middle','font-size':10,fill:'#ffffffcc'},L[1])}
+ else el('text',{x:x+ww/2-1.5,y:y0+wh-14,'text-anchor':'middle','font-size':10,fill:'#666'},'note')}
+for(const [k,x] of blacks){const c=col(k);el('rect',{x,y:y0,width:40,height:122,rx:4,fill:c||'#1d1f24',stroke:c?'#000':'#000'});
+ if(c){const L=lab[k];el('text',{x:x+20,y:y0+92,'text-anchor':'middle','font-size':L[0].length>6?7.6:9.5,'font-weight':700,fill:'#fff'},L[0]);el('text',{x:x+20,y:y0+108,'text-anchor':'middle','font-size':9,fill:'#ffffffcc'},L[1])}
+ else el('text',{x:x+20,y:y0+108,'text-anchor':'middle','font-size':9,fill:'#777'},'note')}
+const sec=[[0,7,CTRL.blue,'CLIP TOOLS · C OVERDUB · E MOVE · black: clip keys'],[7,17,'#6b7280','other keys play notes (chord LOCK still works)'],[17,22,'#22c55e','LIVE STRIP (same in every mode)']];
+for(const [a,b,c,t] of sec){const xa=x0+a*ww,xb=x0+b*ww-3;el('rect',{x:xa,y:8,width:xb-xa,height:4,rx:2,fill:c});el('text',{x:xa,y:30,'font-size':12.5,'font-weight':700,fill:c,'letter-spacing':'.04em'},t)}
+const P=document.getElementById('pads');
+const st=[['#00ff40','play'],['#1050ff','stop'],['#ffa000','queued'],['#ff0000','rec'],['#b0b0b0','empty'],['#1050ff','stop'],['#a040ff','selected'],['#4a1010','armed'],
+['#1050ff','stop'],['#00ff40','play'],['#b0b0b0','empty'],['#b0b0b0','empty'],['#1050ff','stop'],['#b0b0b0','empty'],['#1050ff','stop'],['#4a1010','armed']];
+for(let i=0;i<16;i++){const d=document.createElement('div');d.className='pad';d.style.background=st[i][0];d.style.opacity=st[i][1]=='empty'?.35:1;
+d.style.color=['#1050ff','#a040ff','#4a1010','#ff0000'].includes(st[i][0])?'#fff':'#111';d.innerHTML='T'+(i%8+1)+'<small>'+st[i][1]+'</small>';P.appendChild(d)}
+
+// 0.91 "SHIFT held" close-up of the top octave (E3 .. C4)
+function shiftStrip(id, layer){
+ const ns='http://www.w3.org/2000/svg',svg=document.getElementById(id);
+ function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e}
+ const ww=92,wh=210,x0=10,y0=10,whites=[28,29,31,33,35,36],blacks=[[30,1],[32,2],[34,3]];
+ whites.forEach((k,i)=>{const L=layer[k],x=x0+i*ww,c=L?L[2]:null;
+  el('rect',{x,y:y0,width:ww-4,height:wh,rx:6,fill:c?c+'33':'#d9dbe0',stroke:c||'#888','stroke-width':c?2.5:1});
+  if(c){el('rect',{x:x+4,y:y0+wh-70,width:ww-12,height:62,rx:5,fill:c});
+   el('text',{x:x+ww/2-2,y:y0+wh-42,'text-anchor':'middle','font-size':13,'font-weight':700,fill:'#fff'},L[0]);
+   el('text',{x:x+ww/2-2,y:y0+wh-22,'text-anchor':'middle','font-size':11,fill:'#ffffffdd'},L[1])}
+  else el('text',{x:x+ww/2-2,y:y0+wh-16,'text-anchor':'middle','font-size':11,fill:'#666'},'note');
+  el('text',{x:x+ww/2-2,y:y0+wh+18,'text-anchor':'middle','font-size':11,fill:'#9aa0ab'},['E','F','G','A','B','C'][i])});
+ blacks.forEach(([k,i])=>{const L=layer[k],x=x0+i*ww-28,c=L?L[2]:'#1d1f24';
+  el('rect',{x,y:y0,width:52,height:130,rx:5,fill:c,stroke:'#000'});
+  if(L){el('text',{x:x+26,y:y0+92,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#fff'},L[0]);
+   el('text',{x:x+26,y:y0+110,'text-anchor':'middle','font-size':10,fill:'#ffffffdd'},L[1])}
+  el('text',{x:x+26,y:y0+wh+34,'text-anchor':'middle','font-size':11,fill:'#9aa0ab'},['','F#','G#','A#'][i])});
+}
+const SB='#3b82f6',SG='#22c55e',SR='#ef4444',SP='#a855f7',SY='#eab308';
+const SHIFT_LAYER={28:['LENGTH','off 1 2 4 8',SR],29:['◀ TRACK','hold = repeat',SB],30:['LAUNCH','scene',SG],31:['TRACK ▶','hold = repeat',SB],
+ 32:['▲ SCENE','up',SB],33:['DUPLICATE','clip below',SP],34:['▼ SCENE','down',SB],35:['DOUBLE','loop ×2',SY],36:['SHIFT','held',SB]};
+const MOVE_LAYER={32:['▲ MOVE','clip up',SP],34:['▼ MOVE','clip down',SP]};
+
+shiftStrip('shiftk',SHIFT_LAYER);
+</script></body></html>

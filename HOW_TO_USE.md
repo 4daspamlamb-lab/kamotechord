@@ -59,14 +59,15 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 
 The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / Reverb on the track; the screen says `NO REVERB` etc. if one is missing.
 
-**Top-octave Live keys** (all modes except Clip and Step), for the track / clip selected in Live:
+**Top-octave Live strip** (the same in every mode), for the track / clip selected in Live:
 
-| Key | Does |
-|---|---|
-| top A# / G# / F# | delete clip / finish & next track / launch-stop clip |
-| top B / A / G / F | solo track / mute track / arm track / quantize clip |
-| hold top C + G# / A# | scene up / down |
-| hold top C + F / G | track left / right |
+| Key | Does | Hold top C (SHIFT) + key |
+|---|---|---|
+| top F / F# | quantize clip / launch-stop clip | track ◀ / launch scene |
+| top G / G# | arm only this track (PATCH + G: add) / finish & next track | track ▶ / scene ▲ |
+| top A / A# | mute track / delete clip | duplicate clip / scene ▼ |
+| top B | solo track | double the loop |
+| top E | (plays a note) | fixed record length OFF / 1 / 2 / 4 / 8 bars |
 
 Key and scale (E2 / E3) are remembered after power-off.
 
@@ -74,6 +75,7 @@ Key and scale (E2 / E3) are remembered after power-off.
 | To … | Do |
 |---|---|
 | record a new clip | select an empty slot on an armed track (top G arms), press **KNOB BANK**; again = stop |
+| record exactly 1 / 2 / 4 / 8 bars | **SHIFT + top E** until the screen shows the length (`REC 4 BARS`), then **KNOB BANK**: it stops by itself and loops |
 | **overdub** (add notes to a clip) | select a track whose clip is **playing**, arm it, press **KNOB BANK**; old notes stay; again = stop |
 | overdub in Clip Mode | hold the **lowest C** and press the clip's pad |
 | keep something you played without recording | **FADER BANK** (Capture) |
@@ -93,7 +95,7 @@ Key and scale (E2 / E3) are remembered after power-off.
 - Chord pads still work and stay in the scale. A locked chord stays on.
 
 ### Pads as notes (Pad Scale, SCALE) and drums (Drum, FX)
-- **SCALE**: the 16 pads play the scale (root pads cyan). Keys you play light the pads with the same note.
+- **SCALE**: the 16 pads play the scale (root pads cyan). A pad also lights when the playing clip on Live's selected track plays its note.
 - **FX**: the pads are GM drums on channel 10 (kick top left, rim below it, snare next …), coloured by drum type. OCT moves them by an octave.
 
 ### Lights
@@ -115,12 +117,12 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 | record a new clip | select an empty slot, press **KNOB BANK** |
 | copy / paste a clip | tap **C#**, press the clip; tap **D#**, press where it goes (hold D# for several) |
 | delete a clip | hold **A#** and press it |
-| scroll scenes / launch a scene | top **G# / A#** / top **F#** |
-| move the selected clip up / down | hold the **top F** and press top G# / A# |
-| select the previous / next track | top **A / B** (hold: one more every 0.5 s; the 8 tracks shown follow; the screen shows their numbers and names) |
+| scroll scenes / launch a scene | hold top **C** (SHIFT) + top **G# / A#** / top **F#** |
+| move the selected clip up / down | hold the **low E** (MOVE) and press top G# / A# |
+| select the previous / next track | SHIFT + top **F / G** (hold: one more every 0.5 s; the 8 tracks shown follow; the screen shows their numbers and names) |
 | use clips quickly from any mode | **hold CHORD**, press pads, let go |
 
-**Build a song from loops (Scene Arrange):** press the low **D**. The two pad rows are two scenes; tap pads to choose which tracks play in each scene (green on, dim off). Launch a scene with the top F#: exactly those tracks play, each with its one clip, so editing a clip changes every scene. Press D again to leave.
+**Build a song from loops (Scene Arrange):** press the low **D**. The two pad rows are two scenes; tap pads to choose which tracks play in each scene (green on, dim off). Launch a scene with SHIFT + top F#: exactly those tracks play, each with its one clip, so editing a clip changes every scene. Press D again to leave.
 
 **Record a band one track at a time:** select the first track's slot (pad), press **KNOB BANK** to record, play, then press **SEQ PLAY**: the clip keeps looping and the next track is armed and selected. Press KNOB BANK again to record it, and so on.
 
@@ -149,9 +151,9 @@ Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC*
 | B (hold) | DRUM: the pads become Drum Mode pads — tap one to hear and select it |
 
 ### More
-- **Velocity**: top F G A B = 32 / 64 / 96 / 127 (hold a step + one of them to change that step).
-- **Note length**: hold the top C and tap pad 1–16 (1/16 … 1 bar).
-- **Repeats**: hold the top F# / G# / A# and press a pad: that step plays 1 / 2 / 3 times (you hear it).
+- **Hold a step and turn a knob**: **E1** velocity, **E2** length, **E3** repeats (1× / 2× / 3×).
+- **New steps** take the pad's velocity (Fader 1 above 10 % = fixed); **E2** with no step held = length of new steps.
+- The key zone is **16 drum keys (C2–D#3)**; the top octave is the Live strip, as everywhere.
 - **Tie**: hold a step and press a later one.
 - **Melodies**: press **SEQ** in Step Mode: the 2nd-octave keys become scale keys; **OCT** moves them. Both are remembered per track.
 - **Chords**: lock a chord on the main screen first; with scale keys a key picks the whole chord and a pad writes it.

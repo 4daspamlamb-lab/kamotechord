@@ -1,0 +1,44 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#14161b;color:#e8e8ec;font:13px/1.35 -apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.wrap{width:1700px;padding:28px 36px}
+h1{font-size:26px;margin:0 0 4px}.sub{color:#9aa0ab;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.card{background:#1c1f26;border-radius:14px;padding:16px 18px}
+.card h2{margin:0 0 4px;font-size:18px}.card p{margin:6px 0 0;color:#b9bec8}
+.pads{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;margin-top:10px}
+.pad{height:46px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#111}
+.pad small{font-weight:500;font-size:10px;opacity:.75}
+</style></head><body><div class="wrap">
+<h1>KamoteKeys 0.91 — play modes (SMK-37)</h1>
+<div class="sub">Keyboard on top, the 16 pads below. Mode button again = back to Normal. Clip and Step Mode have their own diagrams. In all four modes the <b>top octave</b> (F to C, except C# D D# E) controls Live's selected track / clip: delete, finish, launch / stop, solo, mute, arm, quantize; hold top C for scene / track navigation.</div>
+<div class="grid" id="g"></div></div>
+<script>
+const W=['C','D','E','F','G','A','B'];
+function kb(labels){ // labels[k] = [text, colour] for keys 0..36
+ const ww=21.5,wh=86,ns='http://www.w3.org/2000/svg';let s=`<svg width="800" height="${wh+4}">`;let wi=0,bl=[];
+ for(let k=0;k<37;k++){const n=k%12,isB=[1,3,6,8,10].includes(n);const L=labels[k]||[];
+  if(!isB){const x=wi*ww;s+=`<rect x="${x}" y="0" width="${ww-2}" height="${wh}" rx="3" fill="${L[1]||'#d9dbe0'}"/>`;if(L[0])s+=`<text x="${x+ww/2-1}" y="${wh-7}" font-size="8.5" font-weight="700" text-anchor="middle" fill="#111">${L[0]}</text>`;wi++}
+  else bl.push([k,wi*ww-6.5,L])}
+ for(const [k,x,L] of bl){s+=`<rect x="${x}" y="0" width="12" height="52" rx="2" fill="${L[1]||'#22242c'}"/>`;if(L[0])s+=`<text x="${x+6}" y="46" font-size="7" font-weight="700" text-anchor="middle" fill="#fff">${L[0]}</text>`}
+ return s+'</svg>'}
+function pads(list){return '<div class="pads">'+list.map(p=>`<div class="pad" style="background:${p[1]};color:${p[2]||'#111'}">${p[0]}<small>${p[3]||''}</small></div>`).join('')+'</div>'}
+const chroma={},names=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+for(let k=0;k<37;k++){const n=k%12;chroma[k]=[n==0?'C'+(Math.floor(k/12)+1):'', n==0?'#9fd0ff':null]}
+const chordPads=[['MAJ','#ffa010'],['MIN','#1c50ff','#fff'],['DIM','#8a1cff','#fff'],['SUS4','#00d0a0'],['CC102','#5a1a1a','#fff'],['CC103','#5a2e10','#fff'],['CC104','#55480a','#fff'],['CC105','#0a4d1c','#fff'],
+ ['7','#ff0060','#fff'],['MAJ7','#ff2ca0','#fff'],['6','#ff60c8'],['9','#ffa0e8'],['LOCK','#ffffff'],['CC106','#0a4552','#fff'],['CC107','#0a1a55','#fff'],['CC108','#35105a','#fff']];
+// key scale: white keys = scale degrees, C major example, black silent
+const ks={};let deg=['C','D','E','F','G','A','B'];let wi=0;for(let k=0;k<37;k++){const n=k%12;if([1,3,6,8,10].includes(n)){ks[k]=['','#3a3c44']}else{ks[k]=[deg[wi%7],k==12?'#ffb84d':null];wi++}}
+ks[12]=['ROOT','#ffb84d'];
+const scalePads=[];const maj=['C','D','E','F','G','A','B'];for(let i=0;i<16;i++){const n=maj[i%7];scalePads.push([n+(3+Math.floor(i/7)),n=='C'?'#60f0ff':'#00ff3c','#111',i==0?'root':''])}
+const fam={kick:'#ff0000',snare:'#ff6400',hat:'#ffdc00',tom:'#003cff',rim:'#9600ff',clap:'#ff3ca0',cym:'#00c8aa'};
+const dtop=[['KICK',36,'kick'],['SNARE',38,'snare'],['SNR2',40,'snare'],['CHH',42,'hat'],['PHH',44,'hat'],['OHH',46,'hat'],['HMT',48,'tom'],['HTOM',50,'tom']];
+const dbot=[['RIM',37,'rim'],['CLAP',39,'clap'],['LFT',41,'tom'],['HFT',43,'tom'],['LTOM',45,'tom'],['LMT',47,'tom'],['CRS1',49,'cym'],['RIDE',51,'cym']];
+const drumPads=[...dtop,...dbot].map(d=>[d[0],fam[d[2]],['tom','rim'].includes(d[2])?'#fff':'#111',d[1]]);
+const cards=[
+ ['Normal (default)','#9aa0ab',kb(chroma),pads(chordPads),'<b>Keys</b>: chromatic notes on ch 1 (OCT −2 at power-on: lowest key C1). <b>Hold chord pads</b> (type + extension combine, e.g. MIN + 7) and play keys → chords; extensions alone build diatonic chords from the scale. <b>LOCK</b> latches them in every mode. Pads 5–8, 14–16 are MIDI-mappable buttons (CC 102–108, ch 15). With nothing playing the screen\'s piano marks the scale notes.'],
+ ['Key Scale (SEQ)','#ffb84d',kb(ks),pads(chordPads),'<b>White keys play the scale</b> set with E3 (scale) and E2 (key); the <b>2nd C is the root</b>, scale degrees go up and down from it; black keys are silent. Chord pads and LOCK work as in Normal, built inside the scale. (Example: C Major.)'],
+ ['Pad Scale (SCALE)','#40e070',kb(chroma),pads(scalePads),'<b>16 pads = 16 notes of the scale</b> from the root (root pads cyan, others green), ch 1; OCT − / + move the pads. The keyboard stays chromatic (a locked chord still plays on it) and lights the pads of the same note in any octave. ARP arpeggiates held pads.'],
+ ['Drum (FX)','#ff5a5a',kb(chroma),pads(drumPads),'<b>16 GM drum pads on ch 10</b> in vertical pairs (pad 1 kick 36, pad 9 rim 37, pad 2 snare 38 …), coloured by family: kick red, snare orange, hats yellow, toms blue, rim purple, clap pink, cymbals teal. OCT − / + move by 12. The internal drum kit plays them. Same layout as Step Mode\'s DRUM view (hold B).'],
+];
+document.getElementById('g').innerHTML=cards.map(c=>`<div class="card" style="border-top:4px solid ${c[1]}"><h2>${c[0]}</h2>${c[2]}${c[3]}<p>${c[4]}</p></div>`).join('');
+</script></body></html>

@@ -122,7 +122,7 @@ Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playin
 |---|---|---|
 | keyboard → Live | Note 36–51 | step pads 1–16 (press / release) |
 | keyboard → Live | Note 60–76 | DRUM, page ◀, page ▶, LENGTH, DOUBLE, RESOLUTION, FOLLOW, COPY, CLEAR, velocity 1–6, velocity down, velocity up |
-| keyboard → Live | Note 77–85 | PASTE, BARS, OCT −, OCT +, SEQ (scale keys), repeat 1× / 2× / 3×, NOTE LENGTH (hold) |
+| keyboard → Live | Note 77–85 | PASTE, BARS, OCT −, OCT +, SEQ (scale keys), repeat 1× / 2× / 3×, NOTE LENGTH (hold); the SMK-37 no longer sends velocity, repeat and note-length notes: hold a step + E1 / E2 / E3 instead (CC 20–22) |
 | keyboard → Live | Notes on **channel 13** | key-zone key pressed: select that pitch, or a locked chord (all note-ons, then all note-offs) |
 | keyboard → Live | Note on channel 10 (drum keys) or 1 (scale keys) | the key's own sound, for the armed track and the internal synth |
 | keyboard → Live | CC 127 | 127 = Step Mode started (repeated every 2 s), 0 / 64 = ended |
@@ -150,10 +150,18 @@ Channel 14 never reaches the internal synth.
 | 45 | top F# | launch / stop the selected clip |
 | 47 | top A# | delete the selected clip |
 | 48 | top A | mute the selected track |
-| 49 | top G | arm the selected track |
+| 49 | top G | arm only the selected track (others disarmed) |
+| 51 | PATCH + top G | arm the selected track, others stay armed |
+| 52 | SHIFT + top A | duplicate the selected clip into the next empty slot below |
+| 53 | SHIFT + top B | double the selected clip's loop |
+| 54 | KNOB BANK (sent just before CC 25) | fixed record length in bars, 0 = off |
 | 50 | top F | quantize the selected clip |
 
-Top G# sends CC 36 (finish & next track). Top C is SHIFT and sends nothing; while it is held, top G# / A# send CC 29 / 28 (scene up / down) and top F / G send CC 31 / 32 (track left / right). The top keys send these outside Clip and Step Mode only.
+Top G# sends CC 36 (finish & next track). Top C is SHIFT and sends nothing; while it is held, top G# / A# send CC 29 / 28 (scene up / down), top F# CC 30 (launch scene) and top F / G CC 31 / 32 (track left / right); SHIFT + top E changes the fixed length on the keyboard (nothing is sent). In Clip Mode, low E (MOVE) held + top G# / A# send CC 33 / 34 (move the clip). The top keys send these in every mode.
+
+**Step Mode knobs:** with a step pad held, E1 / E2 / E3 send channel 14 CC 20 / 21 / 22 = velocity / length / repeats of the held steps, relative (64 + knob steps).
+
+**Selected clip notes:** channel 16 Note On / Off from Live = a note the playing clip on Live's selected track sounds now; it lights the Pad Scale pad of that note and never sounds.
 
 **Track names and effect values, channel 16 (Live → keyboard):**
 

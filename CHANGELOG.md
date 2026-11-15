@@ -1,5 +1,24 @@
 # Changelog
 
+## KamoteKeys 0.91 (development snapshot)
+
+- **One Live strip in every mode** (Clip and Step included): top F quantize, F# play / stop, G arm, G# finish & next, A mute, A# delete, B solo, C SHIFT.
+- **SHIFT layer:** G# / A# scene up / down, F# launch scene, F / G track left / right (hold = repeat), A duplicate clip, B double loop, E fixed record length.
+- **Fixed-length recording:** OFF / 1 / 2 / 4 / 8 bars (saved, shown as `REC 4 BARS`); KNOB BANK on an empty armed slot records exactly that long, then loops.
+- **Clip Mode:** scenes and tracks via SHIFT; MOVE is the low E.
+- **Step Mode:** 16 drum keys (C2–D#3); hold a step + E1 / E2 / E3 = velocity / length / repeats; new steps take the pad's velocity.
+- Diagrams: a "With SHIFT held" close-up in the Live Strip, Clip Mode and Step Mode diagrams; diagram sources are now in `docs/diagrams/src/`.
+
+## KamoteKeys 0.90 (development snapshot)
+
+- Top G arms only the selected track; PATCH + G adds it to the armed tracks.
+- No KEY / SCALE pop-up for E2 / E3 (the key / scale bar shows it).
+
+## KamoteKeys 0.89 (development snapshot)
+
+- Clearer, still subtle scale highlighting on the piano (tinted keys plus a mark).
+- Pad Scale lights a pad when the playing clip on Live's selected track plays its note (no more "same note in any octave").
+
 ## KamoteKeys 0.88 (development snapshot)
 
 - **Top C = SHIFT:** hold it and top G# / A# move a scene up / down, top F / G a track left / right. "Finish & record next" is gone.

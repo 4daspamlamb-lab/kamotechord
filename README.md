@@ -107,20 +107,21 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
 
 ### Top-octave Live keys
 
-In Normal, Key Scale, Pad Scale and Drum Mode the top octave controls the track and clip **selected in Live** (needs the Remote Script; Clip and Step Mode keep their own keys):
+In **every mode** the top octave is the same **Live strip**: it controls the track and clip **selected in Live** (needs the Remote Script). Hold top **C** (SHIFT) for the second layer:
 
-| Key | Does |
-|---|---|
-| top **A#** | **Delete** the selected clip |
-| top **G#** | **Finish & next track** (same as SEQ PLAY) |
-| top **F#** | **Launch / stop** the selected clip (an empty slot on an armed track records) |
-| top **C** | **SHIFT** (silent): hold it and top **G# / A#** = scene up / down, top **F / G** = track left / right |
-| top **B** | **Solo** the selected track on / off |
-| top **A** | **Mute** the selected track on / off |
-| top **G** | **Arm** the selected track on / off |
-| top **F** | **Quantize** the selected clip (to Live's record quantization, else 1/16) |
+| Key | Does | With SHIFT (top C) held |
+|---|---|---|
+| top **F** | **Quantize** the selected clip (Live's record quantization, else 1/16) | track ◀ (hold: repeats) |
+| top **F#** | **Launch / stop** the selected clip (an empty slot on an armed track records) | **launch** the selected scene |
+| top **G** | **Arm** only the selected track (PATCH + G: arm it as well) | track ▶ (hold: repeats) |
+| top **G#** | **Finish & next track** (same as SEQ PLAY) | scene ▲ |
+| top **A** | **Mute** the selected track | **duplicate** the clip into the next empty slot below |
+| top **A#** | **Delete** the selected clip | scene ▼ |
+| top **B** | **Solo** the selected track | **double** the clip's loop |
+| top **C** | SHIFT (silent) | |
+| top **E** | plays a note | **fixed record length** OFF → 1 → 2 → 4 → 8 bars |
 
-Top C#, D, D# and E still play notes. Diagram: [SMK37-Live-Keys.png](docs/diagrams/SMK37-Live-Keys.png) (with recording and overdub).
+Top C#, D, D# and E play notes. **Fixed length**: with a length set (saved, `REC 4 BARS` on the screen), KNOB BANK on an empty slot of an armed track records exactly that long and the clip loops on its own. Diagram: [SMK37-Live-Keys.png](docs/diagrams/SMK37-Live-Keys.png) (with recording and overdub).
 
 All Ableton commands are on **MIDI channel 15**. The pad map and the button-index verification are in [docs/CONTROLS.md](docs/CONTROLS.md).
 
@@ -179,15 +180,15 @@ The **second physical C** plays the selected tonic, at octave 0 the tonic in the
 
 ### Clip Mode (CHORD)
 
-Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **top F** + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; top F# launches exactly those); white **top A / B** select the previous / next track (the 8-track view follows when the selection leaves it: going left the track becomes the first of the 8, going right the last; hold the key to move one more track every 0.5 s); top **F# / G# / A#** = scene launch / up / down. **Hold CHORD** from any mode for Clip Mode only while held. The screen shows the clip state, Live's selected track (number and name, big), the scene and the 8 tracks in view, and what is copied; the pad map shows each pad's track number and the start of its name. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
+Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **low E** (MOVE) + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; SHIFT + F# launches exactly those). The top octave is the Live strip, as in every mode: SHIFT + F / G select the previous / next track (the 8-track view follows when the selection leaves it: going left the track becomes the first of the 8, going right the last), SHIFT + G# / A# / F# = scene up / down / launch. **Hold CHORD** from any mode for Clip Mode only while held. The screen shows the clip state, Live's selected track (number and name, big), the scene and the 8 tracks in view, and what is copied; the pad map shows each pad's track number and the start of its name. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
 
 ### Step Mode (SEQ REC)
 
-A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: RESOLUTION, FOLLOW, DOUBLE (F), LENGTH + pad = bars, BARS, DRUM (B, hold); black: COPY, PASTE, page ◀ ▶, DELETE); **PARA** makes and plays / stops the clip; leaving Step Mode returns to the mode you came from; the key zone runs from C2 to E3; **top F G A B = velocity 32 / 64 / 96 / 127**, **hold the top C** to set the note length on the pads, the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad). A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
+A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: RESOLUTION, FOLLOW, DOUBLE (F), LENGTH + pad = bars, BARS, DRUM (B, hold); black: COPY, PASTE, page ◀ ▶, DELETE); **PARA** makes and plays / stops the clip; leaving Step Mode returns to the mode you came from; the key zone is **16 drum keys from C2 to D#3**; **hold a step and turn E1 / E2 / E3** to set its **velocity / length / repeats** (1× 2× 3×); new steps take the pad's velocity (Fader 1 above 10 % fixes it), and E2 with no step held sets the length of new steps. The top octave is the Live strip. A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
 
 ### Pad Scale Mode (SCALE)
 
-All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following the key (E2), the scale (E3) and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed or when that note sounds in any octave (so the keys light the pads of the notes you play). The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
+All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following the key (E2), the scale (E3) and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed, when that exact note sounds, or when the **playing clip on Live's selected track** plays it (the Remote Script sends those notes; they never sound on the keyboard). The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
 
 ### Drum Mode (FX)
 
@@ -228,14 +229,14 @@ Encoders are numbered E1–E8, left to right; SMK37 OPEN calls them K1–K4, SEL
 
 E4–E7 need the Remote Script. It finds the effects on Live's selected track by name (also inside racks): an Auto Filter (old or new), any delay or Echo, any reverb (incl. Hybrid Reverb). If one is missing, Live's status bar lists the devices it saw. The screen shows the new value, or `NO REVERB` etc. when the track has none. Hold **ARP** to edit the ARP settings with the knobs.
 
-Changes on the main screen appear as a short message in the status line.
+Changes on the main screen appear as a short message in the status line (not for E2 / E3: the key and scale bar shows them). In Step Mode, while a step pad is held, E1 / E2 / E3 edit that step (velocity / length / repeats).
 
 ## Screens
 
 | | |
 |---|---|
 | ![Bubbles boot](docs/diagrams/SMK37-Boot.gif) | **Bubbles boot** (0.78, ~1.7 s): white piano keys drop in and bounce, flat jewel-coloured bubbles (ruby, amber, gold, emerald, teal, sapphire, indigo, amethyst) pop up behind them, the black keys pop, one colour sweep runs over the keys and "KamoteKeys" pops in letter by letter in warm white. The pads light in the bubble colours. |
-| ![Chord](docs/screenshots/07_main_chord_G7.png) | **Main screen:** version label, battery gauge (a bolt on USB power), mode, octave, BPM, the chord or note name, root and scale, the piano, and ARP/Sustain/velocity status. The piano follows the **actual MIDI note list**: a single note lights one key (green); in a chord the root is cyan and the other tones orange. The view re-centres with a ~110 ms ease-out pixel scroll that can redirect mid-move. Key Scale Mode, and Normal Mode while nothing sounds, mark the scale notes under the keys (root cyan). |
+| ![Chord](docs/screenshots/07_main_chord_G7.png) | **Main screen:** version label, battery gauge (a bolt on USB power), mode, octave, BPM, the chord or note name, root and scale, the piano, and ARP/Sustain/velocity status. The piano follows the **actual MIDI note list**: a single note lights one key (green); in a chord the root is cyan and the other tones orange. The view re-centres with a ~110 ms ease-out pixel scroll that can redirect mid-move. Key Scale Mode, and Normal Mode while nothing sounds, tint the scale keys and mark them (root cyan, others teal); keys outside the scale stay plain. |
 | ![Pad scale](docs/screenshots/04_pad_scale.png) | **Pad Scale / Drum:** a 2 × 8 pad map with note names or drum labels and live highlights. |
 | ![BT](docs/screenshots/12_bluetooth_menu.png) | **Bluetooth menu:** SMK37 OPEN's standard menu (see below). |
 

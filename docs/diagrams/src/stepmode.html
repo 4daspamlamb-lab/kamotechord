@@ -1,0 +1,117 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#14161b;color:#e8e8ec;font:14px/1.35 -apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.wrap{width:1560px;padding:28px 36px}
+h1{font-size:26px;margin:0 0 4px}h1 span{color:#ff5a6a}
+.sub{color:#9aa0ab;margin-bottom:22px}
+h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab;margin:22px 0 10px}
+.row{display:flex;gap:28px;align-items:flex-start}
+.pads{display:grid;grid-template-columns:repeat(8,64px);gap:8px}
+.pad{height:58px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#111}
+.pad small{font-weight:500;font-size:10px;opacity:.75}
+.leg{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:center;font-size:13px}
+.sw{width:18px;height:18px;border-radius:4px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{border:1px solid #3a3f4a;border-radius:6px;padding:6px 10px;font-size:12px;color:#8a909b}
+.b.on{background:#ff5a6a;color:#fff;border-color:#ff5a6a;box-shadow:0 0 14px #ff5a6a88;font-weight:700}
+.tips{columns:2;column-gap:36px;font-size:13.5px}.tips li{margin-bottom:6px;break-inside:avoid}
+kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weight:600}
+</style></head><body><div class="wrap">
+<h1><span>SEQ REC</span> · Step Mode (step sequencer)</h1>
+<div class="sub">KamoteKeys 0.91 · SMK-37 · press SEQ REC to enter / leave · needs the KamoteKeys Remote Script · edits Live's selected track + clip slot</div>
+
+<h2>Buttons</h2>
+<div class="btns"><div class="b on">SEQ REC · Step Mode on/off (lit) · leaving returns to the mode you came from</div><div class="b">PARA · make the clip + play / stop it</div><div class="b">CHORD tap · Clip Mode · hold: Clip Mode while held</div><div class="b">SEQ PLAY · finish clip, next track</div><div class="b">GLOBE · Stop</div><div class="b">OCT −/+ · key zone octave (per track)</div><div class="b">SEQ · drum keys ↔ scale keys (per track)</div><div class="b">◀ / ▶ · page left / right</div></div>
+
+<h2>Keyboard</h2>
+<svg id="kb" width="1490" height="250"></svg>
+
+<h2>With SHIFT held (top C) · moving around</h2>
+<div class="row" style="align-items:center">
+<svg id="shiftk" width="580" height="270"></svg>
+<ul class="tips" style="columns:1;flex:1">
+<li><b>Hold top C</b> (SHIFT) and press:</li>
+<li><kbd>G#</kbd> / <kbd>A#</kbd> = <b>scene ▲ / ▼</b> · <kbd>F#</kbd> = <b>launch</b> the selected scene</li>
+<li><kbd>F</kbd> / <kbd>G</kbd> = <b>track ◀ / ▶</b> (keep holding: one more every 0.5 s); the 8 tracks shown follow</li>
+<li><kbd>A</kbd> = <b>duplicate</b> the selected clip into the next empty slot below · <kbd>B</kbd> = <b>double</b> its loop</li>
+<li><kbd>E</kbd> = <b>fixed record length</b> OFF → 1 → 2 → 4 → 8 bars</li>
+</ul>
+</div>
+<div class="row">
+<div><h2>Pads = 16 steps of the shown page (1 bar at 1/16)</h2><div class="pads" id="pads"></div></div>
+<div><h2>Pad colours</h2><div class="leg">
+<div class="sw" style="background:#ffa000"></div><div>note of the selected sound (brighter = louder)</div>
+<div class="sw" style="background:#7a4a10"></div><div>inside a tied (long) note</div>
+<div class="sw" style="background:#ff2080"></div><div>step repeated 2× / 3×</div>
+<div class="sw" style="background:linear-gradient(90deg,#6a4a99 33%,#8a5ccc 33% 66%,#b070ff 66%)"></div><div>other sounds on this step: 1 / 2 / 3+ (clear lilac, brighter = more)</div>
+<div class="sw" style="background:#1c2a6e"></div><div>empty step</div>
+<div class="sw" style="background:#00ff40"></div><div>playhead on a note (white on an empty step)</div>
+<div class="sw" style="background:#30e8ff"></div><div>step held</div>
+<div class="sw" style="background:#000;border:1px solid #333"></div><div>past the end of the clip (off)</div>
+<div class="sw" style="background:linear-gradient(90deg,#00c8a0 33%,#fff 33% 66%,#00ff40 66%)"></div><div>LENGTH / BARS held: bar in clip / shown / playing</div>
+</div></div></div>
+
+<h2>Moves</h2>
+<ul class="tips">
+<li><b>Tap a pad</b>: note on/off for the selected sound.</li>
+<li><b>Key zone key</b>: plays the sound and selects it. <b>OCT −/+</b> moves the zone, <b>SEQ</b> = scale keys (melodic tracks). Remembered per track.</li>
+<li><b>Hold a step + a later step</b>: one long (tied) note.</li>
+<li><b>Hold a step + turn E1 / E2 / E3</b>: its <b>velocity</b> / <b>length</b> / <b>repeats</b> (1× 2× 3×). New steps take the pad's velocity (Fader 1 above 10 % fixes it); E2 with no step held = length of new steps.</li>
+
+<li><b>Hold LENGTH + pad n</b>: clip = n bars; growing it repeats the pattern into the new bars.</li>
+<li><b>BARS (A) tap</b>: bar view; tap a bar to show it. Hold <b>DELETE</b> + tap a bar: <b>delete</b> it (later bars move up); hold the bar pad 3 s: only <b>clear</b> it.</li><li><b>Chords</b>: lock a chord on the main screen; with SEQ (scale keys) a key picks the chord, a pad writes it.</li>
+<li><b>COPY</b> tap/hold, then a <b>step pad</b> (all sounds in it), a <b>key</b> (that sound on the page) or, in the BARS view, a <b>bar</b>. <b>PASTE</b> tap = next target, hold = several. Screen shows what is copied.</li>
+<li><b>DELETE (A#)</b> tap: selected sound on this page. Hold + <b>step</b>: every note in it · + <b>bar</b> (BARS view): delete the bar (hold 3 s = clear) · + <b>key</b>: that sound in the whole clip.</li>
+<li><b>Hold DRUM (B)</b>: pads = Drum Mode pads (same order and colours as FX); tap one to play it and select it.</li>
+<li>Screen: <b>BAR 2/4</b> while the clip plays. An existing clip's notes show at once; an empty clip Step Mode made is removed when you leave.</li><li><b>DOUBLE (F)</b>: the clip twice as long, everything copied.</li>
+<li>The track is <b>armed automatically</b> while Step Mode is on. <b>PARA</b> plays / stops the clip (making it if needed). Leaving Step Mode returns to where you came from (e.g. Clip Mode).</li>
+</ul>
+</div>
+<script>
+const W=['C','D','E','F','G','A','B'],BL={0:'C#',1:'D#',3:'F#',4:'G#',5:'A#'};
+const CTRL={blue:'#3b82f6',drum:'#f59e0b',vel:'#a855f7',play:'#3a3f4a'};
+// label, colour per key index 0..36
+const lab={2:['RES',''],4:['FOLLOW',''],5:['DOUBLE',''],7:['LENGTH','+pad=bars'],9:['BARS','toggle'],11:['DRUM','hold'],
+1:['COPY','tap/hold'],3:['PASTE','tap/hold'],6:['PAGE','◀'],8:['PAGE','▶'],10:['DELETE','hold +'],
+12:['KICK','36'],13:['RIM','37'],14:['SNARE','38'],15:['CLAP','39'],16:['SNR 2','40'],17:['TOM','41'],18:['CL HAT','42'],19:['TOM','43'],20:['PED HAT','44'],21:['TOM','45'],22:['OP HAT','46'],23:['TOM','47'],
+24:['DRUM 13','48'],25:['14','49'],26:['15','50'],27:['16','51'],29:['QUANT','',CTRL.vel],30:['PLAY','/ stop',CTRL.vel],31:['ARM','',CTRL.vel],32:['FINISH','& next',CTRL.vel],33:['MUTE','',CTRL.vel],34:['DELETE','clip',CTRL.vel],35:['SOLO','',CTRL.vel],36:['SHIFT','hold',CTRL.vel]};
+function col(k){if(k<12)return lab[k]?CTRL.blue:null;if(k<=27)return CTRL.drum;return lab[k]?'#22c55e':null}
+const svg=document.getElementById('kb'),ns='http://www.w3.org/2000/svg';
+function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e}
+const ww=66,wh=200,x0=10,y0=40;let wi=0,whites=[],blacks=[];
+for(let k=0;k<37;k++){const n=k%12,isB=[1,3,6,8,10].includes(n);if(!isB){whites.push([k,x0+wi*ww]);wi++}else blacks.push([k,x0+wi*ww-21])}
+for(const [k,x] of whites){const c=col(k);el('rect',{x,y:y0,width:ww-3,height:wh,rx:5,fill:c?c+'33':'#d9dbe0',stroke:c||'#888','stroke-width':c?2:1});
+ if(c){el('rect',{x:x+3,y:y0+wh-58,width:ww-9,height:52,rx:4,fill:c});const L=lab[k];el('text',{x:x+ww/2-1.5,y:y0+wh-34,'text-anchor':'middle','font-size':11.5,'font-weight':700,fill:'#fff'},L[0]);el('text',{x:x+ww/2-1.5,y:y0+wh-17,'text-anchor':'middle','font-size':10,fill:'#ffffffcc'},L[1])}
+ else el('text',{x:x+ww/2-1.5,y:y0+wh-14,'text-anchor':'middle','font-size':10,fill:'#666'},'note')}
+for(const [k,x] of blacks){const c=col(k);el('rect',{x,y:y0,width:40,height:122,rx:4,fill:c||'#1d1f24',stroke:c?'#000':'#000'});
+ if(c){const L=lab[k];el('text',{x:x+20,y:y0+92,'text-anchor':'middle','font-size':9.5,'font-weight':700,fill:'#fff'},L[0]);el('text',{x:x+20,y:y0+108,'text-anchor':'middle','font-size':9,fill:'#ffffffcc'},L[1])}
+ else el('text',{x:x+20,y:y0+108,'text-anchor':'middle','font-size':9,fill:'#777'},'note')}
+const sec=[[0,7,CTRL.blue,'LOWEST OCTAVE · CONTROLS'],[7,16,CTRL.drum,'16 DRUM KEYS C2–D#3 · SEQ: scale keys · OCT moves them'],[16,22,'#22c55e','LIVE STRIP (same in every mode)']];
+for(const [a,b,c,t] of sec){const xa=x0+a*ww,xb=x0+b*ww-3;el('rect',{x:xa,y:8,width:xb-xa,height:4,rx:2,fill:c});el('text',{x:xa,y:30,'font-size':12.5,'font-weight':700,fill:c,'letter-spacing':'.04em'},t)}
+const P=document.getElementById('pads'),demo={0:'#ffa000',4:'#ffa000',5:'#7a4a10',8:'#c07800',10:'#00ff40',12:'#ff2080',2:'#6a4a99',6:'#8a5ccc',14:'#b070ff'};
+for(let i=0;i<16;i++){const d=document.createElement('div');d.className='pad';const beat=i%4==0;d.style.background=demo[i]||'#1c2a6e';d.style.color=demo[i]?'#111':'#cfd6ff';d.innerHTML=(i+1)+'<small>step</small>';P.appendChild(d)}
+
+// 0.91 "SHIFT held" close-up of the top octave (E3 .. C4)
+function shiftStrip(id, layer){
+ const ns='http://www.w3.org/2000/svg',svg=document.getElementById(id);
+ function el(t,a,txt){const e=document.createElementNS(ns,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;svg.appendChild(e);return e}
+ const ww=92,wh=210,x0=10,y0=10,whites=[28,29,31,33,35,36],blacks=[[30,1],[32,2],[34,3]];
+ whites.forEach((k,i)=>{const L=layer[k],x=x0+i*ww,c=L?L[2]:null;
+  el('rect',{x,y:y0,width:ww-4,height:wh,rx:6,fill:c?c+'33':'#d9dbe0',stroke:c||'#888','stroke-width':c?2.5:1});
+  if(c){el('rect',{x:x+4,y:y0+wh-70,width:ww-12,height:62,rx:5,fill:c});
+   el('text',{x:x+ww/2-2,y:y0+wh-42,'text-anchor':'middle','font-size':13,'font-weight':700,fill:'#fff'},L[0]);
+   el('text',{x:x+ww/2-2,y:y0+wh-22,'text-anchor':'middle','font-size':11,fill:'#ffffffdd'},L[1])}
+  else el('text',{x:x+ww/2-2,y:y0+wh-16,'text-anchor':'middle','font-size':11,fill:'#666'},'note');
+  el('text',{x:x+ww/2-2,y:y0+wh+18,'text-anchor':'middle','font-size':11,fill:'#9aa0ab'},['E','F','G','A','B','C'][i])});
+ blacks.forEach(([k,i])=>{const L=layer[k],x=x0+i*ww-28,c=L?L[2]:'#1d1f24';
+  el('rect',{x,y:y0,width:52,height:130,rx:5,fill:c,stroke:'#000'});
+  if(L){el('text',{x:x+26,y:y0+92,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#fff'},L[0]);
+   el('text',{x:x+26,y:y0+110,'text-anchor':'middle','font-size':10,fill:'#ffffffdd'},L[1])}
+  el('text',{x:x+26,y:y0+wh+34,'text-anchor':'middle','font-size':11,fill:'#9aa0ab'},['','F#','G#','A#'][i])});
+}
+const SB='#3b82f6',SG='#22c55e',SR='#ef4444',SP='#a855f7',SY='#eab308';
+const SHIFT_LAYER={28:['LENGTH','off 1 2 4 8',SR],29:['◀ TRACK','hold = repeat',SB],30:['LAUNCH','scene',SG],31:['TRACK ▶','hold = repeat',SB],
+ 32:['▲ SCENE','up',SB],33:['DUPLICATE','clip below',SP],34:['▼ SCENE','down',SB],35:['DOUBLE','loop ×2',SY],36:['SHIFT','held',SB]};
+const MOVE_LAYER={32:['▲ MOVE','clip up',SP],34:['▼ MOVE','clip down',SP]};
+
+shiftStrip('shiftk',SHIFT_LAYER);
+</script></body></html>

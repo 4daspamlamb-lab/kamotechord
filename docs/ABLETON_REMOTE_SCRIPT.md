@@ -64,23 +64,24 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | plain pad press | **SELECT** (default): selects the slot and **arms its track** (disarms the others), so the next Session Record (KNOB BANK) records there. Toggled to **PLAY** it launches / stops as in the table above |
 | **lowest C** (white) | hold + a clip: **overdub** into it (an empty slot: arm and record a new clip); the same again ends it (0.72) |
 | **F#** (3rd black) | **PLAY** (0.75): hold + clips = launch / stop them; tap, then the next clip pressed is launched (pads select otherwise) |
-| **top F** (5th white key from the right) held + top **G# / A#** | move Live's selected clip one scene up / down (an occupied slot is swapped); it stays selected (0.75) |
+| **low E** (MOVE) held + top **G# / A#** | move Live's selected clip one scene up / down (an occupied slot is swapped); it stays selected |
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
-| **top A / B** (white, 3rd / 2nd from the right) | select the previous / next track. The 8-track view follows when the selection leaves it (left: the track becomes the first of the 8, right: the last) and stops at the ends. Hold the key to move one more track every 0.5 s. No session box is drawn in Live, so Live's window only scrolls to keep the selected track in sight |
+| **SHIFT (top C) + top F / G** | select the previous / next track. The 8-track view follows when the selection leaves it (left: the track becomes the first of the 8, right: the last) and stops at the ends. Hold the key to move one more track every 0.5 s. No session box is drawn in Live, so Live's window only scrolls to keep the selected track in sight |
 | **G#** | **STOP** (0.77): hold + clips = stop them; a tap stops the selected clip |
 | **D** (white) | **Scene Arrange** on / off (below) |
-| top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
+| **SHIFT + top F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
+| the rest of the top octave | the Live strip, as in every mode (below) |
 | **SEQ PLAY** (any mode) | **finish & next track** (0.77): ends the recording on the selected track (the clip keeps playing), selects and arms the next track at the same scene |
 
 The screen shows the clip state, **Live's selected track (number and name)**, the scene and the 8 tracks in view, and the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held. The pad map shows each pad's track number and the first letters of its name. **Hold CHORD** in any mode for Clip Mode only while it is held.
 
 **Mixing the selected track.** Fader 2 = its volume, Fader 3 = Macro 1 of its first rack (else Send A). Knobs E4–E7 = **filter** (Auto Filter: left = low-pass closing, centre = open, right = high-pass), **delay** amount (Delay, Echo, Ping Pong, Filter, Simple or Grain Delay: Dry/Wet), **reverb** amount (Reverb or Hybrid Reverb: Dry/Wet) and **sustain** (the reverb's Decay). The script looks at the track's devices and one level inside racks and matches them by name (old and new Auto Filter, any delay or Echo, any reverb); the screen shows the new value or `NO DELAY` etc., and Live's status bar then lists the devices it saw.
 
-**Top-octave Live keys** (outside Clip and Step Mode): A# delete the selected clip, G# finish & next track, F# launch / stop the selected clip, B solo, A mute, G arm, F quantize the selected clip (to Live's record quantization, else 1/16). Hold top **C** (SHIFT) for navigation: G# / A# = scene up / down, F / G = track left / right ([diagram](diagrams/SMK37-Live-Keys.png)).
+**Top-octave Live strip** (every mode, Clip and Step included): A# delete the selected clip, G# finish & next track, F# launch / stop the selected clip, B solo, A mute, G arm only this track (PATCH + G: arm it as well), F quantize the selected clip (to Live's record quantization, else 1/16). Hold top **C** (SHIFT): G# / A# = scene up / down, F# = launch the scene, F / G = track left / right, A = duplicate the clip into the next empty slot below, B = double its loop, E = **fixed record length** OFF / 1 / 2 / 4 / 8 bars. With a fixed length, KNOB BANK on an empty slot of an armed track records exactly that many bars (`ClipSlot.fire(record_length)`) and the clip loops on its own ([diagram](diagrams/SMK37-Live-Keys.png)).
 
-**Scene Arrange (low D since 0.77).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
+**Scene Arrange (low D since 0.77).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **SHIFT + top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
 
 **FM-1 keys** (unchanged): hold the first black key (F#) + clip = **overdub** (an empty slot: record a new clip; the same again ends it), the second (G#) = **delete**, the third (A#) = **select + arm**; C# = launch the selected scene, top D# / F# = scene up / down. A plain press launches.
 
@@ -133,21 +134,21 @@ Colours: see the table below.
 |---|---|
 | lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DOUBLE, G = LENGTH (hold), A = BARS (tap), B = DRUM (hold); C plays a note |
 | lowest octave, black | C# = COPY, D# = PASTE, F# / G# = page ◀ / ▶, A# = DELETE (tap: the page; hold + step / bar / key) |
-| **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
-| top F G A B | velocity 32 / 64 / 96 / 127 |
-| top C (hold) | pads = **note length** for new steps, 1–16 sixteenths of a bar (tap a pad) |
+| **key zone**: C2 up to D#3 (16 keys) | drum keys: 16 sounds from C1 (kick, rim, snare, clap …) = a Drum Rack's 16 pads; with SEQ: scale keys; with a locked chord: chord keys |
+| hold a step + **E1 / E2 / E3** | that step's **velocity / length / repeats** (1× 2× 3×) |
+| top octave | the Live strip (as in every mode) |
 | top three black keys (F# G# A#) | hold + a pad: the step plays 1× / 2× / 3× |
 | OCT − / OCT + | moves the key zone by an octave (remembered per track) |
 | ◀ / ▶ (left block) | page left / right (0.69; same as G# / A#; ◀ + PARA stays the metronome) |
 | SEQ | key zone = drum keys / **scale keys** (remembered per track; tracks without a Drum Rack start with scale keys) |
 
-- **Key zone**: a key **plays its sound and selects it** for the steps, like tapping a drum pad on Move. With SEQ the white keys play the scale set with Faders 2 / 3 (black keys silent), so melodic tracks can be step-sequenced too. **Hold DRUM (G)**: the pads become Drum Mode pads (same order and colours as FX Drum Mode: pad 1 kick, pad 9 rim, pad 2 snare …, from the key zone's octave); tapping one plays it and selects it for the steps. Let go of DRUM and the pads are steps again.
+- **Key zone**: a key **plays its sound and selects it** for the steps, like tapping a drum pad on Move. With SEQ the white keys play the scale set with E2 / E3 (black keys silent), so melodic tracks can be step-sequenced too. **Hold DRUM (B)**: the pads become Drum Mode pads (same order and colours as FX Drum Mode: pad 1 kick, pad 9 rim, pad 2 snare …, from the key zone's octave); tapping one plays it and selects it for the steps. Let go of DRUM and the pads are steps again.
 - **Other sounds on a step**: an empty step of the selected sound shows a clear lilac when other sounds play there, brighter with 2 and 3+ of them.
 - **LENGTH (hold) + pad n** sets the clip to **n bars** (pads show the bars while LENGTH is held). Growing a clip repeats its pattern into the new bars (if they are empty).
 - **BARS (tap F#)**: pads show the clip's bars (teal = in the clip, white = the bar on the pads, green = playing); tap one to show it and return to the pattern, or tap F# again.
-- **Chords**: lock a chord on the main screen (chord pads + LOCK), enter Step Mode: with scale keys (SEQ) or on a track without a Drum Rack, a key picks that chord (built on the key's note, in the scale) and a pad writes the whole chord, with the note length set on the top C. SEQ switches scale keys on / off without leaving Step Mode.
-- **Note length (hold top C)**: pads 1–16 = 1/16 … 1 bar; new steps (and chords) get that length.
-- **Repeats**: pick a sound, hold the top F# / G# / A# and press a pad: that step plays 1 / 2 / 3 times (pink).
+- **Chords**: lock a chord on the main screen (chord pads + LOCK), enter Step Mode: with scale keys (SEQ) or on a track without a Drum Rack, a key picks that chord (built on the key's note, in the scale) and a pad writes the whole chord, with the length of new steps (E2 with no step held). SEQ switches scale keys on / off without leaving Step Mode.
+- **Velocity, length, repeats**: hold a step pad and turn E1 / E2 / E3. With no step held, E2 sets the length of new steps (1–16 sixteenths of a bar). New steps take the pad's velocity: Fader 1 above 10 % makes it fixed.
+- **Repeats**: hold a step and turn E3: it plays 1 / 2 / 3 times (pink).
 - **COPY / PASTE** (C# / D#), as in Clip Mode: tap (or hold) **COPY**, then press what to copy: a **step pad** (every note in that step), a **key** (that sound's steps on the shown page) or, in the **BARS view**, a **bar**. Tap **PASTE** and the next matching target gets it (a step pad, a key, or a bar in the BARS view); **hold PASTE** to paste onto several. The screen shows the clipboard (COPIED STEP 5 P1, COPIED C1 P1, COPIED BAR 2).
 - **DELETE** (A#, 0.70): hold + a **step** clears every note in it, hold + a **bar** in the BARS view **deletes** that bar (the later bars move up and the clip gets one bar shorter; hold the bar pad 3 s to only **clear** it, 0.74), hold + a **key** deletes that sound in the whole clip (Move: Delete + pad); a plain **tap** clears the selected sound on the shown page.
 - **PARA** in Step Mode (0.67) plays the clip being made (making it first if the slot is empty); pressed while it plays, stops it. Leaving Step Mode does not play anything and returns to the mode you came from (e.g. Clip Mode).
