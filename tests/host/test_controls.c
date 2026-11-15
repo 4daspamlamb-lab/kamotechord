@@ -146,8 +146,7 @@ void test_buttons(void)
 void test_key_scale(void)
 {
     boot();
-    fader(1, 10 * 128 / 23 + 2);   /* Minor Pentatonic */
-    fader(2, 9 * 128 / 12 + 4);    /* A */
+    kk.scale.scale = 10; kk.scale.root = 9;   /* A Minor Pentatonic (0.80: K3 / K2) */
     CHECK(kk.scale.scale == 10 && kk.scale.root == 9, "faders select A minor pentatonic (%u %u)", kk.scale.scale, kk.scale.root);
     tap(KK_BTN_SEQ);
     host_clear(); key(12, 90);
@@ -192,16 +191,17 @@ void test_velocity_faders(void)
     kk_set_octave(0); host_clear(); key(1, 30); fader(0, 127); key(1, 0);
     CHECK(out_count(USB, OFF1, 49) == 1 && host_out[0].b[2] == 64 * 0 + v, "velocity fixed at note on");
     fader(0, 0);
-    /* Fader 2 hysteresis: hovering at a boundary does not chatter. */
-    fader(1, 60); unsigned s = kk.scale.scale;
-    fader(1, 61); fader(1, 60); fader(1, 61);
-    CHECK(kk.scale.scale == s || kk.scale.scale == s + 1, "scale stable");
-    unsigned changes = 0, prev = kk.scale.scale;
-    for (unsigned i = 0; i < 20; ++i) { fader(1, 61 + (i & 1)); if (kk.scale.scale != prev) ++changes, prev = kk.scale.scale; }
-    CHECK(changes <= 1, "no chatter (%u)", changes);
-    fader(1, 0); CHECK(kk.scale.scale == 0, "fader 2 bottom = Major");
-    fader(1, 127); CHECK(kk.scale.scale == 22, "fader 2 top = Minor 6-Diminished");
-    fader(2, 0); CHECK(kk.scale.root == 0, "root C"); fader(2, 127); CHECK(kk.scale.root == 11, "root B");
+    /* 0.80: Faders 2 / 3 = Live's selected track volume / macro 1; scale and root on K3 / K2. */
+    host_clear(); unsigned sc = kk.scale.scale, rt = kk.scale.root; fader(1, 77); fader(2, 33);
+    groove_midi_poll();
+    CHECK(last_out(USB, CC15, 1) == (KK_CC_TRACK_VOLUME | 77 << 8) && last_out(USB, CC15, 0) == (KK_CC_TRACK_MACRO | 33 << 8) &&
+          kk.scale.scale == sc && kk.scale.root == rt, "faders 2/3 -> CC38/39, scale untouched");
+    kk.encoder[2] = 1; frames(2, 20); CHECK(kk.scale.scale == sc + 1, "K3 = scale");
+    kk.encoder[1] = 2; frames(2, 20); CHECK(kk.scale.root == (rt + 2) % 12, "K2 = key");
+    kk.encoder[2] = -1; kk.encoder[1] = -2; frames(2, 20);
+    unsigned pr = kk.program; kk.encoder[1] = 0; kk.encoder[6] = 1; unsigned g = kk.arp.gate; frames(2, 20);
+    CHECK(kk.arp.gate == g + 5 && kk.program == pr, "K7 = ARP gate, patch untouched");
+    kk.encoder[6] = -1; frames(2, 20);
     /* 0.77: pad brightness from the Patch page (16 steps); Fader 4 = master volume. */
     host_clear(); fader(3, 90);
     CHECK(kk.master == 90 && last_out(USB, CC15, 0) == (KK_CC_MASTER | 90 << 8), "Fader 4 = master volume (CC 35)");

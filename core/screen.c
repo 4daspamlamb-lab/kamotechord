@@ -55,6 +55,23 @@ static uint32_t boot_started, frame_ms, guard_ms, popup_until, now_ms;
 static unsigned booting, shown_page = 255, shown_dim;
 static char popup[28];
 static unsigned battery_adc;
+#ifndef KK_DEVICE_FM1
+/* 0.80 battery gauge. Raw ADC (Diagnostics) assumed: Li-ion through a 1:2
+ * divider against 3.3 V, so ~527 = 3.4 V empty, ~651 = 4.2 V full; above
+ * KK_BATT_EXTERNAL the keyboard runs from USB power (shown as a plug).
+ * Calibrate the three values from Diagnostics if the gauge reads wrong. */
+enum { KK_BATT_EMPTY = 527, KK_BATT_FULL = 651, KK_BATT_EXTERNAL = 700 };
+static unsigned battery_avg16;                       /* smoothed ADC x16 */
+static int battery_level(void)                       /* -1 none, 0..100 %, 101 = USB power */
+{
+    unsigned a = battery_avg16 / 16U;
+    if (a < 100) return -1;
+    if (a >= KK_BATT_EXTERNAL) return 101;
+    if (a <= KK_BATT_EMPTY) return 0;
+    if (a >= KK_BATT_FULL) return 100;
+    return (int)((a - KK_BATT_EMPTY) * 100U / (KK_BATT_FULL - KK_BATT_EMPTY));
+}
+#endif
 #ifdef KK_DEVICE_FM1
 static unsigned master_adc;
 static uint32_t raw_keys, raw_buttons;
@@ -116,6 +133,9 @@ static void signatures(void)
         return;
     }
     wanted[W_HEADER] = mixsig(base, fm1_midi_ready_ports());
+#ifndef KK_DEVICE_FM1
+    { int b = battery_level(); wanted[W_HEADER] = mixsig(wanted[W_HEADER], (uint32_t)(b < 0 ? 999 : b > 100 ? 998 : b / 10)); }
+#endif
     uint32_t h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)kk_active_octave()); h = mixsig(h, kk_tempo_x10());
     h = mixsig(h, kk_midi_host_protocol());
     wanted[W_INFO] = h;
@@ -244,6 +264,9 @@ void groove_screen_control(void)
     struct fm1_controls controls;
     fm1_controls_read(&controls);
     battery_adc = controls.battery;
+#ifndef KK_DEVICE_FM1
+    battery_avg16 = battery_avg16 ? battery_avg16 - battery_avg16 / 64U + battery_adc / 4U : battery_adc * 16U;
+#endif
 #ifdef KK_DEVICE_FM1
     master_adc = controls.knob; raw_keys = controls.keys; raw_buttons = controls.buttons;
     kk_fm1_input(&controls);           /* keys, buttons and encoders -> KamoteKeys events */

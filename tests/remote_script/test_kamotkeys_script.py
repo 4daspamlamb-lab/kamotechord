@@ -138,6 +138,15 @@ class T(unittest.TestCase):
     def press(self, pad, ch=15): deliver((0x90 | ch, 36 + pad, 127)); deliver((0x80 | ch, 36 + pad, 0))
     def state(self, pad): return [m[2] for m in self.s.sent if m[0] == 0xBF and m[1] == STATE_CC + pad][-1]
 
+    def test_track_keys_move_one_track_even_with_few_tracks(self):
+        from KamoteKeys.KamoteKeys import TRACKS_CC
+        deliver((0xBE, 32, 127)); deliver((0xBE, 32, 0))          # 6 tracks: still moves
+        self.assertEqual(self.s._track, 1)
+        self.assertIn((0xBF, TRACKS_CC, 1), self.s.sent)
+        for _ in range(9): deliver((0xBE, 32, 127)); deliver((0xBE, 32, 0))
+        self.assertEqual(self.s._track, 5)                        # stops at the last track
+        deliver((0xBE, 31, 127)); deliver((0xBE, 31, 0)); self.assertEqual(self.s._track, 4)
+
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)
         self.assertEqual(len([m for m in self.s.sent if m[0] == 0xBF and STATE_CC <= m[1] < STATE_CC + 16]), 16)
@@ -294,7 +303,8 @@ class T(unittest.TestCase):
         deliver((0xBE, 30, 127)); deliver((0xBE, 30, 0))                 # top F#: launch scene 1
         self.assertIn('fire', self.song._tracks[0].log); self.assertNotIn('fire', self.song._tracks[1].log)
         self.assertIn('stop all', self.song._tracks[1].log)
-        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 0)       # 6 tracks: no room to move right
+        deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 1)       # 0.80: moves even with 6 tracks
+        deliver((0xBE, 31, 127)); self.assertEqual(self.s._track, 0)
         self.song._tracks += [type(self.song._tracks[0])() for _ in range(4)]
         deliver((0xBE, 32, 127)); self.assertEqual(self.s._track, 1); self.assertIn((0xBF, 109, 1), self.s.sent)
         deliver((0xBE, 31, 127)); self.assertEqual(self.s._track, 0)

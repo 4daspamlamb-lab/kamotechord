@@ -43,7 +43,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     if (d[10] >= KK_DIVS || d[14] >= SMK37_RGB_TIMINGS || d[15] > KK_PAD_SENSITIVITY_MAX) return -1;
 #endif
     kk.bpm = (uint16_t)bpm;
-    kk.arp = (struct kk_arp_settings){d[4], d[5], d[6], d[7], d[8], d[9]};
+    kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, d[5], d[6], d[7], d[8], d[9]};   /* 0.80: no LATCH */
     kk.program = d[11];
     kk_midi_set_ports(d[12]); kk_midi_set_local(d[13]);
 #ifdef KK_DEVICE_FM1
@@ -52,6 +52,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     kk.repeat_division = d[10];
     kk.rgb_timing = d[14]; smk37_rgb_timing(kk.rgb_timing);
     kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
+    if (kk.pad_sensitivity == 7) kk.pad_sensitivity = KK_PAD_SENSITIVITY_MAX;   /* 0.80: the old maximum becomes the new MAX */
 #endif
     kk.clip_play = 0;
     kk_set_brightness(15U - ((d[3] >> 2) & 15U));

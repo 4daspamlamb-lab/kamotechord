@@ -31,7 +31,7 @@ static void draw_patch(void)
     char vel[8]; decimal(vel, kk.velocity);
     row(5, KK_K4 " VELOCITY", vel, 0);
 #else
-    static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7 LIGHTEST"};
+    static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7", "8", "9", "10 MAX"};
     row(5, KK_K4 " PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1], 0);
 #endif
 #ifndef KK_DEVICE_FM1
@@ -48,7 +48,7 @@ static void draw_arp(void)
 {
     body_title("ARPEGGIATOR", CYAN);
     char buf[8], *p;
-    row(0, KK_K1 " MODE", kk.arp.mode == KK_ARP_LATCH ? "LATCH" : "NORMAL", 0);
+    row(0, "HOLD", "USE SUSTAIN", 0);
     row(1, KK_K2 " DIRECTION", kk_direction_name(kk.arp.direction), 0);
     row(2, KK_K3 " DIVISION", kk_division_name(kk.arp.division), 0);
     p = decimal(buf, kk.arp.gate); append(p, "%"); row(3, KK_K4 " GATE", buf, 0);
@@ -147,7 +147,10 @@ static void draw_diag(void)
         text(8 + (int)(i & 1) * 116, 62 + (int)(i / 2) * 12, line, 1, TEXT);
     }
 #endif
-    p = append(line, "BATTERY ADC: "); decimal(p, battery_adc);
+    p = append(line, "BATTERY ADC: "); p = decimal(p, battery_adc);
+#ifndef KK_DEVICE_FM1
+    { int b = battery_level(); if (b >= 0 && b <= 100) { p = append(p, "  "); p = decimal(p, b); append(p, "%"); } else if (b > 100) append(p, "  USB POWER"); }
+#endif
     text(8, 90, line, 1, TEXT);
     unsigned ready = fm1_midi_ready_ports(), outs = fm1_midi_output_ports();
     p = append(line, "MIDI OUT PORTS: "); p = append(p, outs & 1 ? "DIN " : "");

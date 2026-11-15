@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.79" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.80" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -119,6 +119,8 @@ enum {
     KK_CC_CLIP_UP = 33, KK_CC_CLIP_DOWN = 34,          /* 0.75: move Live's selected clip a scene up / down */
     KK_CC_MASTER = 35,     /* 0.77: Fader 4 = master volume (value 0..127) */
     KK_CC_FINISH = 36,     /* 0.77: SEQ PLAY = finish the recording clip, go to the next track */
+    KK_CC_TRACK_VOLUME = 38, /* 0.80: Fader 2 = selected track volume */
+    KK_CC_TRACK_MACRO = 39,  /* 0.80: Fader 3 = selected track macro 1 (else Send A) */
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

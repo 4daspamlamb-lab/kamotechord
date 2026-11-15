@@ -7,6 +7,9 @@ static void ableton(unsigned controller, unsigned value) { kk_midi_cc(KK_CH_ABLE
 static void sustain_update(void);
 static void open_page(unsigned page) { kk.page = (uint8_t)page; ++kk.edit_revision; }
 static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
+#ifndef KK_DEVICE_FM1
+static uint8_t chord_used, chord_back, chord_step_from;   /* 0.80: momentary Clip Mode */
+#endif
 static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
 static uint32_t show_since, show_taps[3];           /* 0.77: last three light-show starts */
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
@@ -40,8 +43,27 @@ static void button(unsigned id, unsigned down, uint32_t now)
     /* CHORD: tap = Clip Mode; hold 0.6 s = Step Mode (0.58, long_presses). */
     case KK_BTN_CHORD:
         if (kk.buttons & (1U << KK_BTN_PATCH)) patch_combo = 1;    /* PATCH held: leave Step Mode quietly */
+#ifdef KK_DEVICE_FM1
         if (down) chord_long = 0;
         else if (!chord_long && held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
+#else
+        /* 0.80: Clip Mode at once on press. A tap stays in Clip Mode; held
+         * (or used with a pad) it is momentary: release goes back to the mode
+         * before. CHORD in Clip Mode: back to Normal, as before. */
+        if (down) {
+            chord_long = kk.mode != KK_MODE_CLIP;
+            chord_used = 0;
+            if (chord_long) {
+                chord_back = kk.mode; chord_step_from = kk.step_from;
+                kk_set_mode(KK_MODE_CLIP);
+            }
+        } else if (chord_long) {
+            if (held_ms >= 400U || chord_used) {
+                kk_set_mode(chord_back);
+                kk.step_from = chord_step_from;          /* Step Mode still returns where it came from */
+            }
+        } else if (held_ms < 600U) kk_set_mode(KK_MODE_CLIP);
+#endif
         return;
     case KK_BTN_PLAY: ableton(KK_CC_FINISH, down ? 127 : 0); return;   /* 0.77: finish the clip, next track */
     case KK_BTN_GLOBE: ableton(KK_CC_STOP, down ? 127 : 0); return;
@@ -59,6 +81,9 @@ static void button(unsigned id, unsigned down, uint32_t now)
                 if (show_taps[0] && now - show_taps[0] <= 1200U) {
                     /* 0.77: three quick light-show starts = ripple lights on / off. */
                     kk.ripple = !kk.ripple; show_ripple_done = 1;
+#ifndef KK_DEVICE_FM1
+                    if (kk.ripple) kk_led_ripple(2, 0, 127);   /* 0.80: giant ripple from the middle */
+#endif
                     show_taps[0] = show_taps[1] = show_taps[2] = 0;
                     kk.anim_pattern = (uint8_t)((kk.anim_pattern + KK_ANIMATIONS - 2) % KK_ANIMATIONS);   /* undo the quick taps' pattern steps */
                     kk.anim_active = 0; ++kk.edit_revision;
@@ -141,7 +166,9 @@ static void long_presses(uint32_t now)
         if ((kk.buttons & (1U << id)) && now - kk.pressed_at[id] >= limits[i] && kk.page != pages[i])
             open_page(pages[i]);
     }
+#ifdef KK_DEVICE_FM1
     if ((kk.buttons & (1U << KK_BTN_CHORD)) && !chord_long && now - kk.pressed_at[KK_BTN_CHORD] >= 600U) {
         chord_long = 1; kk_set_mode(KK_MODE_STEP);      /* again from Step Mode: back to Normal */
     }
+#endif
 }

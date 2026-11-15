@@ -38,7 +38,7 @@ static inline void pedal(unsigned v) { smk37_control_event(SMK37_PEDAL, 0, (int)
 static inline void boot(void)
 {
     host_ms = 1000; groove_midi_init(); groove_screen_init(); groove_midi_poll();
-    fader(0, 0); fader(1, 0); fader(2, 0); fader(3, 127);
+    fader(0, 0); fader(3, 127); kk.scale.scale = 0; kk.scale.root = 0;
     frames(800, 2);            /* finish the Aurora boot and its LED fade */
     kk_set_octave(0);          /* most checks below use the 0.30 key octave */
     host_clear();

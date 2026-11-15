@@ -82,12 +82,23 @@ static void main_input(void)
             decimal(v, bpm < 20 ? 20 : bpm > 999 ? 999 : bpm); popup_value("LIVE TEMPO", v);
         } else { kk_edit_bpm(step); decimal(v, kk.bpm); popup_value("TEMPO", v); }
     }
+#ifndef KK_DEVICE_FM1
+    /* 0.80 SMK-37: K1 BPM, K2 key, K3 scale, K4-K7 ARP division / direction /
+     * swing / gate, K8 master (page_input). Patch is on the PATCH page. */
+    if ((d = take(1))) { kk_edit_root(d); popup_value("KEY", kk_note_name(kk.scale.root)); }
+    if ((d = take(2))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
+    if ((d = take(3))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
+    if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
+    if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
+    if ((d = take(6))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
+#else
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
     if ((d = take(3))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
     if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
     if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
     (void)take(6);   /* E7: free (Note Repeat was replaced by SUSTAIN in 0.45) */
+#endif
 }
 static void page_input(void)
 {

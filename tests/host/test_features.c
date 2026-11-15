@@ -16,7 +16,9 @@ void test_ripple(void)
     CHECK(kk.ripple && kk.anim_pattern == pattern && !kk.anim_active, "third quick start -> ripple on, pattern unchanged, show stops");
     show_off();
     CHECK(out_count(USB, CC15, 22) == 0 && out_count(USB, CC15, 25) == 0, "no Capture / Record sent");
-    settle(); frames(40, 25); uint32_t idle = host_rgb[6];
+    frames(80, 5); uint32_t giant = host_rgb[3] | host_rgb[4];      /* 0.80: ~400 ms after switching on */
+    settle(); frames(120, 25); uint32_t idle = host_rgb[6];
+    CHECK(giant && giant != (host_rgb[3] | host_rgb[4]), "0.80: giant centre ripple when ripples turn on (%06x vs %06x)", giant, host_rgb[3] | host_rgb[4]);
     host_clear(); pad(1, 100);
     CHECK(!kk.anim_active, "pad still plays (no light show)");
     frames(16, 5);                                  /* ~80 ms: ring around pad 1 */
@@ -45,21 +47,30 @@ void test_k1_live_tempo(void)
 void test_step_mode(void)
 {
     boot();
-    host_clear(); btn(KK_BTN_CHORD, 1); host_ms += 700; frames(2, 1);
+    /* 0.80: hold CHORD = Clip Mode while held, back on release; a tap stays. */
+    btn(KK_BTN_CHORD, 1); CHECK(kk.mode == KK_MODE_CLIP, "CHORD press -> Clip Mode at once");
+    host_ms += 700; frames(2, 1); btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_NORMAL, "held CHORD released -> back to Normal");
+    tap(KK_BTN_SCALE); btn(KK_BTN_CHORD, 1); pad(2, 90); pad(2, 0); btn(KK_BTN_CHORD, 0);
+    CHECK(kk.mode == KK_MODE_PAD_SCALE, "CHORD + pad, quick release -> back to Pad Scale");
+    tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_CLIP, "tap CHORD -> stays in Clip Mode");
+    tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_NORMAL, "tap CHORD again -> Normal");
+    host_clear(); tap(KK_BTN_REC);
     CHECK(kk.mode == KK_MODE_STEP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SYNC_CC | 127 << 8),
-          "hold CHORD -> Step Mode, tells the script (ch 14 CC 127 = 127)");
-    btn(KK_BTN_CHORD, 0); CHECK(kk.mode == KK_MODE_STEP && kk_led_button(KK_BTN_REC) == 2, "release keeps Step Mode, SEQ REC lit");
+          "SEQ REC -> Step Mode, tells the script (ch 14 CC 127 = 127)");
+    CHECK(kk_led_button(KK_BTN_REC) == 2, "SEQ REC lit");
+    btn(KK_BTN_CHORD, 1); host_ms += 700; frames(2, 1); btn(KK_BTN_CHORD, 0);
+    CHECK(kk.mode == KK_MODE_STEP, "held CHORD from Step Mode -> back to Step Mode");
     host_clear(); pad(3, 90); pad(3, 0);
     CHECK(out_count(USB, 0x9D, 38) == 1 && out_count(USB, 0x8D, 38) == 1 && host_local_n == 0, "pad 3 -> ch 14 note 38, never the synth");
-    host_clear(); key(5, 100); key(6, 100); key(6, 0); key(8, 100); key(8, 0); key(5, 0);
+    host_clear(); key(11, 100); key(6, 100); key(6, 0); key(8, 100); key(8, 0); key(11, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_DRUM) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_PREV) == 1 && out_count(USB, 0x9D, KK_STEP_PAGE_NEXT) == 1 &&
-          out_count(USB, 0x8D, KK_STEP_DRUM) == 1, "0.73: F = DRUM (hold), F# / G# = page");
+          out_count(USB, 0x8D, KK_STEP_DRUM) == 1, "0.80: B = DRUM (hold), F# / G# = page");
     host_clear(); key(2, 100); key(2, 0); key(4, 100); key(4, 0); key(7, 100); key(7, 0); key(9, 100); key(9, 0); key(10, 100); key(10, 0);
     CHECK(out_count(USB, 0x9D, KK_STEP_RESOLUTION) == 1 && out_count(USB, 0x9D, KK_STEP_FOLLOW) == 1 && out_count(USB, 0x9D, KK_STEP_LENGTH) == 1 &&
           out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
           "0.73: D = RES, E = FOLLOW, G = LENGTH, A = BARS, A# = DELETE");
-    host_clear(); key(0, 100); key(0, 0); key(11, 100); key(11, 0);
-    CHECK(out_count(USB, 0x90, -1) == 1 && out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "C plays a note, B = DOUBLE (0.77)");
+    host_clear(); key(0, 100); key(0, 0); key(5, 100); key(5, 0);
+    CHECK(out_count(USB, 0x90, -1) == 1 && out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "C plays a note, F = DOUBLE (0.80)");
     /* 0.62 key map: velocity = the last five white keys, repeats = top F# G# A#,
      * BARS = lowest F#; the lowest G# and third-octave C still play. */
     host_clear(); key(29, 100); key(29, 0); key(35, 100); key(35, 0); key(36, 100); key(36, 0); key(30, 100); key(30, 0); key(34, 100); key(34, 0);
@@ -100,14 +111,14 @@ void test_step_mode(void)
     CHECK(out_count(USB, 0xBD, KK_STEP_SYNC_CC) >= 1 && out_count(BLE, 0xBD, KK_STEP_SYNC_CC) >= 1, "Step Mode heartbeat on every port");
     host_in(0xBD, KK_STEP_KEYS_CC, (uint8_t)keys_were);
     /* 0.68: DRUM (G) held: pads = Drum Mode pads (same order and colours), they play and select. */
-    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_clear(); key(5, 100); pad(1, 100); pad(1, 0); pad(9, 100); pad(9, 0); pad(2, 100); pad(2, 0);
+    host_in(0xBD, KK_STEP_KEYS_CC, 0); host_clear(); key(11, 100); pad(1, 100); pad(1, 0); pad(9, 100); pad(9, 0); pad(2, 100); pad(2, 0);
     CHECK(out_count(USB, 0x99, 36) == 1 && out_count(USB, 0x99, 37) == 1 && out_count(USB, 0x99, 38) == 1 &&
           out_count(USB, 0x9C, 36) == 1 && out_count(USB, 0x9C, 38) == 1 && out_count(USB, 0x9D, 36) == 0,
           "DRUM held: pad 1 / 9 / 2 = kick 36 / rim 37 / snare 38 on ch 10, selected on ch 13, no step");
     settle();
     CHECK(((host_rgb[0] >> 16) & 255) > ((host_rgb[0] >> 8) & 255) * 3 && ((host_rgb[1] >> 16) & 255) > (host_rgb[1] & 255),
           "DRUM held: Drum Mode colours (kick red %06x, snare orange %06x)", host_rgb[0], host_rgb[1]);
-    key(5, 0); host_clear(); pad(1, 100); pad(1, 0);
+    key(11, 0); host_clear(); pad(1, 100); pad(1, 0);
     CHECK(out_count(USB, 0x9D, 36) == 1 && out_count(USB, 0x99, -1) == 0, "DRUM released: pads are steps again");
     /* 0.63: a locked chord + scale keys: a key picks the whole chord. */
     host_in(0xBD, KK_STEP_KEYS_CC, 1);
@@ -182,7 +193,7 @@ void test_bluetooth(void)
     host_ble_busy = 2; key(12, 100); key(12, 0);              /* key zone: kick (ch 10) + select (ch 13) */
     host_ble_busy = 1; key(7, 100); pad(2, 100); pad(2, 0); key(7, 0);   /* LENGTH + pad */
     host_ble_busy = 2; tap(KK_BTN_OCT_UP); tap(KK_BTN_SEQ); tap(KK_BTN_PARA); tap(KK_BTN_LEFT); tap(KK_BTN_RIGHT);
-    host_ble_busy = 1; key(5, 100); pad(9, 100); pad(9, 0); key(5, 0);   /* DRUM view pad: rim */
+    host_ble_busy = 1; key(11, 100); pad(9, 100); pad(9, 0); key(11, 0);   /* DRUM view pad: rim */
     frames(20, 5);
     CHECK(ble_count(0x9D, 36) == 1 && ble_count(0x8D, 36) == 1, "BLE: step pad on/off");
     CHECK(ble_count(0x9D, KK_STEP_COPY) == 1 && ble_count(0x8D, KK_STEP_COPY) == 1, "BLE: COPY on/off");

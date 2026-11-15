@@ -6,7 +6,7 @@ void test_031(void)
 {
     host_ms = 1000; groove_midi_init(); groove_screen_init(); groove_midi_poll();
     CHECK(kk.octave == -2 && kk.pad_octave == 0 && kk_active_octave() == -2, "power-on: keys -2, pads 0");
-    fader(0, 0); fader(1, 0); fader(2, 0); fader(3, 127); frames(800, 2); host_clear();
+    fader(0, 0); fader(3, 127); kk.scale.scale = 0; kk.scale.root = 0; frames(800, 2); host_clear();
     key(12, 100); CHECK(last_out(USB, ON1, 0) == (36 | 100 << 8), "second C at octave -2 = C2 (36)"); key(12, 0);
     tap(KK_BTN_FX); CHECK(kk_active_octave() == 0, "Drum Mode shows the pad octave");
     host_clear(); pad(1, 100); pad(1, 0); CHECK(out_count(USB, ON10, 36) == 1, "drum pad 1 still 36 at power-on");

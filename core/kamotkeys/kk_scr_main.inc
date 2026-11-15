@@ -140,6 +140,18 @@ static void draw_header(void)
     fill(0, 0, 240, 20, BG);
     fill(0, 19, 240, 1, PANEL);
     text(6, 6, KAMOTKEYS_TITLE, 1, TEAL);
+#ifndef KK_DEVICE_FM1
+    int level = battery_level();                       /* 0.80: battery gauge left of USB / BLE */
+    if (level >= 0) {
+        uint16_t c = level > 100 ? CYAN : level > 40 ? GREEN : level > 15 ? AMBER : C565(230, 60, 60);
+        fill(155, 5, 20, 10, DIM); fill(156, 6, 18, 8, BG); fill(175, 8, 2, 4, DIM);
+        int w = level > 100 ? 16 : (level * 16 + 50) / 100;
+        if (w < 1) w = 1;
+        fill(157, 7, w, 6, c);
+        if (level <= 100) { char b[6], *q = decimal(b, level / 10 * 10); append(q, "%"); text_right(152, 6, b, 1, c); }
+        else { fill(163, 6, 3, 4, BG); fill(162, 9, 6, 2, BG); fill(164, 10, 3, 4, BG); }   /* USB power: bolt */
+    }
+#endif
     unsigned ready = fm1_midi_ready_ports();
     pill(180, 4, 25, 12, ready & (1U << FM1_MIDI_USB) ? C565(0, 70, 50) : PANEL);
     text(184, 6, "USB", 1, ready & (1U << FM1_MIDI_USB) ? GREEN : DIM);
@@ -259,8 +271,9 @@ static void draw_big(void)
     const char *name = big_name[0] ? big_name : "--";
     unsigned scale = 3;
     while (scale > 2 && text_width(name, scale) > 228) --scale;
-    uint16_t colour = !sounding_n && big_kind != 3 && big_kind != 4 ? DIM
-        : big_kind == 2 ? CYAN : big_kind == 4 ? ORANGE : GREEN;
+    uint16_t colour = big_kind == 2 ? CYAN : big_kind == 4 ? ORANGE : GREEN;
+    /* 0.80: the last name stays well readable after release (was DIM grey). */
+    if (!sounding_n && big_kind != 3 && big_kind != 4) colour = big_name[0] ? blend565(TEXT, colour, 110) : DIM;
     text_center(120, w->y + 14 + (3 - (int)scale) * 4, name, scale, colour);
     const char *caption = big_kind == 2 ? "CHORD" : big_kind == 3 ? "PAD NOTE" : big_kind == 4 ? "DRUM"
         : big_kind == 1 ? "NOTE" : "PLAY A KEY";
@@ -291,7 +304,6 @@ static void draw_status(void)
         p = append(buf, kk_division_name(kk.arp.division)); p = append(p, " ");
         p = append(p, kk_direction_name(kk.arp.direction)); p = append(p, " "); p = decimal(p, kk.arp.gate); append(p, "%");
         text(38, w->y + 8, buf, 1, TEXT);
-        if (kk.arp.mode == KK_ARP_LATCH) text(150, w->y + 8, "LATCH", 1, AMBER);
     } else text(10, w->y + 8, "ARP OFF", 1, FAINT);
     if (kk.sustain_on) text_right(234, w->y + 8, "SUSTAIN", 1, GREEN);
     if (kk.anim_active) {

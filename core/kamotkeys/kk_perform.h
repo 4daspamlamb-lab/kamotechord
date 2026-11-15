@@ -73,7 +73,7 @@ unsigned kk_velocity(unsigned natural);
 unsigned kk_velocity_override(void);   /* 0 = natural, else 1..127 */
 /* Pad velocity curve: 1 = harder (needs more force) .. 3 = linear .. 7 =
  * most sensitive (light hits give high velocity). Endpoints are kept. */
-enum { KK_PAD_SENSITIVITY_MAX = 7 };
+enum { KK_PAD_SENSITIVITY_MAX = 10, KK_PAD_SENSITIVITY_DEFAULT = 10 };   /* 0.80: 10 = MAX */
 unsigned kk_pad_curve(unsigned velocity);
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);

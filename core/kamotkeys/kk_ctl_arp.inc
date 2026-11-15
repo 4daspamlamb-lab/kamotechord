@@ -5,8 +5,7 @@
 /* ------------------------------------------------------------------ ARP */
 enum { POOL = 32 };
 struct arp_note { uint8_t channel, note, velocity; uint16_t order; };
-static struct arp_note latched[POOL];
-static unsigned latched_count, arp_running, arp_step;
+static unsigned arp_running, arp_step;
 static uint64_t arp_next_us, arp_off_us;
 static int16_t arp_note = -1; static uint8_t arp_channel;
 static uint32_t arp_random = 0x2545f491U;
@@ -39,7 +38,7 @@ static void arp_stop_note(void)
     if (arp_note >= 0) kk_midi_note_off(arp_channel, (unsigned)arp_note);
     arp_note = -1;
 }
-static void arp_stop(void) { arp_stop_note(); arp_running = 0; latched_count = 0; sustained_count = 0; }
+static void arp_stop(void) { arp_stop_note(); arp_running = 0; sustained_count = 0; }
 /* Expand by octave range, then order by pitch or by press order. */
 static unsigned arp_sequence(struct arp_note *pool, unsigned n)
 {
@@ -94,13 +93,8 @@ static void arp_tick(void)
         for (unsigned i = 0; i < n; ++i) sustained_add(&pool[i]);   /* add newly played notes */
         memcpy(pool, sustained, sustained_count * sizeof *pool); n = sustained_count;
     } else if (sustained_count) sustained_count = 0;      /* sustain released */
-    if (sustain_active() && kk.arp_on) {
-        /* held by sustain: skip the latch handling below */
-    } else if (n) {
-        if (kk.arp.mode == KK_ARP_LATCH) { memcpy(latched, pool, n * sizeof *pool); latched_count = n; }
-    } else if (kk.arp.mode == KK_ARP_LATCH && latched_count && kk.arp_on) {
-        memcpy(pool, latched, latched_count * sizeof *pool); n = latched_count;
-    }
+    /* 0.80: no separate LATCH mode any more (it replayed old notes while
+     * Sustain was off and went silent while it was on); SUSTAIN holds the ARP. */
     if (arp_note >= 0 && clock_us >= arp_off_us) arp_stop_note();
     if (!n) { if (arp_running) { arp_stop_note(); arp_running = 0; } return; }
     if (!arp_running) { arp_running = 1; arp_step = 0; arp_next_us = clock_us; }

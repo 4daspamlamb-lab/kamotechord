@@ -261,11 +261,6 @@ static void engage(unsigned id)
             struct arp_note a = {s->channel, s->notes[k], s->velocity, s->order};
             sustained_add(&a);
         }
-    } else if (s->route == ROUTE_ARP && kk.arp.mode == KK_ARP_LATCH) {
-        /* A new chord after a full release replaces the latched one. */
-        unsigned others = 0;
-        for (unsigned i = 0; i < SOURCES; ++i) others |= i != id && sources[i].held && sources[i].route == ROUTE_ARP;
-        if (!others) latched_count = 0;
     }
 }
 static void disengage(struct source *s)
@@ -397,7 +392,7 @@ void kk_edit_arp(unsigned parameter, int delta)
 {
     struct kk_arp_settings a = kk.arp;
     switch (parameter) {
-    case 0: a.mode = (uint8_t)clampi(a.mode + delta, 0, KK_ARP_MODES - 1); break;
+    case 0: return;   /* 0.80: LATCH retired, SUSTAIN holds the ARP */
     case 1: a.direction = (uint8_t)clampi(a.direction + delta, 0, KK_DIRS - 1); break;
     case 2: a.division = (uint8_t)clampi(a.division + delta, 0, KK_DIVS - 1); break;
     case 3: a.gate = (uint8_t)clampi(a.gate + 5 * delta, 10, 100); break;
@@ -406,7 +401,6 @@ void kk_edit_arp(unsigned parameter, int delta)
     default: return;
     }
     if (memcmp(&a, &kk.arp, sizeof a)) {
-        if (a.mode != kk.arp.mode && a.mode != KK_ARP_LATCH) latched_count = 0;
         kk.arp = a; kk_settings_touch();
     }
 }
@@ -421,28 +415,14 @@ void kk_edit_program(int delta)
     if (next != kk.program) { kk.program = (uint8_t)next; kk_settings_touch(); kk_perform_guard(); }
 }
 
-/* ---------------------------------------------------- faders, quantising */
-/* Stable selection of one of n zones over 0..127: switch only once the
- * fader is two counts past the boundary of the current zone. */
-static unsigned quantise(unsigned current, unsigned value, unsigned n)
-{
-    unsigned zone = value * n / 128U;
-    if (current >= n || zone == current) return zone;
-    /* Values v with v * n / 128 == current lie in [lo, hi). */
-    unsigned lo = (current * 128U + n - 1) / n, hi = ((current + 1) * 128U + n - 1) / n;
-    return value + 2 <= lo || value >= hi + 1 ? zone : current;
-}
+/* ------------------------------------------------------------- faders */
 static void fader(unsigned id, unsigned value)
 {
     kk.fader[id] = (uint8_t)value;
-    unsigned first = !(kk.fader_known & (1U << id));
     kk.fader_known |= (uint8_t)(1U << id);
-    if (id == 1) {
-        unsigned s = first ? value * KK_SCALES / 128U : quantise(kk.scale.scale, value, KK_SCALES);
-        if (s != kk.scale.scale) { kk.scale.scale = (uint8_t)s; ++kk.edit_revision; }
-    } else if (id == 2) {
-        unsigned r = first ? value * 12U / 128U : quantise(kk.scale.root, value, 12);
-        if (r != kk.scale.root) { kk.scale.root = (uint8_t)r; ++kk.edit_revision; }
+    /* 0.80: Faders 2 / 3 control Live (scale and root moved to K3 / K2). */
+    if (id == 1 || id == 2) {
+        kk_midi_cc(KK_CH_ABLETON, id == 1 ? KK_CC_TRACK_VOLUME : KK_CC_TRACK_MACRO, value);
     } else if (id == 3) {
         /* 0.77: Fader 4 = master volume (the keyboard's and, via the script, Live's). */
         if (kk.master != value) { kk.master = (uint8_t)value; kk_midi_cc(KK_CH_ABLETON, KK_CC_MASTER, value); }
@@ -509,7 +489,7 @@ void kk_perform_init(void)
 {
     memset(&kk, 0, sizeof kk);
     memset(sources, 0, sizeof sources);
-    kk.bpm = 120; kk.pad_sensitivity = 3; kk.velocity = KK_VELOCITY_DEFAULT;
+    kk.bpm = 120; kk.pad_sensitivity = KK_PAD_SENSITIVITY_DEFAULT; kk.velocity = KK_VELOCITY_DEFAULT;
     kk.master = 127; kk_set_brightness(15);    /* 0.77: brightness from the Patch page (saved) */
 #ifdef KK_DEVICE_FM1
     kk.fader_known = 8;
@@ -521,7 +501,7 @@ void kk_perform_init(void)
     kk.anim_pattern = KK_ANIMATIONS - 1;  /* first SEQ REC press shows pattern 1 */
     kk.chord_root = -1; kk.last_note = -1;
     kk.scale = (struct kk_scale_ctx){0, 0};
-    arp_running = latched_count = repeat_running = 0; arp_note = -1;
+    arp_running = repeat_running = 0; arp_note = -1;
     hold_count = 0; sustained_count = 0;
     pedal_down = 0; sustain_sent = 0; wheel_sent[0] = 64; wheel_sent[1] = 0;
     last_ms = fm1_millis(); clock_us = 0;

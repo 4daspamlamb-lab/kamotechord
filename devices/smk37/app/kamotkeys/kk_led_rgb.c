@@ -105,22 +105,36 @@ static uint32_t round_rgb(uint32_t c)
     return rgb(led_level((c >> 16) & 255), led_level((c >> 8) & 255), led_level(c & 255));
 }
 /* ------------------------------------------------------------- ripples */
+static uint32_t brighter_rgb(uint32_t a, uint32_t b)
+{
+    unsigned r = (a >> 16) > (b >> 16) ? (a >> 16) & 255 : (b >> 16) & 255;
+    unsigned g = ((a >> 8) & 255) > ((b >> 8) & 255) ? (a >> 8) & 255 : (b >> 8) & 255;
+    unsigned l = (a & 255) > (b & 255) ? a & 255 : b & 255;
+    return rgb(r, g, l);
+}
+
 /* Ripple lights (0.57, toggled with three quick SEQ REC presses): each key
  * or pad press starts a ring that spreads across the 8 x 2 pads from where
  * it was pressed (keys map left to right onto the 8 columns) and fades out.
  * Drawn over the normal colours; the pads keep working. */
-enum { RIPPLES = 8, RIPPLE_MS = 900, RIPPLE_SPEED = 11 /* pads per second */ };
-static struct { uint32_t start; int16_t x, y; uint16_t hue; uint8_t strength; } ripples[RIPPLES];
+/* 0.80: more dramatic: longer, wider and brighter rings, a white flash at the
+ * press point and a second echo ring. kind 2 = the giant centre ripple shown
+ * when ripples are switched on (a slow double rainbow ring from the middle). */
+enum { RIPPLES = 12, RIPPLE_MS = 1300, RIPPLE_SPEED = 9 /* pads per second */, RIPPLE_WIDTH = 1300,
+       GIANT_MS = 2400, GIANT_SPEED = 5, GIANT_WIDTH = 2200, FLASH_MS = 160 };
+static struct { uint32_t start; int16_t x, y; uint16_t hue; uint8_t strength, giant; } ripples[RIPPLES];
 static unsigned ripple_next;
 void kk_led_ripple(unsigned kind, unsigned id, unsigned velocity)
 {
     int x, y;
-    if (kind) { x = (int)(id % 8) * 1000; y = (int)(id / 8) * 1000; }
+    if (kind == 2) { x = 3500; y = 500; }
+    else if (kind) { x = (int)(id % 8) * 1000; y = (int)(id / 8) * 1000; }
     else { x = (int)(id * 7000U / (KK_KEYS - 1)); y = 500; }
     unsigned i = ripple_next++ % RIPPLES;
     ripples[i].start = fm1_millis(); ripples[i].x = (int16_t)x; ripples[i].y = (int16_t)y;
     ripples[i].hue = (uint16_t)(x * 65535 / 7000 + 20000);
-    ripples[i].strength = (uint8_t)(110 + (velocity > 127 ? 127 : velocity) * 145 / 127);
+    ripples[i].strength = kind == 2 ? 255 : (uint8_t)(170 + (velocity > 127 ? 127 : velocity) * 85 / 127);
+    ripples[i].giant = kind == 2;
 }
 static unsigned isqrt(unsigned v)
 {
@@ -129,31 +143,42 @@ static unsigned isqrt(unsigned v)
     while (bit) { if (v >= r + bit) { v -= r + bit; r = (r >> 1) + bit; } else r >>= 1; bit >>= 2; }
     return r;
 }
+/* Brightness 0..255 of a ring of this width at distance off from its edge. */
+static unsigned ring_level(int off, int width)
+{
+    if (off < 0) off = -off;
+    if (off >= width) return 0;
+    unsigned ring = (unsigned)(width - off) * 255U / (unsigned)width;
+    return ring * ring / 255U;
+}
 /* Strongest ripple colour on a pad now (0 = none), at full scale. */
 static uint32_t ripple_colour(unsigned pad)
 {
     uint32_t now = fm1_millis(), best = 0; unsigned best_b = 0;
     int px = (int)(pad % 8) * 1000, py = (int)(pad / 8) * 1000;
     for (unsigned i = 0; i < RIPPLES; ++i) {
-        uint32_t age = now - ripples[i].start;
-        if (!ripples[i].strength || age >= RIPPLE_MS) continue;
+        uint32_t age = now - ripples[i].start, life = ripples[i].giant ? GIANT_MS : RIPPLE_MS;
+        if (!ripples[i].strength || age >= life) continue;
         int dx = px - ripples[i].x, dy = py - ripples[i].y;
         int d = (int)isqrt((unsigned)(dx * dx + dy * dy));          /* milli-pads */
-        int radius = (int)(age * RIPPLE_SPEED), off = d - radius; if (off < 0) off = -off;
-        if (off >= 900) continue;
-        unsigned ring = (unsigned)(900 - off) * 255U / 900U;          /* ring profile */
-        unsigned fade = (RIPPLE_MS - age) * 255U / RIPPLE_MS;
-        unsigned b = ring * ring / 255U * fade / 255U * ripples[i].strength / 255U;
-        if (b > best_b) { best_b = b; best = scale(hue16(ripples[i].hue + age * 20U), b); }
+        int speed = ripples[i].giant ? GIANT_SPEED : RIPPLE_SPEED, width = ripples[i].giant ? GIANT_WIDTH : RIPPLE_WIDTH;
+        int radius = (int)(age * (unsigned)speed);
+        unsigned ring = ring_level(d - radius, width);
+        unsigned echo = ring_level(d - radius * 11 / 20, width * 2 / 3) / 2;   /* a second, inner ring */
+        if (echo > ring) ring = echo;
+        unsigned fade = (life - age) * 255U / life;
+        fade = 255U - (255U - fade) * (255U - fade) / 255U;           /* stays bright longer */
+        unsigned b = ring * fade / 255U * ripples[i].strength / 255U;
+        uint32_t colour;
+        if (ripples[i].giant) colour = scale(hue16((uint16_t)(age * 30U + (unsigned)d * 9U)), b);   /* rainbow */
+        else colour = scale(hue16((uint16_t)(ripples[i].hue + age * 20U)), b);
+        if (!ripples[i].giant && age < FLASH_MS && d < 600) {         /* white flash where it started */
+            unsigned f = (FLASH_MS - age) * 255U / FLASH_MS * ripples[i].strength / 255U;
+            colour = brighter_rgb(colour, rgb(f, f, f)); if (f > b) b = f;
+        }
+        if (b > best_b) { best_b = b; best = colour; }
     }
     return best;
-}
-static uint32_t brighter(uint32_t a, uint32_t b)
-{
-    unsigned r = (a >> 16) > (b >> 16) ? (a >> 16) & 255 : (b >> 16) & 255;
-    unsigned g = ((a >> 8) & 255) > ((b >> 8) & 255) ? (a >> 8) & 255 : (b >> 8) & 255;
-    unsigned l = (a & 255) > (b & 255) ? a & 255 : b & 255;
-    return rgb(r, g, l);
 }
 uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
 {
@@ -172,7 +197,7 @@ uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
     }
     if (kk.ripple) {
         uint32_t r = ripple_colour(pad);
-        if (r) return brighter(output(c, level), output(r, 1000));
+        if (r) return brighter_rgb(output(c, level), output(r, 1000));
     }
     return output(c, level);
 }

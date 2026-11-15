@@ -5,7 +5,7 @@
 void test_pad_modes(void)
 {
     boot();
-    fader(1, 0); fader(2, 2 * 128 / 12 + 4);   /* D major */
+    kk.scale.scale = 0; kk.scale.root = 2;   /* D major */
     tap(KK_BTN_SCALE);
     host_clear();
     for (unsigned p = 1; p <= 16; ++p) { pad(p, 100); pad(p, 0); }
@@ -142,6 +142,16 @@ void test_arp_keys_and_persistence(void)
     CHECK(n >= 3 && notes[0] == 60 && notes[1] == 63 && notes[2] == 67, "chord arp up C Eb G (%u)", n);
     key(12, 0); pad(2, 0); frames(200, 2);
     for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "arp released %u", k);
+    /* 0.80: no hidden LATCH: a released pad in Pad Scale stops, and toggling
+     * SUSTAIN never brings an old pattern back (even if an old record said LATCH). */
+    kk.arp.mode = KK_ARP_LATCH; tap(KK_BTN_SCALE);
+    pad(3, 100); frames(100, 2); pad(3, 0); frames(100, 2);
+    unsigned sounding = 0; for (unsigned k = 0; k < 128; ++k) sounding += kk_midi_count(0, k);
+    host_clear(); frames(200, 2);
+    CHECK(!sounding && out_count(USB, ON1, -1) == 0, "Pad Scale ARP: released pad stops (no latch)");
+    tap(KK_BTN_NOTE_REPEAT); frames(100, 2); tap(KK_BTN_NOTE_REPEAT); frames(200, 2);
+    CHECK(out_count(USB, ON1, -1) == 0, "SUSTAIN on / off does not bring the last notes back");
+    kk.arp.mode = KK_ARP_NORMAL; tap(KK_BTN_SCALE); host_clear();
     /* Settings round trip; octave is not saved. */
     kk_edit_bpm(-20); kk_edit_arp(2, 2); kk_edit_arp(3, -3); kk_edit_arp(4, 10); kk_edit_arp(1, 2); kk_edit_program(5);
     tap(KK_BTN_OCT_UP);
@@ -167,7 +177,9 @@ void test_arp_keys_and_persistence(void)
     saved[14] = 99; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid timing rejected");
     saved[14] = 0;
     /* 0.44: pad sensitivity (Patch page E4), saved; older records = 3. */
-    CHECK(kk.pad_sensitivity == 3 && kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "default linear");
+    CHECK(kk.pad_sensitivity == KK_PAD_SENSITIVITY_MAX && kk_pad_curve(1) >= 75 && kk_pad_curve(20) >= 105 && kk_pad_curve(127) == 127,
+          "0.80 default = 10 MAX: lightest touch %u, tap 20 -> %u", kk_pad_curve(1), kk_pad_curve(20));
+    kk.pad_sensitivity = 3; CHECK(kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "level 3 linear");
     tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 3, 2); frames(3, 2); tap(KK_BTN_PATCH);
     CHECK(kk.pad_sensitivity == 5, "E4 raises sensitivity (%u)", kk.pad_sensitivity);
     CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
@@ -191,7 +203,8 @@ void test_arp_keys_and_persistence(void)
     kamotkeys_settings_read(saved); groove_screen_init();
     CHECK(kamotkeys_settings_apply(saved) == 0 && kk.pad_sensitivity == 5, "pad sensitivity restored after restart");
     saved[15] = 0; CHECK(kamotkeys_settings_apply(saved) == 0 && kk.pad_sensitivity == 3, "pre-0.44 record -> linear");
-    saved[15] = 9; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid sensitivity rejected");
+    saved[15] = 7; CHECK(kamotkeys_settings_apply(saved) == 0 && kk.pad_sensitivity == 10, "0.80: old max 7 -> 10 MAX");
+    saved[15] = 11; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid sensitivity rejected");
     saved[15] = 3;
     saved[1] = 5; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid record rejected");
 }
@@ -241,7 +254,7 @@ void test_display(void)
     frames(150, 2); shot("00_boot_600ms");
     frames(130, 2); shot("00_boot_860ms");
     frames(200, 2);
-    fader(0, 0); fader(1, 0); fader(2, 0);
+    fader(0, 0); kk.scale.scale = 0; kk.scale.root = 0;
     frames(100, 2); shot("01_main_idle");
     /* Single note: exactly one highlighted key. */
     key(16, 100); frames(100, 2);

@@ -58,6 +58,7 @@ CC_TRACKS_LEFT, CC_TRACKS_RIGHT = 31, 32
 CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scene up / down
 CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLAY = finish clip, next track
 CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by value - 64 BPM
+CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track volume / macro 1 (else Send A)
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
 ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
@@ -74,7 +75,7 @@ CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
-                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO)
+                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO)
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
@@ -266,6 +267,10 @@ class KamoteKeys(ControlSurface):
             self._master(value)          # a fader: every value counts
         elif cc == CC_TEMPO:
             self._nudge_tempo(value - 64)
+        elif cc == CC_TRACK_VOLUME:
+            self._track_volume(value)
+        elif cc == CC_TRACK_MACRO:
+            self._track_macro(value)
         elif value:                      # act on press; release is ignored
             self._transport(cc)
 
@@ -383,6 +388,7 @@ class KamoteKeys(ControlSurface):
             self.song().view.selected_scene = scenes[self._scene]
         except Exception:
             pass
+        self._show_ring()
         self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
 
     def _launch_scene(self):
@@ -410,6 +416,32 @@ class KamoteKeys(ControlSurface):
             self._send_tempo()
         except Exception as error:
             self.log_message('KamoteKeys: tempo: %s' % error)
+
+    def _track_volume(self, value):
+        """Fader 2: the selected track's volume (top = 0 dB, like Fader 4)."""
+        try:
+            self.song().view.selected_track.mixer_device.volume.value = 0.85 * value / 127.0
+        except Exception as error:
+            self.log_message('KamoteKeys: track volume: %s' % error)
+
+    def _track_macro(self, value):
+        """Fader 3: macro 1 of the selected track's first device (a rack), else Send A."""
+        try:
+            track = self.song().view.selected_track
+            target = None
+            devices = list(getattr(track, 'devices', []) or [])
+            if devices:
+                params = list(devices[0].parameters)
+                if len(params) > 1 and getattr(devices[0], 'can_have_chains', False):
+                    target = params[1]                      # parameters[0] is Device On
+            if target is None:
+                sends = list(track.mixer_device.sends)
+                target = sends[0] if sends else None
+            if target is not None:
+                lo, hi = target.min, target.max
+                target.value = lo + (hi - lo) * value / 127.0
+        except Exception as error:
+            self.log_message('KamoteKeys: macro: %s' % error)
 
     def _master(self, value):
         """Fader 4: Live's master volume (top = 0 dB)."""
@@ -515,12 +547,27 @@ class KamoteKeys(ControlSurface):
 
     # ------------------------------------------------- tracks view (0.66)
     def _move_tracks(self, delta):
-        count = len(list(self.song().visible_tracks))
-        new = max(0, min(max(0, count - TRACKS), self._track + delta))
+        # 0.80: one track per press, down to the last track (also with 8 or
+        # fewer tracks), and Live selects the first track of the view and
+        # draws the session box, so every press visibly does something.
+        tracks = list(self.song().visible_tracks)
+        new = max(0, min(max(0, len(tracks) - 1), self._track + delta))
         if new != self._track:
             self._track = new
             self._send_all()
+        try:
+            if tracks:
+                self.song().view.selected_track = tracks[self._track]
+        except Exception:
+            pass
+        self._show_ring()
         self._status('KamoteKeys: tracks %d-%d' % (self._track + 1, self._track + TRACKS))
+
+    def _show_ring(self):
+        try:
+            self._c_instance.set_session_highlight(self._track, self._scene, TRACKS, SCENES, False)
+        except Exception:
+            pass
 
     # ------------------------------------------------ Scene Arrange (0.66)
     # One clip per track; each scene stores which tracks play. Launching the
