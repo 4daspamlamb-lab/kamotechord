@@ -58,6 +58,15 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 
 The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / Reverb on the track; the screen says `NO REVERB` etc. if one is missing.
 
+**Top-octave Live keys** (all modes except Clip and Step), for the track / clip selected in Live:
+
+| Key | Does |
+|---|---|
+| top A# / G# / F# | solo track / finish & next track / launch-stop clip |
+| top C / B / A / G / E | finish & record on the next track / delete clip / mute track / arm track / quantize clip |
+
+Key and scale (E2 / E3) are remembered after power-off.
+
 ---
 
 ## 3. Play
@@ -72,7 +81,7 @@ The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / R
 - Chord pads still work and stay in the scale. A locked chord stays on.
 
 ### Pads as notes (Pad Scale, SCALE) and drums (Drum, FX)
-- **SCALE**: the 16 pads play the scale (root pads cyan).
+- **SCALE**: the 16 pads play the scale (root pads cyan). Keys you play light the pads with the same note.
 - **FX**: the pads are GM drums on channel 10 (kick top left, rim below it, snare next …), coloured by drum type. OCT moves them by an octave.
 
 ### Lights
@@ -96,7 +105,7 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 | delete a clip | hold **A#** and press it |
 | scroll scenes / launch a scene | top **G# / A#** / top **F#** |
 | move the selected clip up / down | hold the **top F** and press top G# / A# |
-| select the previous / next track | top **A / B** (the 8 tracks shown follow; the screen shows their numbers and names) |
+| select the previous / next track | top **A / B** (hold: one more every 0.5 s; the 8 tracks shown follow; the screen shows their numbers and names) |
 | use clips quickly from any mode | **hold CHORD**, press pads, let go |
 
 **Build a song from loops (Scene Arrange):** press the low **D**. The two pad rows are two scenes; tap pads to choose which tracks play in each scene (green on, dim off). Launch a scene with the top F#: exactly those tracks play, each with its one clip, so editing a clip changes every scene. Press D again to leave.

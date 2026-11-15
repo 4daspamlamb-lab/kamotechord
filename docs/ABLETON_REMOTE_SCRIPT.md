@@ -68,7 +68,7 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
-| **top A / B** (white, 3rd / 2nd from the right) | select the previous / next track. The 8-track view follows when the selection leaves it (left: the track becomes the first of the 8, right: the last) and stops at the ends. No session box is drawn in Live, so Live's window only scrolls to keep the selected track in sight |
+| **top A / B** (white, 3rd / 2nd from the right) | select the previous / next track. The 8-track view follows when the selection leaves it (left: the track becomes the first of the 8, right: the last) and stops at the ends. Hold the key to move one more track every 0.5 s. No session box is drawn in Live, so Live's window only scrolls to keep the selected track in sight |
 | **G#** | **STOP** (0.77): hold + clips = stop them; a tap stops the selected clip |
 | **D** (white) | **Scene Arrange** on / off (below) |
 | top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
@@ -76,7 +76,9 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 
 The screen shows the clip state, **Live's selected track (number and name)**, the scene and the 8 tracks in view, and the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held. The pad map shows each pad's track number and the first letters of its name. **Hold CHORD** in any mode for Clip Mode only while it is held.
 
-**Mixing the selected track.** Fader 2 = its volume, Fader 3 = Macro 1 of its first rack (else Send A). Knobs E4–E7 = **filter** (Auto Filter: left = low-pass closing, centre = open, right = high-pass), **delay** amount (Delay, Echo, Ping Pong, Filter, Simple or Grain Delay: Dry/Wet), **reverb** amount (Reverb or Hybrid Reverb: Dry/Wet) and **sustain** (the reverb's Decay). The script looks at the track's devices and one level inside racks; the screen shows the new value or `NO DELAY` etc.
+**Mixing the selected track.** Fader 2 = its volume, Fader 3 = Macro 1 of its first rack (else Send A). Knobs E4–E7 = **filter** (Auto Filter: left = low-pass closing, centre = open, right = high-pass), **delay** amount (Delay, Echo, Ping Pong, Filter, Simple or Grain Delay: Dry/Wet), **reverb** amount (Reverb or Hybrid Reverb: Dry/Wet) and **sustain** (the reverb's Decay). The script looks at the track's devices and one level inside racks and matches them by name (old and new Auto Filter, any delay or Echo, any reverb); the screen shows the new value or `NO DELAY` etc., and Live's status bar then lists the devices it saw.
+
+**Top-octave Live keys** (outside Clip and Step Mode): A# solo, G# finish & next track, F# launch / stop the selected clip, C finish & record on the next track, B delete the selected clip, A mute, G arm, E quantize the selected clip (to Live's record quantization, else 1/16).
 
 **Scene Arrange (low D since 0.77).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
 

@@ -105,6 +105,24 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
 | RIGHT ▶ | Ableton **Redo** (CC 27). In the BT menu: SAVE (OK) | |
 | OCT − / OCT + | Octave −4 … +4. Keyboard starts at **−2**; in Pad Scale/Drum Mode they move the pad octave (starts at 0) | |
 
+### Top-octave Live keys
+
+In Normal, Key Scale, Pad Scale and Drum Mode the top octave controls the track and clip **selected in Live** (needs the Remote Script; Clip and Step Mode keep their own keys):
+
+| Key | Does |
+|---|---|
+| top **A#** | **Solo** the selected track on / off |
+| top **G#** | **Finish & next track** (same as SEQ PLAY) |
+| top **F#** | **Launch / stop** the selected clip (an empty slot on an armed track records) |
+| top **C** | **Finish & record next**: finish, select and arm the next track and record there at once (next empty slot) |
+| top **B** | **Delete** the selected clip |
+| top **A** | **Mute** the selected track on / off |
+| top **G** | **Arm** the selected track on / off |
+| top **F** | nothing (silent) |
+| top **E** | **Quantize** the selected clip (to Live's record quantization, else 1/16) |
+
+Top C#, D and D# still play notes.
+
 All Ableton commands are on **MIDI channel 15**. The pad map and the button-index verification are in [docs/CONTROLS.md](docs/CONTROLS.md).
 
 ## Faders
@@ -162,7 +180,7 @@ The **second physical C** plays the selected tonic, at octave 0 the tonic in the
 
 ### Clip Mode (CHORD)
 
-Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **top F** + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; top F# launches exactly those); white **top A / B** select the previous / next track (the 8-track view follows when the selection leaves it: going left the track becomes the first of the 8, going right the last); top **F# / G# / A#** = scene launch / up / down. **Hold CHORD** from any mode for Clip Mode only while held. The screen shows the clip state, Live's selected track (number and name, big), the scene and the 8 tracks in view, and what is copied; the pad map shows each pad's track number and the start of its name. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
+Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **top F** + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; top F# launches exactly those); white **top A / B** select the previous / next track (the 8-track view follows when the selection leaves it: going left the track becomes the first of the 8, going right the last; hold the key to move one more track every 0.5 s); top **F# / G# / A#** = scene launch / up / down. **Hold CHORD** from any mode for Clip Mode only while held. The screen shows the clip state, Live's selected track (number and name, big), the scene and the 8 tracks in view, and what is copied; the pad map shows each pad's track number and the start of its name. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
 
 ### Step Mode (SEQ REC)
 
@@ -170,7 +188,7 @@ A step sequencer that writes straight into the selected session clip in Live, la
 
 ### Pad Scale Mode (SCALE)
 
-All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following the key (E2), the scale (E3) and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed. The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
+All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following the key (E2), the scale (E3) and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed or when that note sounds in any octave (so the keys light the pads of the notes you play). The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
 
 ### Drum Mode (FX)
 
@@ -209,7 +227,7 @@ Encoders are numbered E1–E8, left to right; SMK37 OPEN calls them K1–K4, SEL
 | E7 | **Sustain** = reverb decay (selected track) | | | Action |
 | E8 | **Master volume** (always) | | | |
 
-E4–E7 need the Remote Script. It finds the effects on Live's selected track by type (also inside racks): Auto Filter; Delay, Echo, Ping Pong, Filter, Simple or Grain Delay; Reverb or Hybrid Reverb. The screen shows the new value, or `NO REVERB` etc. when the track has none. Hold **ARP** to edit the ARP settings with the knobs.
+E4–E7 need the Remote Script. It finds the effects on Live's selected track by name (also inside racks): an Auto Filter (old or new), any delay or Echo, any reverb (incl. Hybrid Reverb). If one is missing, Live's status bar lists the devices it saw. The screen shows the new value, or `NO REVERB` etc. when the track has none. Hold **ARP** to edit the ARP settings with the knobs.
 
 Changes on the main screen appear as a short message in the status line.
 
@@ -293,7 +311,7 @@ Note Offs always go to every port, so a port change between Note On and Note Off
 
 ## Saved settings
 
-Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, ARP on/off, direction, division, gate, swing, octaves, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing, pad sensitivity, pad brightness**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Key and scale (E2 / E3) are not saved: they start at C Major. Velocity comes from Fader 1; Faders 2 / 3 control Live and Fader 4 is the master volume. Bluetooth settings are stored by SMK37 OPEN as before.
+Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, key, scale, ARP on/off, direction, division, gate, swing, octaves, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing, pad sensitivity, pad brightness**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Velocity comes from Fader 1; Faders 2 / 3 control Live and Fader 4 is the master volume. Bluetooth settings are stored by SMK37 OPEN as before.
 
 ## Build
 

@@ -1,5 +1,16 @@
 # Changelog
 
+## KamoteKeys 0.86 (development snapshot)
+
+- **Top-octave Live keys** (outside Clip and Step Mode), for Live's selected track / clip: A# solo, G# finish & next track, F# launch / stop clip, C finish & record on the next track, B delete clip, A mute, G arm, E quantize.
+- **Clip Mode:** hold top A / B to move one more track every half second.
+- **Pad Scale:** a played note lights the pads of that note in every octave.
+- **Key and scale are remembered** after power-off.
+
+## KamoteKeys 0.85 (development snapshot)
+
+- **Effect knobs (E4–E7) find devices by name**, including the new Auto Filter; when one is missing, Live's status bar lists the devices on the track.
+
 ## KamoteKeys 0.84 (development snapshot)
 
 - **No more session box in Live.** Live scrolled its window to the box and back on every move (snapping to tracks 4 / 1, keeping the middle in view). Now Live only scrolls to keep the selected track in sight.
