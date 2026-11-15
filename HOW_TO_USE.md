@@ -9,6 +9,7 @@ A hands-on guide. The full reference is in [README.md](README.md); the pictures 
 | `SMK37-Play-Modes.png` | Normal, Key Scale, Pad Scale and Drum Mode |
 | `SMK37-Clip-Mode.png` | Clip Mode (CHORD) |
 | `SMK37-Step-Mode.png` | Step Mode (SEQ REC) |
+| `SMK37-Live-Keys.png` | the top-octave Live keys, recording and overdub |
 | `SMK37-Boot.gif` | the startup animation |
 
 ---
@@ -62,10 +63,21 @@ The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / R
 
 | Key | Does |
 |---|---|
-| top A# / G# / F# | solo track / finish & next track / launch-stop clip |
-| top C / B / A / G / E | finish & record on the next track / delete clip / mute track / arm track / quantize clip |
+| top A# / G# / F# | delete clip / finish & next track / launch-stop clip |
+| top B / A / G / F | solo track / mute track / arm track / quantize clip |
+| hold top C + G# / A# | scene up / down |
+| hold top C + F / G | track left / right |
 
 Key and scale (E2 / E3) are remembered after power-off.
+
+### Record and overdub
+| To … | Do |
+|---|---|
+| record a new clip | select an empty slot on an armed track (top G arms), press **KNOB BANK**; again = stop |
+| **overdub** (add notes to a clip) | select a track whose clip is **playing**, arm it, press **KNOB BANK**; old notes stay; again = stop |
+| overdub in Clip Mode | hold the **lowest C** and press the clip's pad |
+| keep something you played without recording | **FADER BANK** (Capture) |
+| undo a bad take / tidy the timing | **◀** / top **F** (quantize) |
 
 ---
 

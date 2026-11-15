@@ -146,15 +146,14 @@ Channel 14 never reaches the internal synth.
 | 38 | Fader 2 | selected track volume, 0–127 (127 = 0 dB) |
 | 39 | Fader 3 | Macro 1 of the selected track's first rack, else its Send A, 0–127 |
 | 40 / 41 / 42 / 43 | E4 / E5 / E6 / E7 | selected track's filter / delay amount / reverb amount / reverb decay, relative: 64 + knob steps |
-| 44 | top A# | solo the selected track (127 press / 0 release, also below) |
+| 44 | top B | solo the selected track (127 press / 0 release, also below) |
 | 45 | top F# | launch / stop the selected clip |
-| 46 | top C | finish, select + arm the next track, record there |
-| 47 | top B | delete the selected clip |
+| 47 | top A# | delete the selected clip |
 | 48 | top A | mute the selected track |
 | 49 | top G | arm the selected track |
-| 50 | top E | quantize the selected clip |
+| 50 | top F | quantize the selected clip |
 
-Top G# sends CC 36 (finish & next track). The top keys send these outside Clip and Step Mode only.
+Top G# sends CC 36 (finish & next track). Top C is SHIFT and sends nothing; while it is held, top G# / A# send CC 29 / 28 (scene up / down) and top F / G send CC 31 / 32 (track left / right). The top keys send these outside Clip and Step Mode only.
 
 **Track names and effect values, channel 16 (Live → keyboard):**
 

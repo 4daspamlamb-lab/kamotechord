@@ -68,7 +68,7 @@ Both models need SMK37 OPEN's update path (the model-specific workbench page). P
 
 **New here? Start with [HOW_TO_USE.md](HOW_TO_USE.md)** (setup, every mode, workflows, troubleshooting).
 
-Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in every mode](docs/diagrams/SMK37-Modes-Table.png) · [play modes](docs/diagrams/SMK37-Play-Modes.png) · [Clip Mode](docs/diagrams/SMK37-Clip-Mode.png) · [Step Mode](docs/diagrams/SMK37-Step-Mode.png) · [startup](docs/diagrams/SMK37-Boot.gif)
+Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in every mode](docs/diagrams/SMK37-Modes-Table.png) · [play modes](docs/diagrams/SMK37-Play-Modes.png) · [Clip Mode](docs/diagrams/SMK37-Clip-Mode.png) · [Step Mode](docs/diagrams/SMK37-Step-Mode.png) · [Live keys, record & overdub](docs/diagrams/SMK37-Live-Keys.png) · [startup](docs/diagrams/SMK37-Boot.gif)
 
 ```
  LEFT BLOCK                         RIGHT BLOCK
@@ -111,17 +111,16 @@ In Normal, Key Scale, Pad Scale and Drum Mode the top octave controls the track 
 
 | Key | Does |
 |---|---|
-| top **A#** | **Solo** the selected track on / off |
+| top **A#** | **Delete** the selected clip |
 | top **G#** | **Finish & next track** (same as SEQ PLAY) |
 | top **F#** | **Launch / stop** the selected clip (an empty slot on an armed track records) |
-| top **C** | **Finish & record next**: finish, select and arm the next track and record there at once (next empty slot) |
-| top **B** | **Delete** the selected clip |
+| top **C** | **SHIFT** (silent): hold it and top **G# / A#** = scene up / down, top **F / G** = track left / right |
+| top **B** | **Solo** the selected track on / off |
 | top **A** | **Mute** the selected track on / off |
 | top **G** | **Arm** the selected track on / off |
-| top **F** | nothing (silent) |
-| top **E** | **Quantize** the selected clip (to Live's record quantization, else 1/16) |
+| top **F** | **Quantize** the selected clip (to Live's record quantization, else 1/16) |
 
-Top C#, D and D# still play notes.
+Top C#, D, D# and E still play notes. Diagram: [SMK37-Live-Keys.png](docs/diagrams/SMK37-Live-Keys.png) (with recording and overdub).
 
 All Ableton commands are on **MIDI channel 15**. The pad map and the button-index verification are in [docs/CONTROLS.md](docs/CONTROLS.md).
 

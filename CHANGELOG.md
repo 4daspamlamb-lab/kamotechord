@@ -1,5 +1,14 @@
 # Changelog
 
+## KamoteKeys 0.88 (development snapshot)
+
+- **Top C = SHIFT:** hold it and top G# / A# move a scene up / down, top F / G a track left / right. "Finish & record next" is gone.
+- New diagram **SMK37-Live-Keys.png** (top-octave keys, recording and overdub); HOW_TO_USE has a "Record and overdub" section.
+
+## KamoteKeys 0.87 (development snapshot)
+
+- Top keys rearranged: A# = delete clip, B = solo, F = quantize; top E plays notes again.
+
 ## KamoteKeys 0.86 (development snapshot)
 
 - **Top-octave Live keys** (outside Clip and Step Mode), for Live's selected track / clip: A# solo, G# finish & next track, F# launch / stop clip, C finish & record on the next track, B delete clip, A mute, G arm, E quantize.
