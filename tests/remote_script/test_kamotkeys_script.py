@@ -124,6 +124,8 @@ class TrackProxy(object):
 class Song(object):
     @property
     def visible_tracks(self): return [TrackProxy(t) for t in self._tracks]
+    @property
+    def tracks(self): return [TrackProxy(t) for t in self._tracks]
     def __init__(self, n):
         self._tracks = [Track() for _ in range(n)]; self.calls = []; self.session_record = False; self.can_undo = True; self.can_redo = False
         self.scenes = [Scene(self) for _ in range(4)]; self.view = View(); self.view.selected_scene = self.scenes[0]
@@ -222,6 +224,15 @@ class T(unittest.TestCase):
         deliver((0xBE, 32, 127)); deliver((0xBE, 28, 127))       # track right, scene down
         self.s.update_display()
         self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
+
+    def test_arm_only_selected_unless_patch(self):
+        press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))
+        a, b, c = self.song._tracks[0], self.song._tracks[1], self.song._tracks[2]
+        a.arm = True; c.arm = True; self.song.view.selected_track = self.song.visible_tracks[1]
+        press(49); self.assertEqual((a.arm, b.arm, c.arm), (False, True, False))   # top G: only this one
+        self.song.view.selected_track = self.song.visible_tracks[2]
+        press(51); self.assertEqual((a.arm, b.arm, c.arm), (False, True, True))    # PATCH + G: add
+        press(49); self.assertEqual((b.arm, c.arm), (False, False))                # G on an armed track: disarm it (others off)
 
     def test_top_keys_act_on_selected_track_and_clip(self):
         press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))

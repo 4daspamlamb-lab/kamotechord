@@ -89,8 +89,8 @@ static void main_input(void)
 #ifndef KK_DEVICE_FM1
     /* 0.80 SMK-37: K1 BPM, K2 key, K3 scale, K8 master (page_input). Patch is
      * on the PATCH page. */
-    if ((d = take(1))) { kk_edit_root(d); popup_value("KEY", kk_note_name(kk.scale.root)); }
-    if ((d = take(2))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
+    if ((d = take(1))) kk_edit_root(d);    /* 0.90: no pop-up, the key / scale bar shows it */
+    if ((d = take(2))) kk_edit_scale(d);
     /* 0.82: K4-K7 = the selected Live track's filter, delay, reverb and
      * reverb decay (the Remote Script finds the devices and answers with
      * the new position); ARP settings: hold ARP. */

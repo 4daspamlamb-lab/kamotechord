@@ -60,6 +60,7 @@ CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLA
 CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by value - 64 BPM
 CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track volume / macro 1 (else Send A)
 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE = 44, 45, 47, 48, 49, 50   # 0.86 top keys (46 unused since 0.88)
+CC_ARM_ADD = 51                          # 0.90: PATCH + top G: arm without disarming the others
 CC_FX = (40, 41, 42, 43)                 # 0.82: K4-K7 relative: filter, delay, reverb, reverb decay
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
@@ -78,7 +79,7 @@ CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO,
-                 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE) + CC_FX
+                 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE, CC_ARM_ADD) + CC_FX
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
@@ -642,6 +643,24 @@ class KamoteKeys(ControlSurface):
         except Exception as error:
             self._status('KamoteKeys: %s: %s' % (what, error))
 
+    def _arm_only_selected(self):
+        """Top G (0.90): arm the selected track and disarm every other one;
+        pressed on the armed track it disarms it."""
+        song = self.song()
+        track = song.view.selected_track
+        try:
+            if not getattr(track, 'can_be_armed', False):
+                self._status('KamoteKeys: %s cannot be armed' % track.name)
+                return
+            arm = not track.arm
+            for other in list(song.tracks):
+                if getattr(other, 'can_be_armed', False) and other.arm and not self._same(other, track):
+                    other.arm = False
+            track.arm = arm
+            self._status('KamoteKeys: %s %s' % (track.name, 'armed (only this one)' if arm else 'disarmed'))
+        except Exception as error:
+            self._status('KamoteKeys: arm: %s' % error)
+
     def _selected_slot(self):
         try:
             return self.song().view.highlighted_clip_slot
@@ -1082,8 +1101,10 @@ class KamoteKeys(ControlSurface):
             self._status('KamoteKeys: %s' % ('stop' if not song.is_playing else 'play'))
         elif cc == CC_FINISH:
             self._finish_and_next()
-        elif cc in (CC_SOLO, CC_MUTE, CC_ARM):
-            self._toggle_track(cc)
+        elif cc in (CC_SOLO, CC_MUTE, CC_ARM_ADD):
+            self._toggle_track(CC_ARM if cc == CC_ARM_ADD else cc)
+        elif cc == CC_ARM:
+            self._arm_only_selected()
         elif cc == CC_CLIP_PLAY:
             self._play_selected()
         elif cc == CC_CLIP_DELETE:

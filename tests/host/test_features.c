@@ -263,6 +263,12 @@ void test_top_keys_and_key_memory(void)
           out_count(USB, CC15, KK_CC_QUANTIZE) == 0 && out_count(USB, CC15, KK_CC_ARM) == 0,
           "SHIFT + G# / A# / F / G = scene up / down, track left / right");
     host_clear(); key(33, 100); key(33, 0); CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2, "SHIFT + A still mutes");
+    key(36, 0);
+    /* 0.90: PATCH + top G = arm without disarming the others; the Patch page stays closed. */
+    host_clear(); btn(KK_BTN_PATCH, 1); key(31, 100); key(31, 0); btn(KK_BTN_PATCH, 0);
+    CHECK(out_count(USB, CC15, KK_CC_ARM_ADD) == 2 && out_count(USB, CC15, KK_CC_ARM) == 0 && kk.page == KK_PAGE_MAIN,
+          "PATCH + G -> CC 51, no Patch page");
+    key(36, 100);
     key(36, 0); host_clear(); key(32, 100); key(32, 0); CHECK(out_count(USB, CC15, KK_CC_FINISH) == 2, "SHIFT released: G# = finish again");
     host_clear(); key(25, 100); key(25, 0); CHECK(out_count(USB, ON1, -1) == 1, "top C# still plays");
     tap(KK_BTN_SEQ); host_clear(); key(33, 100); key(33, 0);

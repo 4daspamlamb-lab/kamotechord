@@ -172,6 +172,7 @@ static void intent(unsigned id, struct source *s)
         /* 0.88: top C held = SHIFT: G# / A# scene up / down, F / G track left / right. */
         if (KK_TOP_SHIFT_KEY < KK_KEYS && id != KK_TOP_SHIFT_KEY && sources[KK_TOP_SHIFT_KEY].held && kk_top_shift_cc(id) >= 0)
             cc = kk_top_shift_cc(id);
+        if (cc == KK_CC_ARM && (kk.buttons & (1U << KK_BTN_PATCH))) cc = KK_CC_ARM_ADD;   /* 0.90 */
         if (cc > 0) { s->modifier = 0x4000U; s->channel = KK_CH_ABLETON; s->notes[0] = (uint8_t)cc; }
         return;
     }

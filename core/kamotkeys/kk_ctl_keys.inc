@@ -130,6 +130,7 @@ static void source_press(unsigned id, unsigned velocity)
 {
     if (id >= PAD_SOURCE) velocity = kk_pad_curve(velocity);
 #ifndef KK_DEVICE_FM1
+    if (id < KK_KEYS && (kk.buttons & (1U << KK_BTN_PATCH)) && kk_top_key_cc(id) > 0) patch_combo = 1;   /* 0.90: PATCH + top key: no Patch page */
     if (kk.buttons & (1U << KK_BTN_CHORD)) chord_used = 1;   /* 0.80: CHORD held + a pad/key: momentary */
 #endif
     struct source *s = &sources[id];

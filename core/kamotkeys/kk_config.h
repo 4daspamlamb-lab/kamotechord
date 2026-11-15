@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.89" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.90" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -143,6 +143,7 @@ enum {
     KK_CC_MUTE = 48,
     KK_CC_ARM = 49,
     KK_CC_QUANTIZE = 50,
+    KK_CC_ARM_ADD = 51,       /* 0.90: PATCH + top G: arm without disarming the others */
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */
