@@ -25,6 +25,7 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
     uint8_t ripple;                          /* SMK-37 ripple lights (3 x SEQ REC), not saved */
+    uint8_t arp_page_used;                   /* 0.82: a knob turned while ARP held: close the page on release */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
     uint8_t ports_seen;                      /* ready MIDI ports at the last tick */
     uint8_t rgb_timing;                      /* pad LED timing preset (saved)  */

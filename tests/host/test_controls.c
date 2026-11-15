@@ -140,6 +140,11 @@ void test_buttons(void)
     btn(KK_BTN_ARP, 1); host_ms += 700; frames(2, 1); btn(KK_BTN_ARP, 0);
     CHECK(kk.page == KK_PAGE_ARP && !kk.arp_on, "ARP long press opens page without toggling");
     tap(KK_BTN_ARP); CHECK(kk.page == KK_PAGE_MAIN, "ARP tap leaves page");
+    /* 0.82: hold ARP + turn a knob: the setting changes and the page closes on release. */
+    btn(KK_BTN_ARP, 1); host_ms += 700; frames(2, 1); unsigned dv = kk.arp.division;
+    kk.encoder[2] = 1; frames(2, 20); btn(KK_BTN_ARP, 0);
+    CHECK(kk.arp.division == dv + 1 && kk.page == KK_PAGE_MAIN && !kk.arp_on, "hold ARP + E3: division changed, page closes on release");
+    kk_edit_arp(2, -1);
     tap(KK_BTN_PATCH); CHECK(kk.page == KK_PAGE_PATCH, "PATCH page"); tap(KK_BTN_PATCH);
 }
 
@@ -199,9 +204,15 @@ void test_velocity_faders(void)
     kk.encoder[2] = 1; frames(2, 20); CHECK(kk.scale.scale == sc + 1, "K3 = scale");
     kk.encoder[1] = 2; frames(2, 20); CHECK(kk.scale.root == (rt + 2) % 12, "K2 = key");
     kk.encoder[2] = -1; kk.encoder[1] = -2; frames(2, 20);
-    unsigned pr = kk.program; kk.encoder[1] = 0; kk.encoder[6] = 1; unsigned g = kk.arp.gate; frames(2, 20);
-    CHECK(kk.arp.gate == g + 5 && kk.program == pr, "K7 = ARP gate, patch untouched");
-    kk.encoder[6] = -1; frames(2, 20);
+    /* 0.82: K4-K7 = the selected track's effects (relative CC 40-43); the script answers on CC 114-117. */
+    unsigned pr = kk.program, g = kk.arp.gate; host_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    host_clear(); kk.encoder[6] = 2; kk.encoder[3] = -1; frames(2, 20); groove_midi_poll();
+    CHECK(out_count(USB, CC15, KK_CC_FX_DECAY) == 1 && out_count(USB, CC15, KK_CC_FX_FILTER) == 1 &&
+          kk.arp.gate == g && kk.program == pr, "K7 / K4 -> CC 43 / 40, ARP and patch untouched");
+    CHECK(last_out(USB, CC15, 0) == (KK_CC_FX_DECAY | 66 << 8) && last_out(USB, CC15, 1) == (KK_CC_FX_FILTER | 63 << 8), "relative values 64 + steps");
+    host_in(0xBF, KK_HOST_FX_CC + 3, 90); frames(2, 20);
+    CHECK(kk_midi_fx(3) == 90, "script answer stored");
+    host_in(0xBF, KK_CLIP_HELLO_CC, 0);
     /* 0.77: pad brightness from the Patch page (16 steps); Fader 4 = master volume. */
     host_clear(); fader(3, 90);
     CHECK(kk.master == 90 && last_out(USB, CC15, 0) == (KK_CC_MASTER | 90 << 8), "Fader 4 = master volume (CC 35)");

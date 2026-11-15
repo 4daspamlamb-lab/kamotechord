@@ -56,6 +56,10 @@ static void popup_value(const char *label, const char *value)
     char buf[48], *p = append(buf, label); p = append(p, " "); append(p, value);
     say(buf, 1200);
 }
+#ifndef KK_DEVICE_FM1
+static const char *const fx_names[4] = {"FILTER", "DELAY", "REVERB", "SUSTAIN"};
+static uint8_t fx_wait; static uint32_t fx_wait_rev, fx_wait_until;
+#endif
 static void main_input(void)
 {
     char v[12], *p;
@@ -83,14 +87,26 @@ static void main_input(void)
         } else { kk_edit_bpm(step); decimal(v, kk.bpm); popup_value("TEMPO", v); }
     }
 #ifndef KK_DEVICE_FM1
-    /* 0.80 SMK-37: K1 BPM, K2 key, K3 scale, K4-K7 ARP division / direction /
-     * swing / gate, K8 master (page_input). Patch is on the PATCH page. */
+    /* 0.80 SMK-37: K1 BPM, K2 key, K3 scale, K8 master (page_input). Patch is
+     * on the PATCH page. */
     if ((d = take(1))) { kk_edit_root(d); popup_value("KEY", kk_note_name(kk.scale.root)); }
     if ((d = take(2))) { kk_edit_scale(d); popup_value("SCALE", kk_scale_name(kk.scale.scale)); }
-    if ((d = take(3))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
-    if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
-    if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
-    if ((d = take(6))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
+    /* 0.82: K4-K7 = the selected Live track's filter, delay, reverb and
+     * reverb decay (the Remote Script finds the devices and answers with
+     * the new position); ARP settings: hold ARP. */
+    for (unsigned i = 0; i < 4; ++i) if ((d = take(3 + i))) {
+        if (!kk_midi_host_protocol()) { popup_value(fx_names[i], "NEEDS LIVE"); continue; }
+        kk_midi_cc(KK_CH_ABLETON, KK_CC_FX_FILTER + i, (unsigned)clampi(64 + d, 0, 127));
+        fx_wait = (uint8_t)(i + 1); fx_wait_rev = kk_midi_fx_revision(); fx_wait_until = now_ms + 1000U;
+    }
+    if (fx_wait && kk_midi_fx_revision() != fx_wait_rev) {
+        unsigned i = fx_wait - 1U, f = kk_midi_fx(i);
+        fx_wait = 0;
+        if (f == KK_FX_NONE) popup_value(fx_names[i], i == 0 ? "NO AUTO FILTER" : i == 1 ? "NO DELAY" : "NO REVERB");
+        else if (i == 0 && f >= 60 && f <= 66) popup_value("FILTER", "OPEN");
+        else if (i == 0) { p = append(v, f < 63 ? "LP " : "HP "); p = decimal(p, (int)((f < 63 ? 63 - f : f - 63) * 100U / 63U)); append(p, "%"); popup_value("FILTER", v); }
+        else { p = decimal(v, (int)(f * 100U / 126U)); append(p, "%"); popup_value(fx_names[i], v); }
+    } else if (fx_wait && (int32_t)(now_ms - fx_wait_until) > 0) { popup_value(fx_names[fx_wait - 1U], "NO ANSWER"); fx_wait = 0; }
 #else
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
@@ -123,7 +139,10 @@ static void page_input(void)
         for (unsigned i = 5; i < 7; ++i) (void)take(i);
         break;
     case KK_PAGE_ARP:
-        for (unsigned i = 0; i < 6; ++i) if ((d = take(i))) kk_edit_arp(i, d);
+        for (unsigned i = 0; i < 6; ++i) if ((d = take(i))) {
+            kk_edit_arp(i, d);
+            if (kk.buttons & (1U << KK_BTN_ARP)) kk.arp_page_used = 1;   /* 0.82: close on ARP release */
+        }
         (void)take(6);
         break;
     case KK_PAGE_REPEAT:

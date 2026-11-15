@@ -59,6 +59,7 @@ CC_CLIP_UP, CC_CLIP_DOWN = 33, 34       # 0.75: move Live's selected clip a scen
 CC_MASTER, CC_FINISH = 35, 36           # 0.77: Fader 4 = master volume; SEQ PLAY = finish clip, next track
 CC_TEMPO = 37                           # 0.79: K1 = change Live's tempo by value - 64 BPM
 CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track volume / macro 1 (else Send A)
+CC_FX = (40, 41, 42, 43)                 # 0.82: K4-K7 relative: filter, delay, reverb, reverb decay
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
 ARRANGE_KEY = 'kamotekeys_arrange'     # per-scene track lists, saved in the Live set
@@ -75,11 +76,17 @@ CC_PLAY_PAUSE, CC_METRONOME = 23, 26
 CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH = 28, 29, 30
 TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_PLAY_PAUSE, CC_METRONOME,
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
-                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO)
+                 CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO) + CC_FX
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
 NAME_LEN = 12
+FX_CC = 114                              # 0.82: reply 114-117 = new position 0..126, 127 = no device
+FX_NONE = 127
+FILTER_CLASSES = ('AutoFilter', 'AutoFilter2')
+DELAY_CLASSES = ('Delay', 'Echo', 'PingPongDelay', 'FilterDelay', 'SimpleDelay', 'GrainDelay')
+REVERB_CLASSES = ('Reverb', 'Hybrid')
+RING_SECONDS = 2.0                       # 0.82: Live's session box shows this long after a move
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
 
 
@@ -97,6 +104,7 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._names_sent = {}            # 0.81: slot -> name last sent
         self._seltrack_sent = None
+        self._ring_until = None          # 0.82: hide the session box after RING_SECONDS
         self._ticks = 0
         self._received = False
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
@@ -275,6 +283,8 @@ class KamoteKeys(ControlSurface):
             self._track_volume(value)
         elif cc == CC_TRACK_MACRO:
             self._track_macro(value)
+        elif cc in CC_FX:
+            self._fx(CC_FX.index(cc), value - 64)
         elif value:                      # act on press; release is ignored
             self._transport(cc)
 
@@ -447,6 +457,81 @@ class KamoteKeys(ControlSurface):
         except Exception as error:
             self.log_message('KamoteKeys: macro: %s' % error)
 
+    # ------------------------------------------- track effects (0.82)
+    @staticmethod
+    def _devices(track):
+        """The track's devices, including those one rack level down."""
+        found = []
+        for device in list(getattr(track, 'devices', []) or []):
+            found.append(device)
+            if getattr(device, 'can_have_chains', False):
+                for chain in list(getattr(device, 'chains', []) or []):
+                    found.extend(list(getattr(chain, 'devices', []) or []))
+        return found
+
+    @staticmethod
+    def _param(device, *names):
+        for p in list(device.parameters):
+            if p.name in names:
+                return p
+        for p in list(device.parameters):
+            if any(n.lower() in p.name.lower() for n in names):
+                return p
+        return None
+
+    def _find(self, track, classes):
+        return next((d for d in self._devices(track) if getattr(d, 'class_name', '') in classes), None)
+
+    @staticmethod
+    def _nudge(param, steps, per_step):
+        lo, hi = param.min, param.max
+        param.value = max(lo, min(hi, param.value + (hi - lo) * per_step * steps))
+        return (param.value - lo) / float(hi - lo) if hi > lo else 0.0
+
+    def _filter(self, device, steps):
+        """One-knob DJ filter: left = low-pass closing, centre = open, right = high-pass."""
+        kind, freq = self._param(device, 'Filter Type'), self._param(device, 'Frequency')
+        if kind is None or freq is None:
+            return None
+        items = [str(i).lower() for i in list(getattr(kind, 'value_items', []) or [])]
+        low = next((i for i, n in enumerate(items) if 'low' in n), 0)
+        high = next((i for i, n in enumerate(items) if 'high' in n), 1)
+        span = float(freq.max - freq.min) or 1.0
+        f = (freq.value - freq.min) / span
+        if int(kind.value) == high:
+            pos = max(0.0, min(1.0, (f - 0.12) / 0.76))
+        else:
+            pos = -max(0.0, min(1.0, (1.0 - f) / 0.88))
+        pos = max(-1.0, min(1.0, pos + steps * 0.03))
+        if abs(pos) < 0.015:
+            pos = 0.0
+        if pos > 0:
+            kind.value = high
+            freq.value = freq.min + span * (0.12 + 0.76 * pos)
+        else:
+            kind.value = low
+            freq.value = freq.min + span * (1.0 + 0.88 * pos)
+        return (pos + 1.0) / 2.0
+
+    def _fx(self, which, steps):
+        """K4-K7 on the selected track: 0 filter, 1 delay amount, 2 reverb amount, 3 reverb decay."""
+        position = None
+        try:
+            track = self.song().view.selected_track
+            if which == 0:
+                device = self._find(track, FILTER_CLASSES)
+                position = self._filter(device, steps) if device is not None else None
+            else:
+                device = self._find(track, DELAY_CLASSES if which == 1 else REVERB_CLASSES)
+                param = None
+                if device is not None:
+                    param = self._param(device, 'Decay Time', 'Decay') if which == 3 else self._param(device, 'Dry/Wet')
+                position = self._nudge(param, steps, 0.02) if param is not None else None
+        except Exception as error:
+            self.log_message('KamoteKeys: effect %d: %s' % (which, error))
+        value = FX_NONE if position is None else max(0, min(126, int(round(position * 126))))
+        self._send_midi((0xB0 | CLIP_CHANNEL, FX_CC + which, value))
+
     def _master(self, value):
         """Fader 4: Live's master volume (top = 0 dB)."""
         try:
@@ -581,8 +666,17 @@ class KamoteKeys(ControlSurface):
         self._status('KamoteKeys: track %d (view %d-%d)' % (target + 1, self._track + 1, self._track + TRACKS))
 
     def _show_ring(self):
+        """Live's session box around the pads' 8 x 2 slots, for RING_SECONDS (0.82)."""
         try:
             self._c_instance.set_session_highlight(self._track, self._scene, TRACKS, SCENES, False)
+            self._ring_until = time.time() + RING_SECONDS
+        except Exception:
+            pass
+
+    def _hide_ring(self):
+        self._ring_until = None
+        try:
+            self._c_instance.set_session_highlight(-1, -1, -1, -1, False)
         except Exception:
             pass
 
@@ -806,6 +900,8 @@ class KamoteKeys(ControlSurface):
         ControlSurface.update_display(self)
         # Polling catches every change: mouse, other controllers, follow
         # actions, project loads and track insertion or reordering.
+        if self._ring_until is not None and time.time() >= self._ring_until:
+            self._hide_ring()
         self._ticks += 1
         if self._ticks >= FULL_REFRESH_TICKS:
             self._ticks = 0

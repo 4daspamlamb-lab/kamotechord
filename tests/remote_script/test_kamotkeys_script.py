@@ -90,6 +90,18 @@ class Slot(object):
     def fire_logged(self): self.track.log.append('fire')
     def duplicate_clip_to(self, other): other.clip = self.clip; self.track.log.append('duplicate')
 
+class Param(object):
+    def __init__(self, name, value=0.0, lo=0.0, hi=1.0, items=None):
+        self.name = name; self.value = value; self.min = lo; self.max = hi; self.value_items = items or []
+
+class Device(object):
+    def __init__(self, class_name, params, chains=None):
+        self.class_name = class_name; self.parameters = [Param('Device On', 1.0)] + params
+        self.can_have_chains = chains is not None; self.chains = chains or []
+
+class Chain(object):
+    def __init__(self, devices): self.devices = devices
+
 class Track(object):
     def __init__(self): self._live_ptr = id(self); self.name = 'Track'; self.arm = False; self.can_be_armed = True; self.log = []; self.clip_slots = [Slot(self) for _ in range(4)]
 
@@ -126,6 +138,7 @@ class Song(object):
 class CInstance(object):
     def __init__(self, song): self.song_obj = song
     def handle(self): return 1
+    def set_session_highlight(self, *args): self.song_obj.calls.append(('ring',) + args)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'remote_script'))
 from KamoteKeys.KamoteKeys import KamoteKeys, STATE_CC, HELLO_CC  # noqa: E402
@@ -166,6 +179,31 @@ class T(unittest.TestCase):
         self.assertEqual(chars, 'Bass ? very ')                         # ASCII only, 12 characters
         self.assertIn((0xBF, NAME_CC, 8), self.s.sent); self.assertIn((0xBF, SELTRACK_CC, 3), self.s.sent)
         self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])   # only changes
+
+    def test_fx_knobs_find_devices_by_type(self):
+        from KamoteKeys.KamoteKeys import FX_CC
+        t = self.song._tracks[1]; self.song.view.selected_track = self.song.visible_tracks[1]
+        filt = Device('AutoFilter', [Param('Filter Type', 0, 0, 4, ['Lowpass', 'Highpass', 'Bandpass', 'Notch', 'Morph']),
+                                     Param('Frequency', 1.0)])
+        rev = Device('Reverb', [Param('Dry/Wet', 0.5), Param('Decay Time', 0.2)])
+        t.devices = [filt, Device('AudioEffectGroupDevice', [], [Chain([rev])])]       # reverb inside a rack
+        fx = lambda i, d: (self.s.sent.clear(), deliver((0xBE, 40 + i, 64 + d)), [m[2] for m in self.s.sent if m[1] == FX_CC + i][-1])[2]
+        self.assertEqual(fx(0, 0), 63)                                     # open
+        v = fx(0, -10); self.assertLess(v, 63); self.assertEqual(filt.parameters[1].value, 0)   # low-pass closing
+        self.assertLess(filt.parameters[2].value, 1.0)
+        for _ in range(4): fx(0, 10)
+        self.assertGreater(fx(0, 1), 63); self.assertEqual(filt.parameters[1].value, 1)          # high-pass
+        self.assertEqual(fx(2, 5), 76); self.assertAlmostEqual(rev.parameters[1].value, 0.6)    # reverb amount
+        self.assertGreater(fx(3, 10), 30); self.assertAlmostEqual(rev.parameters[2].value, 0.4)  # sustain = decay
+        self.assertEqual(fx(1, 3), 127)                                    # no delay on this track
+
+    def test_session_box_flashes_two_seconds(self):
+        import time
+        deliver((0xBE, 32, 127))
+        self.assertTrue(any(c[0] == 'ring' and c[1] >= 0 for c in self.song.calls if isinstance(c, tuple)))
+        self.s._ring_until = time.time() - 0.1; self.s.update_display()
+        self.assertEqual([c for c in self.song.calls if isinstance(c, tuple)][-1], ('ring', -1, -1, -1, -1, False))
+        self.assertIsNone(self.s._ring_until)
 
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)

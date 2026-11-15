@@ -19,6 +19,8 @@ static volatile uint16_t host_tempo;   /* Live tempo x 10, 0 = none */
 static uint8_t tempo_msb, host_scene, host_highlight = 127;
 static char track_names[9][KK_TRACK_NAME_LEN + 1];   /* 0.81: slots 0..7 shown, 8 = selected */
 static uint8_t name_slot = 255, name_pos, sel_track;
+static uint8_t fx_values[4] = {255, 255, 255, 255};   /* 0.82: last reply per effect */
+static uint32_t fx_revision;
 static uint8_t step_codes[16], step_info[KK_STEP_INFO_LAST - KK_STEP_PAGE_CC + 1];
 static volatile uint32_t input_revision;
 static uint8_t copy_info[5];
@@ -180,6 +182,8 @@ int kk_midi_input(unsigned source, const uint8_t *m, size_t n)
                 track_names[name_slot][name_pos++] = (char)d2; track_names[name_slot][name_pos] = 0;
                 ++input_revision;
             }
+        } else if (type == 0xb0 && d1 >= KK_HOST_FX_CC && d1 < KK_HOST_FX_CC + 4U) {
+            fx_values[d1 - KK_HOST_FX_CC] = (uint8_t)d2; ++fx_revision; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_SELTRACK_CC) {
             sel_track = (uint8_t)d2; ++input_revision;
         } else if (type == 0xb0 && d1 == KK_HOST_HIGHLIGHT_CC) {
@@ -225,6 +229,8 @@ void kk_midi_remote_clear(void)
 }
 unsigned kk_midi_host_tempo_x10(void) { return host_protocol ? host_tempo : 0; }
 unsigned kk_midi_host_scene(void) { return host_protocol ? host_scene : 0; }
+unsigned kk_midi_fx(unsigned i) { return i < 4 ? fx_values[i] : 255; }
+uint32_t kk_midi_fx_revision(void) { return fx_revision; }
 const char *kk_midi_track_name(unsigned slot) { return host_protocol && slot < 9 ? track_names[slot] : ""; }
 unsigned kk_midi_selected_track(void) { return host_protocol ? sel_track : 0; }
 int kk_midi_host_highlight(void) { return host_protocol && host_highlight < 16 ? host_highlight : -1; }

@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.81" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.82" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -59,6 +59,10 @@ enum {
      * adds one ASCII character (32..126). CC 113 = selected track number
      * (1 based, 0 = none). */
     KK_HOST_NAME_CC = 111, KK_HOST_CHAR_CC = 112, KK_HOST_SELTRACK_CC = 113,
+    /* host -> device (0.82): CC 114-117 = the effect's new position 0..126
+     * (filter: 63 = open, below low-pass, above high-pass); 127 = the
+     * selected track has no such device. */
+    KK_HOST_FX_CC = 114, KK_FX_NONE = 127,
     KK_TRACK_NAME_LEN = 12
 };
 enum {
@@ -127,6 +131,10 @@ enum {
     KK_CC_FINISH = 36,     /* 0.77: SEQ PLAY = finish the recording clip, go to the next track */
     KK_CC_TRACK_VOLUME = 38, /* 0.80: Fader 2 = selected track volume */
     KK_CC_TRACK_MACRO = 39,  /* 0.80: Fader 3 = selected track macro 1 (else Send A) */
+    KK_CC_FX_FILTER = 40,  /* 0.82: K4-K7 = selected track's filter / delay / reverb / reverb decay; */
+    KK_CC_FX_DELAY = 41,   /* relative: value = 64 + knob steps */
+    KK_CC_FX_REVERB = 42,
+    KK_CC_FX_DECAY = 43,
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

@@ -132,8 +132,12 @@ static void button(unsigned id, unsigned down, uint32_t now)
         return;
     case KK_BTN_FX: if (down) kk_set_mode(KK_MODE_DRUM); return;
     case KK_BTN_ARP:
-        if (!down && kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);
-        else if (!down && kk.page == KK_PAGE_ARP && held_ms < 600) open_page(KK_PAGE_MAIN);
+        /* 0.82: tap = ARP on / off; hold = ARP page. Let go without turning a
+         * knob and the page stays open (tap ARP to close it); turn a knob
+         * while holding and the page closes on release. */
+        if (down) kk.arp_page_used = 0;
+        else if (kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);
+        else if (kk.page == KK_PAGE_ARP && (held_ms < 600 || kk.arp_page_used)) open_page(KK_PAGE_MAIN);
         return;
     case KK_BTN_NOTE_REPEAT:   /* SUSTAIN (hold until the next key) on/off */
         if (down) {
