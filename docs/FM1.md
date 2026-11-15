@@ -63,7 +63,7 @@ The FM-1's right-hand block of 2 × 6 buttons matches the SMK-37's, so each butt
 |---|---|---|
 | OCT − / OCT + | octave of the playing zone (Pad Scale and Drum keep their own octave) | while pressed |
 | FX | tap: **ARP** on/off; hold 0.6 s: ARP settings | while ARP is on |
-| SEL | **Sustain** on/off: released notes keep sounding until the next key; keys pressed together are held together; with ARP on it latches the arpeggio | while sustain is on |
+| SEL | **Sustain** on/off: released notes keep sounding until the next key; keys pressed together are held together; with ARP on it holds the arpeggio | while sustain is on |
 | ENV | **Pad Scale** Mode on/off | in Pad Scale |
 | LFO | **Clip Mode** on/off | in Clip Mode |
 | EDIT | Ableton **Stop** (CC 21) | while pressed |

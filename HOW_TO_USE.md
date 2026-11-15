@@ -45,13 +45,18 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 | **◀ / ▶** | Undo / Redo (◀ + PARA or PATCH + PARA = metronome) |
 | **OCT − / +** | Octave of the keys (or the pads in Pad Scale / Drum) |
 | **Fader 1** | Velocity (bottom 10 % = play dynamics, above = fixed) |
-| **Fader 2 / 3** | Scale / root key |
+| **Fader 2** | Live: volume of the selected track |
+| **Fader 3** | Live: Macro 1 of the selected track's rack (no rack: Send A) |
 | **Fader 4** | **Master volume** (the keyboard and Live's master) |
-| **E1–E6** | Tempo, patch, ARP division, gate, direction, swing |
+| **E1 / E2 / E3** | BPM (Live's tempo when connected) / **key** / **scale** |
+| **E4 – E7** | Selected Live track: **filter** (left low-pass, right high-pass), **delay**, **reverb**, **sustain** (reverb decay) |
 | **E8** | Keyboard master volume |
-| **PATCH** | Patch page: patch, internal synth on/off, MIDI out, pad sensitivity (E4), **pad brightness (E5)** |
-| **ARP** | Arpeggiator on/off (hold: ARP page) |
-| **NOTE REPEAT** | Sustain: notes hold until the next key |
+| **PATCH** | Patch page: patch, internal synth on/off, MIDI out, pad sensitivity (E4, 10 = MAX), **pad brightness (E5)** |
+| **ARP** | Arpeggiator on/off. **Hold**: ARP settings on the knobs (turn while holding: closes on release; let go without turning: stays open) |
+| **NOTE REPEAT** | Sustain: notes hold until the next key (with ARP: holds the arpeggio) |
+| **CHORD** | Clip Mode. **Hold**: Clip Mode only while held |
+
+The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / Reverb on the track; the screen says `NO REVERB` etc. if one is missing.
 
 ---
 
@@ -63,7 +68,7 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 - Pads 5–8 and 14–16 are free buttons (CC 102–108) for MIDI-mapping in Live.
 
 ### Play in a scale (Key Scale, SEQ)
-- Press **SEQ**. White keys now play the scale from Fader 2 with the root from Fader 3; the 2nd C is the root. Black keys are silent, so you can't play a wrong note.
+- Press **SEQ**. White keys now play the scale from E3 with the key from E2; the 2nd C is the root. Black keys are silent, so you can't play a wrong note.
 - Chord pads still work and stay in the scale. A locked chord stays on.
 
 ### Pads as notes (Pad Scale, SCALE) and drums (Drum, FX)
@@ -72,7 +77,7 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 
 ### Lights
 - **Light show**: hold **KNOB BANK + FADER BANK** together. Press one of them again for the next pattern; Fader 1 sets the speed.
-- **Ripple lights**: start the light show **three times quickly** to turn ripples on (again to turn them off). Every press then sends a coloured ring across the pads.
+- **Ripple lights**: start the light show **three times quickly** to turn ripples on (again to turn them off). Turning them on sends a big rainbow ring from the middle; every press then flashes and sends a coloured ring across the pads.
 
 ---
 
@@ -91,7 +96,8 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 | delete a clip | hold **A#** and press it |
 | scroll scenes / launch a scene | top **G# / A#** / top **F#** |
 | move the selected clip up / down | hold the **top F** and press top G# / A# |
-| see other tracks | top **A / B** |
+| select the previous / next track | top **A / B** (the 8 tracks shown follow; the screen shows their numbers and names) |
+| use clips quickly from any mode | **hold CHORD**, press pads, let go |
 
 **Build a song from loops (Scene Arrange):** press the low **D**. The two pad rows are two scenes; tap pads to choose which tracks play in each scene (green on, dim off). Launch a scene with the top F#: exactly those tracks play, each with its one clip, so editing a clip changes every scene. Press D again to leave.
 
@@ -114,12 +120,12 @@ Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC*
 |---|---|
 | C# / D# | COPY / PASTE (a step pad, a drum key, or a bar in the bar view) |
 | D / E | RESOLUTION (1/16, 1/8, 1/32, triplets) / FOLLOW (pages follow the playhead) |
-| F (hold) | DRUM: the pads become Drum Mode pads — tap one to hear and select it |
+| F | DOUBLE: the clip twice as long, everything copied |
 | G (hold) + pad n | LENGTH: the clip becomes n bars (the pattern is repeated into new bars) |
 | F# / G# (or ◀ / ▶) | page left / right |
 | A | BARS: the pads show the bars; tap one to show it |
 | A# | DELETE: tap = clear the page; hold + step = clear that step; hold + drum key = remove that sound; in the bar view hold + bar = delete the bar (hold the pad 3 s to only clear it) |
-| B | DOUBLE: the clip twice as long, everything copied |
+| B (hold) | DRUM: the pads become Drum Mode pads — tap one to hear and select it |
 
 ### More
 - **Velocity**: top F G A B = 32 / 64 / 96 / 127 (hold a step + one of them to change that step).
@@ -133,7 +139,7 @@ Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC*
 
 ## 6. Bluetooth
 - On the Mac, connect the keyboard in **Audio MIDI Setup → MIDI Studio → Bluetooth**, then set the KamoteKeys Control Surface Input and Output to that Bluetooth port.
-- Patch page → **MIDI OUT**: AUTO (USB when connected, else Bluetooth), ALL, USB or BLE.
+- Patch page → **MIDI OUT**: AUTO (the port Live talks on; a USB cable that only charges does not count), ALL, USB or BLE.
 
 ## 7. If something doesn't work
 | Symptom | Check |

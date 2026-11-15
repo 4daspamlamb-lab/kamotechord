@@ -84,7 +84,7 @@ node tests/integration/sim_test.mjs simulator.wasm build/host
 | Pad Scale: 16 notes, root highlight, ARP, Note Off | 16 on/16 off; pad 1 = D3, pad 8 = D4; root cyan / others green; ARP alternates held pads | ✅ |
 | Drum: mapping, pad 1 = 36, octave, ARP, colours | full table; 48 at +1, 24 at −1, off-range disabled; kick red, hi-hat yellow; drum ARP on channel 10 only | ✅ |
 | Fader 1 threshold and speed override | 9 % natural, 100 % = 127, mid ≈ 64; REC held: 0 % = half max, ~10 % very slow, velocity restored after release | ✅ |
-| Fader 2 / 3 selection and hysteresis | ends = Major / Minor 6-Diminished, C / B; ≤ 1 change while dithering ±1 count at a boundary | ✅ |
+| Faders 2 / 3 and knobs E2 / E3 / E4–E7 | Faders 2 / 3 send CC 38 / 39 and leave the scale alone; E2 = key, E3 = scale; E4–E7 send relative CC 40–43 and leave ARP and patch alone; Remote Script finds Auto Filter / Delay / Reverb (also in racks), LP ↔ HP filter, `127` without a device | ✅ |
 | Fader 4 brightness, zero brightness | 0 % = every pad 0 even when pressed; 100 % = peak; 50 % ≈ half; spare idle ≈ 4 %; LCD dim flag at ≤ 10 % | ✅ |
 | Display: labels, chord names, root/scale, octave, centring, transitions | 17 chord-naming cases plus inversion and single note; screenshots of every page; piano scroll mid/end frames | ✅ |
 | BPM and ARP restored; octave resets to 0 | settings round-trip (host); **integration: deferred flash save, simulated power cycle, BPM 126 and ARP restored, octave 0** | ✅ |

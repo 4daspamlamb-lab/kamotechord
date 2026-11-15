@@ -1,5 +1,35 @@
 # Changelog
 
+## KamoteKeys 0.84 (development snapshot)
+
+- **No more session box in Live.** Live scrolled its window to the box and back on every move (snapping to tracks 4 / 1, keeping the middle in view). Now Live only scrolls to keep the selected track in sight.
+- **MIDI OUT AUTO follows the port Live talks on** (the Remote Script's port, else the last port anything arrived on). A USB cable that only charges no longer takes the notes away from Bluetooth.
+- Normal Mode with nothing sounding marks the chosen scale on the piano.
+
+## KamoteKeys 0.83 (development snapshot)
+
+- Moving scenes keeps Live's selected track inside the 8-track view.
+
+## KamoteKeys 0.82 (development snapshot)
+
+- **E4–E7 = effects of the selected Live track:** filter (left low-pass, right high-pass), delay, reverb, sustain (reverb decay). The Remote Script finds Auto Filter, Delay / Echo …, Reverb / Hybrid Reverb, also inside racks.
+- **ARP settings: hold ARP.** Turn a knob while holding and the page closes on release; let go without turning and it stays open.
+
+## KamoteKeys 0.81 (development snapshot)
+
+- **Track names on the screen.** Clip Mode shows Live's selected track big (number and name), the scene and the 8 tracks in view; the pad map shows real track numbers and names. The clip state is smaller and the key / scale bar slimmer.
+- **Top A / B select the previous / next track**; the 8-track view follows and stops at the last track.
+
+## KamoteKeys 0.80 (development snapshot)
+
+- **New knob and fader layout:** E1 BPM, E2 key, E3 scale, E8 master; Fader 2 = selected track volume, Fader 3 = its Macro 1 (else Send A).
+- **Hold CHORD = Clip Mode while held**, back to the previous mode on release. Step Mode is on SEQ REC only.
+- **Step Mode:** DRUM on B, DOUBLE on F.
+- **Pad sensitivity up to 10 (MAX, the new default).**
+- Battery gauge in the screen header; the last note name stays readable after release.
+- Bigger ripple lights, and a giant centre ripple when they turn on.
+- **Fixed:** with ARP on, notes kept sounding without Sustain and came back when Sustain was turned off (the old LATCH mode). LATCH is gone: Sustain holds the arpeggio.
+
 ## KamoteKeys 0.78 (development snapshot)
 
 - **New startup colours: Jewel.** The Bubbles startup now uses ruby, amber, gold, emerald, teal, sapphire, indigo and amethyst, and the name "KamoteKeys" pops in in warm white.

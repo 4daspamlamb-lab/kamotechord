@@ -112,7 +112,7 @@ Every note has an owner count per channel. If two sources play the same note (fo
 
 Scene keys (Clip Mode: fourth black key = launch, last two black keys = up / down): CC 28 scene down, CC 29 scene up, CC 30 launch selected scene (channel 15, 127 press / 0 release). The script sends CC 104 on channel 16 = first scene shown on the grid.
 
-Tempo from the Remote Script: CC 102 / 103 = Live's tempo × 10 (MSB, LSB). While it arrives, ARP and the internal engine follow Live and the tempo knob is ignored ("TEMPO FOLLOWS ABLETON").
+Tempo from the Remote Script: CC 102 / 103 = Live's tempo × 10 (MSB, LSB). While it arrives, ARP and the internal engine follow Live, and turning E1 changes Live's tempo (channel 15 CC 37, value = 64 + BPM change; the screen shows "LIVE TEMPO").
 
 Feedback from the Remote Script: CC 80–95 = state 0 empty, 1 stopped, 2 playing, 3 queued, 4 recording, 5 queued to record, 6 empty on an armed track; CC 126 = 1 script connected. KamoteKeys sends CC 127 = 127 to request a full update. Channel 16 is never sent to the internal synth.
 
@@ -136,7 +136,25 @@ Channel 14 never reaches the internal synth.
 
 **Copy / paste (0.65).** Keyboard → Live: channel 16 notes 100 / 101 = Clip Mode COPY / PASTE (press / release); in Step Mode COPY / PASTE are the channel 14 function notes 67 / 77. Live → keyboard, channel 16: CC 106 = clipboard kind (0 none, 1 clip, 2 step, 3 sound, 4 bar; +32 copy waiting, +64 paste waiting), CC 107 / 108 = its numbers (clip: track, scene; step: step, page; sound: note, page; bar: bar).
 
-**0.66:** channel 16 note 102 = Scene Arrange on / off; channel 15 CC 31 / 32 = track view left / right; Live → keyboard channel 16 CC 109 = first track shown, CC 110 = Scene Arrange on, clip state codes 7 / 8 / 9 = arranged track on / off / no clip. Step Mode CC 127 = 127 is repeated every 2 s on every port (heartbeat).
+**0.66:** channel 16 note 102 = Scene Arrange on / off; channel 15 CC 31 / 32 = previous / next track (selects the track; the 8-track view follows when the selection leaves it); Live → keyboard channel 16 CC 109 = first track shown, CC 110 = Scene Arrange on, clip state codes 7 / 8 / 9 = arranged track on / off / no clip. Step Mode CC 127 = 127 is repeated every 2 s on every port (heartbeat).
+
+**Selected track and tempo, channel 15 (keyboard → Live):**
+
+| CC | Control | Value |
+|---|---|---|
+| 37 | E1 with Live connected | 64 + BPM change (relative) |
+| 38 | Fader 2 | selected track volume, 0–127 (127 = 0 dB) |
+| 39 | Fader 3 | Macro 1 of the selected track's first rack, else its Send A, 0–127 |
+| 40 / 41 / 42 / 43 | E4 / E5 / E6 / E7 | selected track's filter / delay amount / reverb amount / reverb decay, relative: 64 + knob steps |
+
+**Track names and effect values, channel 16 (Live → keyboard):**
+
+| CC | Meaning |
+|---|---|
+| 111 | start a track name: 0–7 = the 8 tracks shown, 8 = Live's selected track |
+| 112 | next character of that name (ASCII 32–126, at most 12) |
+| 113 | Live's selected track number (1 based, 0 = none) |
+| 114–117 | new position of the effect E4–E7 just changed, 0–126 (filter: 63 = open, lower = low-pass, higher = high-pass); 127 = the track has no such device |
 
 ## Notes received from the host
 

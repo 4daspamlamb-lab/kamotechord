@@ -85,12 +85,12 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
 
 | Button | Short press | Hold |
 |---|---|---|
-| ARP | ARP on/off | 0.6 s: ARP settings page |
-| NOTE REPEAT | **SUSTAIN** on/off: notes hold until the next key; with ARP on it latches the arpeggio | |
+| ARP | ARP on/off | 0.6 s: ARP settings page. Turn a knob while holding: the page closes on release; let go without turning: it stays open (tap ARP to close) |
+| NOTE REPEAT | **SUSTAIN** on/off: notes hold until the next key; with ARP on it holds the arpeggio | |
 | SCALE | Pad Scale Mode on/off | |
-| CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | 0.6 s: **Step Mode** (same as SEQ REC) |
+| CHORD | **Clip Mode** on/off (8 × 2 Ableton clip launcher) | **Clip Mode while held**: back to the previous mode on release (also after a quick CHORD + pad) |
 | GLOBE | Ableton **Stop** (CC 21) | |
-| BT | Open/close the Bluetooth menu | 1.5 s: diagnostics |
+| BT | Open/close the Bluetooth menu | 1.5 s: diagnostics (incl. the battery reading) |
 | PATCH | Open/close the patch page | |
 | PARA | Ableton **Start / Stop**, like the spacebar (CC 23). In Step Mode: make the clip and play / stop it | |
 | PATCH + PARA (or ◀ + PARA) | Ableton **metronome** on/off (CC 26) | |
@@ -100,7 +100,7 @@ Diagrams: [all controls](docs/diagrams/SMK37-Controls.png) · [every control in 
 | SEQ REC | **Step Mode** on/off (drum step sequencer) | |
 | KNOB BANK | Ableton **Session Record** (CC 25, sent on release) | |
 | FADER BANK | Ableton **Capture MIDI** (CC 22, sent on release) | |
-| KNOB BANK + FADER BANK | **Light show** while held; each new press = next pattern | 3 quick presses: **ripple lights** on/off |
+| KNOB BANK + FADER BANK | **Light show** while held; each new press = next pattern | 3 quick presses: **ripple lights** on/off (a giant ring from the middle when they turn on) |
 | ◀ LEFT (HOME) | Ableton **Undo** (CC 24, sent on release so ◀ + PARA can toggle the metronome). In the BT menu: HOME (back) | |
 | RIGHT ▶ | Ableton **Redo** (CC 27). In the BT menu: SAVE (OK) | |
 | OCT − / OCT + | Octave −4 … +4. Keyboard starts at **−2**; in Pad Scale/Drum Mode they move the pad octave (starts at 0) | |
@@ -112,8 +112,8 @@ All Ableton commands are on **MIDI channel 15**. The pad map and the button-inde
 | Fader | Function |
 |---|---|
 | 1 | **Velocity.** 0–10 %: natural key/pad velocity. Above 10 %: fixed velocity proportional to position, 100 % = 127. Applies to keys, Key Scale, Pad Scale, Drum pads and ARP. It is read at Note On only and never changes sounding notes or Note Off. **During the light show:** its speed. |
-| 2 | **Scale** (23 scales, bottom = Major, top = Minor 6-Diminished), with 2-count hysteresis against ADC noise. |
-| 3 | **Root key** C … B, with hysteresis. |
+| 2 | **Live: volume of the selected track** (CC 38, needs the Remote Script; top = 0 dB). |
+| 3 | **Live: Macro 1** of the selected track's first device when it is a rack, otherwise its **Send A** (CC 39). |
 | 4 | **Master volume** (0.77): the keyboard's internal sound and, with the Remote Script, Live's master track (top = 0 dB). The E8 knob also sets the internal master. **Pad brightness** is on the Patch page (E5, 16 steps, saved; ≤ 10 % also dims the LCD). |
 
 Scales: Major, Natural Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Harmonic Minor, Melodic Minor, Major Pentatonic, Minor Pentatonic, Blues, Phrygian Dominant, Double Harmonic, Hirajoshi, Whole Tone, Diminished Whole-Half, Diminished Half-Whole, Bebop Dominant, Bebop Major, Bebop Minor, 6-Diminished, Minor 6-Diminished. One shared engine ([`kk_theory.c`](core/kamotkeys/kk_theory.c)) serves the keys, pads, chords, LEDs and display.
@@ -162,15 +162,15 @@ The **second physical C** plays the selected tonic, at octave 0 the tonic in the
 
 ### Clip Mode (CHORD)
 
-Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **top F** + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; top F# launches exactly those); white **top A / B** move the 8-track view; top **F# / G# / A#** = scene launch / up / down. The screen shows what is copied. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
+Pads 1–8 launch clip 1 and pads 9–16 clip 2 of Live tracks 1–8, on channel 16, with LEDs that follow Live (empty very dim, stopped dim blue, playing green, queued blinking amber, recording red). Needs the [KamoteKeys Remote Script](docs/ABLETON_REMOTE_SCRIPT.md). A plain pad press **selects** the slot and arms its track (so KNOB BANK records there); **F#** is **PLAY**: hold it and press clips to launch / stop them, or tap it and the next clip pressed is launched. Hold the **top F** + top G# / A# to move Live's selected clip a scene up / down. Hold the **lowest C** + a clip to **overdub** into it. Lowest black keys: **C# COPY**, **D# PASTE** (tap = next pad, hold = several), F# PLAY, **G# STOP** (hold + clips, or tap: the selected clip), **A# DELETE** (hold + clip); low **D = Scene Arrange** (tap pads to choose which tracks play in each scene; top F# launches exactly those); white **top A / B** select the previous / next track (the 8-track view follows when the selection leaves it: going left the track becomes the first of the 8, going right the last); top **F# / G# / A#** = scene launch / up / down. **Hold CHORD** from any mode for Clip Mode only while held. The screen shows the clip state, Live's selected track (number and name, big), the scene and the 8 tracks in view, and what is copied; the pad map shows each pad's track number and the start of its name. Live's highlighted slot is **violet**. Full guide: [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md), [diagram](docs/diagrams/SMK37-Clip-Mode.png).
 
-### Step Mode (SEQ REC, or hold CHORD)
+### Step Mode (SEQ REC)
 
-A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: RESOLUTION, FOLLOW, DRUM, LENGTH + pad = bars, BARS; black: COPY, PASTE, page ◀ ▶, DELETE); **PARA** makes and plays / stops the clip; leaving Step Mode returns to the mode you came from; the key zone runs from C2 to E3; **top F G A B = velocity 32 / 64 / 96 / 127**, **hold the top C** to set the note length on the pads, the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad). A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
+A step sequencer that writes straight into the selected session clip in Live, laid out like Ableton Move: 16 pads = 16 steps per page; the **second octave = drum keys** (C = kick … B): a key plays its sound and selects it for the steps. **OCT −/+** moves those keys by an octave and **SEQ** turns them into scale keys (for melodic tracks); both are remembered per track. The **lowest octave = controls** (white: RESOLUTION, FOLLOW, DOUBLE (F), LENGTH + pad = bars, BARS, DRUM (B, hold); black: COPY, PASTE, page ◀ ▶, DELETE); **PARA** makes and plays / stops the clip; leaving Step Mode returns to the mode you came from; the key zone runs from C2 to E3; **top F G A B = velocity 32 / 64 / 96 / 127**, **hold the top C** to set the note length on the pads, the **top three black keys = 1× / 2× / 3× repeats** (hold + a pad). A chord locked on the main screen is written into the steps as a chord. Other sounds on a step show as a violet tint; the screen shows the bar the clip is playing. The sequenced track is armed while Step Mode is on. Needs the Remote Script; full guide in [docs/ABLETON_REMOTE_SCRIPT.md](docs/ABLETON_REMOTE_SCRIPT.md#step-mode-drum-step-sequencer-058).
 
 ### Pad Scale Mode (SCALE)
 
-All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following Fader 2/3 and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed. The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
+All 16 pads play consecutive scale degrees in pad order (pad 1 = tonic at octave 3, e.g. D3), following the key (E2), the scale (E3) and the octave buttons. Channel 1. Root pads are **cyan** and the other pads **green**, both dim when idle and bright when pressed. The screen shows the note, root, scale and octave in a 2 × 8 pad map. The keyboard keeps playing chromatically.
 
 ### Drum Mode (FX)
 
@@ -182,7 +182,7 @@ All 16 pads send drum notes on **channel 10**. The layout is vertical: pad 1 = 3
 
 - Normal and Key Scale: arpeggiates held keys, including generated chords.
 - Pad Scale: arpeggiates held pads (channel 1). Drum: arpeggiates held drum pads (channel 10).
-- Parameters (ARP page, or the main-screen knobs): **Mode** NORMAL/LATCH, **Direction** UP, DOWN, UP-DOWN, RANDOM, ORDER (as played), **Division** 1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32 (default 1/8), **Gate** 10–100 % (default 75 %), **Swing** 0–50 %, **Octaves** 1–4.
+- Parameters (ARP page: hold ARP): **Direction** UP, DOWN, UP-DOWN, RANDOM, ORDER (as played), **Division** 1/4, 1/8, 1/8T, 1/16, 1/16T, 1/32 (default 1/8), **Gate** 10–100 % (default 75 %), **Swing** 0–50 %, **Octaves** 1–4.
 - Toggling ARP while notes are held moves them safely between direct play and the arpeggiator.
 
 **Sustain** (the NOTE REPEAT button, 0.54): tap to turn it on (LED bright, SUSTAIN in the status line), tap again to turn it off.
@@ -190,7 +190,7 @@ All 16 pads send drum notes on **channel 10**. The layout is vertical: pad 1 = 3
 - Keys **pressed together, or added while others are still held, are sustained together**.
 - Chord-modifier pads (MAJ, MIN, …) do not end the held notes; a mode change or Sustain off releases them.
 - KamoteKeys holds the notes itself, so the synth and Ableton see long notes (no CC 64). A real **sustain pedal** still sends CC 64.
-- **With ARP on**, the same rule latches the arpeggio: it keeps playing after you let go, and the next key or chord replaces it.
+- **With ARP on**, the same rule holds the arpeggio: it keeps playing after you let go, and the next key or chord replaces it. This is the only way to hold an arpeggio (there is no separate LATCH mode).
 
 KamoteKeys turns off the SMK37 OPEN engine's own per-track ARP so that notes are never doubled.
 
@@ -200,14 +200,16 @@ Encoders are numbered E1–E8, left to right; SMK37 OPEN calls them K1–K4, SEL
 
 | Knob | Main screen | ARP page | Patch page | BT menu |
 |---|---|---|---|---|
-| E1 | BPM (30–300) | Mode | Patch | Bluetooth on/off |
-| E2 | Patch (DX7 1–128) | Direction | Internal synth on/off | BT audio on/off |
-| E3 | ARP division | Division | MIDI OUT ports | BLE role DEVICE/HOST |
-| E4 | ARP gate | Gate | Pad sensitivity 1–7 | Clock INT/MIDI |
-| E5 | ARP direction | Swing | | Host list: device |
-| E6 | ARP swing | Octaves | | |
-| E7 | — | | | Action |
+| E1 | BPM (30–300; with Live connected it sets Live's tempo) | — | Patch | Bluetooth on/off |
+| E2 | **Key** (root C … B) | Direction | Internal synth on/off | BT audio on/off |
+| E3 | **Scale** (23 scales) | Division | MIDI OUT ports | BLE role DEVICE/HOST |
+| E4 | **Filter** of the selected Live track (left low-pass, centre open, right high-pass) | Gate | Pad sensitivity 1–10 (10 = MAX, default) | Clock INT/MIDI |
+| E5 | **Delay** amount (selected track) | Swing | Pad brightness | Host list: device |
+| E6 | **Reverb** amount (selected track) | Octaves | | |
+| E7 | **Sustain** = reverb decay (selected track) | | | Action |
 | E8 | **Master volume** (always) | | | |
+
+E4–E7 need the Remote Script. It finds the effects on Live's selected track by type (also inside racks): Auto Filter; Delay, Echo, Ping Pong, Filter, Simple or Grain Delay; Reverb or Hybrid Reverb. The screen shows the new value, or `NO REVERB` etc. when the track has none. Hold **ARP** to edit the ARP settings with the knobs.
 
 Changes on the main screen appear as a short message in the status line.
 
@@ -216,7 +218,7 @@ Changes on the main screen appear as a short message in the status line.
 | | |
 |---|---|
 | ![Bubbles boot](docs/diagrams/SMK37-Boot.gif) | **Bubbles boot** (0.78, ~1.7 s): white piano keys drop in and bounce, flat jewel-coloured bubbles (ruby, amber, gold, emerald, teal, sapphire, indigo, amethyst) pop up behind them, the black keys pop, one colour sweep runs over the keys and "KamoteKeys" pops in letter by letter in warm white. The pads light in the bubble colours. |
-| ![Chord](docs/screenshots/07_main_chord_G7.png) | **Main screen:** version label, mode, octave, BPM, the chord or note name, root and scale, the piano, and ARP/Sustain/velocity status. The piano follows the **actual MIDI note list**: a single note lights one key (green); in a chord the root is cyan and the other tones orange. The view re-centres with a ~110 ms ease-out pixel scroll that can redirect mid-move. Key Scale Mode adds dots for scale degrees. |
+| ![Chord](docs/screenshots/07_main_chord_G7.png) | **Main screen:** version label, battery gauge (a bolt on USB power), mode, octave, BPM, the chord or note name, root and scale, the piano, and ARP/Sustain/velocity status. The piano follows the **actual MIDI note list**: a single note lights one key (green); in a chord the root is cyan and the other tones orange. The view re-centres with a ~110 ms ease-out pixel scroll that can redirect mid-move. Key Scale Mode, and Normal Mode while nothing sounds, mark the scale notes under the keys (root cyan). |
 | ![Pad scale](docs/screenshots/04_pad_scale.png) | **Pad Scale / Drum:** a 2 × 8 pad map with note names or drum labels and live highlights. |
 | ![BT](docs/screenshots/12_bluetooth_menu.png) | **Bluetooth menu:** SMK37 OPEN's standard menu (see below). |
 
@@ -239,7 +241,7 @@ Button LEDs are single-colour on/off LEDs. KamoteKeys adds a **dim** level (1/8 
 - ARP, NOTE REPEAT (Sustain), SCALE, SEQ, FX and CHORD stay bright while their function or mode is active, and **SCALE shows only Pad Scale, SEQ shows only Key Scale**;
 - KNOB BANK and FADER BANK light while pressed or while the light show runs; SEQ REC in Step Mode; BT while its menu is open;
 
-**Ripple lights**: start the light show **three times quickly** (KNOB BANK + FADER BANK, within about 1 s) to toggle them. The pads and keys keep working normally, and every press sends a coloured ring across the pads from where you pressed (keys map left to right onto the pad columns). Not saved.
+**Ripple lights**: start the light show **three times quickly** (KNOB BANK + FADER BANK, within about 1 s) to toggle them; turning them on sends a giant rainbow ring out from the middle. The pads and keys keep working normally, and every press flashes white where you pressed and sends a wide coloured ring (with an inner echo ring) across the pads (keys map left to right onto the pad columns). Not saved.
 
 **Light show** (hold KNOB BANK + FADER BANK together; each new press of the second one selects the next pattern; nothing is sent to Ableton): Rainbow sweep, Vertical pulse, Spiral/perimeter chase, Checkerboard, Diagonal wave, Breathing colours, Opposing chases, Colour wave. While it runs the pads send no MIDI, Fader 1 sets the speed (about 0.03–2 cycles per second; 0 % = 1 per second); brightness follows the Patch page setting. Changing the speed never restarts the pattern.
 
@@ -262,7 +264,7 @@ While the menu is open, ◀ and ▶ do not send Undo/Redo, and their releases ar
 
 | Setting | Behaviour |
 |---|---|
-| **AUTO** (default) | USB if USB MIDI is connected, otherwise BLE. A Mac connected both ways never receives each command twice. |
+| **AUTO** (default) | The port the computer talks on: the one the KamoteKeys Remote Script answers on, else the last port anything arrived on; with no traffic yet, USB if connected, otherwise BLE. A USB cable that only charges does not take the notes away from Bluetooth, and a Mac connected both ways never receives each command twice. |
 | ALL | USB and BLE (and DIN where fitted). |
 | USB / BLE | That port only. |
 
@@ -291,7 +293,7 @@ Note Offs always go to every port, so a port change between Note On and Note Off
 
 ## Saved settings
 
-Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, ARP on/off, mode, direction, division, gate, swing, octaves, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing, pad sensitivity, pad brightness**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Scale, root and velocity come from Faders 1–3; Fader 4 is the master volume. Bluetooth settings are stored by SMK37 OPEN as before.
+Saved automatically, about 1.5 s after the last change and only while nothing is playing, in SMK37 OPEN's journaled settings sector: **BPM, ARP on/off, direction, division, gate, swing, octaves, DX7 patch, MIDI OUT ports, internal synth on/off, pad LED timing, pad sensitivity, pad brightness**. The **octave is not saved**: keys start at −2 and pads at 0 on every power-on. Key and scale (E2 / E3) are not saved: they start at C Major. Velocity comes from Fader 1; Faders 2 / 3 control Live and Fader 4 is the master volume. Bluetooth settings are stored by SMK37 OPEN as before.
 
 ## Build
 

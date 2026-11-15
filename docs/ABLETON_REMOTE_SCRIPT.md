@@ -68,13 +68,15 @@ Live talks to the script on **one** MIDI port. In Preferences → Link, Tempo & 
 | **C#** COPY | tap (or hold), then press a clip: it becomes the clipboard (replacing the last one) |
 | **D#** PASTE | tap, then the next pad gets a copy of the clip (Live's Duplicate); hold PASTE to paste into several pads; tap again to cancel |
 | **A#** DELETE | hold + a clip: delete it |
-| **top A / B** (white, 3rd / 2nd from the right) | move the 8-track view one track left / right |
+| **top A / B** (white, 3rd / 2nd from the right) | select the previous / next track. The 8-track view follows when the selection leaves it (left: the track becomes the first of the 8, right: the last) and stops at the ends. No session box is drawn in Live, so Live's window only scrolls to keep the selected track in sight |
 | **G#** | **STOP** (0.77): hold + clips = stop them; a tap stops the selected clip |
 | **D** (white) | **Scene Arrange** on / off (below) |
 | top **F# / G# / A#** | launch the selected scene / scene up / scene down (the 8 × 2 grid scrolls with Live's selected scene) |
 | **SEQ PLAY** (any mode) | **finish & next track** (0.77): ends the recording on the selected track (the clip keeps playing), selects and arms the next track at the same scene |
 
-The screen shows the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held.
+The screen shows the clip state, **Live's selected track (number and name)**, the scene and the 8 tracks in view, and the clipboard (COPIED T3 S2), or COPY: / PASTE: while it waits for a pad, and DELETE while A# is held. The pad map shows each pad's track number and the first letters of its name. **Hold CHORD** in any mode for Clip Mode only while it is held.
+
+**Mixing the selected track.** Fader 2 = its volume, Fader 3 = Macro 1 of its first rack (else Send A). Knobs E4–E7 = **filter** (Auto Filter: left = low-pass closing, centre = open, right = high-pass), **delay** amount (Delay, Echo, Ping Pong, Filter, Simple or Grain Delay: Dry/Wet), **reverb** amount (Reverb or Hybrid Reverb: Dry/Wet) and **sustain** (the reverb's Decay). The script looks at the track's devices and one level inside racks; the screen shows the new value or `NO DELAY` etc.
 
 **Scene Arrange (low D since 0.77).** The two pad rows are two scenes. Tap a pad to turn that track **on** (green) or **off** (dim orange) in that scene; dark = the track has no clip at all. Each track keeps **one clip**: in a scene it plays its clip from that scene, or else the nearest clip above (then below). **Top F#** launches the selected scene: if that scene has an arrangement, KamoteKeys fires exactly the chosen tracks' clips and stops the other tracks, so editing a clip once changes it in every scene. Scenes you never arranged launch normally. The choice is saved in the Live set. Live's own scene buttons (mouse) do not know about it.
 
@@ -113,7 +115,7 @@ All buttons send 127 on press and 0 on release (KNOB BANK and FADER BANK send on
 
 ## Step Mode: drum step sequencer (0.58)
 
-**Press SEQ REC** (or hold CHORD for 0.6 s; FM-1: hold **LFO**) to enter Step Mode; press SEQ REC again (or hold CHORD) to leave, tap CHORD to go to Clip Mode. It works on Live's **selected track** (ideally with a Drum Rack) and its **selected clip slot**:
+**Press SEQ REC** (FM-1: hold **LFO**) to enter Step Mode; press SEQ REC again to leave, tap CHORD to go to Clip Mode (hold CHORD: Clip Mode while held, then back to Step Mode). It works on Live's **selected track** (ideally with a Drum Rack) and its **selected clip slot**:
 
 - Every step is written straight into that **session clip** (Live 12 note API), so the result is an ordinary MIDI clip you can edit in the piano roll. Notes you add or remove with the mouse show up on the pads.
 - An **empty slot gets a new 1-bar clip** named after the track.
@@ -127,7 +129,7 @@ Colours: see the table below.
 
 | Keys | Do |
 |---|---|
-| lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DRUM (hold), G = LENGTH (hold), A = BARS (tap), B = DOUBLE (0.77); C plays a note |
+| lowest octave, white | D = RESOLUTION, E = FOLLOW, F = DOUBLE, G = LENGTH (hold), A = BARS (tap), B = DRUM (hold); C plays a note |
 | lowest octave, black | C# = COPY, D# = PASTE, F# / G# = page ◀ / ▶, A# = DELETE (tap: the page; hold + step / bar / key) |
 | **key zone**: C2 up to E3 (17 keys) | drum keys: 17 sounds from C1 (kick, rim, snare, clap …); with SEQ: scale keys; with a locked chord: chord keys |
 | top F G A B | velocity 32 / 64 / 96 / 127 |
