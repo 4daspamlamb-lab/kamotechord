@@ -402,6 +402,9 @@ class KamoteKeys(ControlSurface):
             self.song().view.selected_scene = scenes[self._scene]
         except Exception:
             pass
+        # 0.83: keep Live's selected track inside the 8-track view, so Live
+        # does not scroll between the selected slot and the session box.
+        self._keep_selected_in_view()
         self._show_ring()
         self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
 
@@ -649,6 +652,8 @@ class KamoteKeys(ControlSurface):
             song.view.selected_track = tracks[target]
         except Exception:
             pass
+        # The view moves only when the selection leaves it: going left the
+        # selected track becomes the first of the 8, going right the last.
         last = max(0, len(tracks) - TRACKS)
         view = self._track
         if target < view:
@@ -664,6 +669,25 @@ class KamoteKeys(ControlSurface):
             self._send_names()
         self._show_ring()
         self._status('KamoteKeys: track %d (view %d-%d)' % (target + 1, self._track + 1, self._track + TRACKS))
+
+    def _keep_selected_in_view(self):
+        try:
+            song = self.song()
+            tracks = list(song.visible_tracks)
+            current = next((i for i, x in enumerate(tracks) if self._same(x, song.view.selected_track)), None)
+        except Exception:
+            return
+        if current is None:
+            return
+        view = self._track
+        if current < view:
+            view = current
+        elif current >= view + TRACKS:
+            view = current - TRACKS + 1
+        view = max(0, min(max(0, len(tracks) - TRACKS), view))
+        if view != self._track:
+            self._track = view
+            self._send_all()
 
     def _show_ring(self):
         """Live's session box around the pads' 8 x 2 slots, for RING_SECONDS (0.82)."""

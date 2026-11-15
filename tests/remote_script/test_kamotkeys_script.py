@@ -154,20 +154,25 @@ class T(unittest.TestCase):
     def sel(self):
         return next(i for i, t in enumerate(self.song._tracks) if t._live_ptr == getattr(self.song.view.selected_track, '_live_ptr', None))
 
-    def test_track_keys_select_tracks_view_follows_never_past_end(self):
+    def test_track_keys_view_follows_first_left_last_right(self):
         right = lambda: (deliver((0xBE, 32, 127)), deliver((0xBE, 32, 0)))
         left = lambda: (deliver((0xBE, 31, 127)), deliver((0xBE, 31, 0)))
-        right(); self.assertEqual((self.sel(), self.s._track), (1, 0))   # 6 tracks: selection moves, view stays
-        self.song._tracks += [type(self.song._tracks[0])() for _ in range(6)]   # 12 tracks
-        for _ in range(6): right()
-        self.assertEqual((self.sel(), self.s._track), (7, 0))            # still inside tracks 1-8
-        right(); self.assertEqual((self.sel(), self.s._track), (8, 1))   # view follows
-        for _ in range(10): right()
-        self.assertEqual((self.sel(), self.s._track), (11, 4))           # end: last 8 tracks, no jump back
-        self.assertIn((0xBF, 109, 4), self.s.sent)
-        left(); self.assertEqual((self.sel(), self.s._track), (10, 4))   # moving back inside the view: view stays
+        right(); self.assertEqual((self.sel(), self.s._track), (1, 0))   # 6 tracks: view cannot move
+        self.song._tracks += [type(self.song._tracks[0])() for _ in range(10)]   # 16 tracks
+        for _ in range(9): right()
+        self.assertEqual((self.sel(), self.s._track), (10, 3))           # right past the view: selected = last (4-11)
         for _ in range(7): left()
-        self.assertEqual((self.sel(), self.s._track), (3, 3))
+        self.assertEqual((self.sel(), self.s._track), (3, 3))            # inside the view: view stays
+        left(); self.assertEqual((self.sel(), self.s._track), (2, 2))    # left past the view: selected = first
+        for _ in range(20): right()
+        self.assertEqual((self.sel(), self.s._track), (15, 8))           # end: last 8, no jump back
+        self.assertIn((0xBF, 109, 8), self.s.sent)
+
+    def test_scene_move_keeps_selected_track_in_view(self):
+        self.song._tracks += [type(self.song._tracks[0])() for _ in range(10)]
+        self.song.view.selected_track = self.song.visible_tracks[12]     # selected with the mouse, outside 1-8
+        deliver((0xBE, 28, 127)); deliver((0xBE, 28, 0))                  # scene down
+        self.assertEqual(self.s._track, 5)                                # view 6-13 now shows track 13
 
     def test_track_names_for_the_screen(self):
         from KamoteKeys.KamoteKeys import NAME_CC, CHAR_CC, SELTRACK_CC
