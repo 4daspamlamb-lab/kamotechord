@@ -282,10 +282,18 @@ void test_top_keys_and_key_memory(void)
     /* Pad Scale: a key lights the pads with the same note in any octave. */
     kk.scale.scale = 0; kk.scale.root = 0; tap(KK_BTN_SCALE); settle();
     unsigned lit_before = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit_before += kk_pad_lit(p);
-    key(12, 100);   /* a C, octaves below the pads */
+    kk.octave = -2; key(0, 100);   /* C1, octaves below the pads */
     unsigned lit = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit += kk_pad_lit(p);
-    CHECK(lit_before == 0 && lit >= 2, "Pad Scale: playing C lights the C pads (%u)", lit);
-    key(12, 0); tap(KK_BTN_SCALE);
+    CHECK(lit_before == 0 && lit == 0, "0.89 Pad Scale: a C in another octave lights no pad (%u)", lit);
+    key(0, 0); kk.octave = 0;
+    /* The selected clip's notes (ch 16 notes from the script) light their pad, and never sound. */
+    unsigned ch; int n0 = kk_pad_note(0, &ch); host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_clear();
+    host_in(0x9F, (uint8_t)n0, 100); host_in(0x9F, (uint8_t)(n0 + 12 * 4), 100);
+    lit = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit += kk_pad_lit(p);
+    CHECK(kk_pad_lit(0) && lit == 1 && host_local_n == 0, "clip note lights exactly its pad (%u lit), no sound", lit);
+    host_in(0x8F, (uint8_t)n0, 0); CHECK(!kk_pad_lit(0), "clip note off: pad dark again");
+    host_in(0x8F, (uint8_t)(n0 + 48), 0); host_in(0xBF, KK_CLIP_HELLO_CC, 0);
+    tap(KK_BTN_SCALE);
     /* Key and scale are saved (SMK-37). */
     kk.scale.scale = 10; kk.scale.root = 9;
     uint8_t saved[16]; kamotkeys_settings_read(saved);

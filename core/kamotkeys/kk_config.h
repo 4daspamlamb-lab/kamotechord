@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.88" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.89" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -63,6 +63,8 @@ enum {
      * (filter: 63 = open, below low-pass, above high-pass); 127 = the
      * selected track has no such device. */
     KK_HOST_FX_CC = 114, KK_FX_NONE = 127,
+    /* host -> device (0.89): channel 16 Note On / Off = a note the selected
+     * clip is playing now (lights Pad Scale pads, never sounds). */
     KK_TRACK_NAME_LEN = 12
 };
 enum {

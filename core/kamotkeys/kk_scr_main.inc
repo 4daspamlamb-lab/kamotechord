@@ -67,13 +67,21 @@ static void draw_piano(void)
             }
             if (black >= 0) {
                 c = black <= 127 && is_sounding(black) ? note_colour(black) : BLACK_KEY;
-                if (c == BLACK_KEY && scale_view && black <= 127 && kk_in_scale(&kk.scale, black) && ky > BLACK_H - 7 && ky < BLACK_H - 3
-                    && within != WK - BK / 2 && within != BK - BK / 2 - 1) c = FAINT;
+                if (c == BLACK_KEY && scale_view && black <= 127 && kk_in_scale(&kk.scale, black)) {
+                    /* 0.89: the whole scale key is tinted, with a brighter mark at its tip. */
+                    uint16_t hue = (unsigned)black % 12 == kk.scale.root ? CYAN : TEAL;
+                    unsigned mark = ky > BLACK_H - 9 && ky < BLACK_H - 3 && within != WK - BK / 2 && within != BK - BK / 2 - 1;
+                    c = blend565(BLACK_KEY, hue, mark ? 200 : 60);
+                }
             } else {
                 if (note > 127) c = FAINT;
                 else if (is_sounding(note)) c = note_colour(note);
-                else if (scale_view && kk_in_scale(&kk.scale, note) && ky > WHITE_H - 9 && ky < WHITE_H - 5 &&
-                         within > 4 && within < WK - 4) c = (unsigned)note % 12 == kk.scale.root ? CYAN : TEAL;
+                else if (scale_view && kk_in_scale(&kk.scale, note)) {
+                    /* 0.89: a soft tint over the whole key and a clear mark near the bottom. */
+                    uint16_t hue = (unsigned)note % 12 == kk.scale.root ? CYAN : TEAL;
+                    unsigned mark = ky > WHITE_H - 11 && ky < WHITE_H - 4 && within > 3 && within < WK - 3;
+                    c = mark ? hue : blend565(WHITE_KEY, hue, 34);
+                }
                 if (within == 0) c = KEY_LINE;
                 if (ky == WHITE_H - 1) c = KEY_LINE;
             }

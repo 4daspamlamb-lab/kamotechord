@@ -492,9 +492,9 @@ unsigned kk_pad_lit(unsigned pad)
     int note = kk_pad_note(pad, &channel);
     if (note < 0) return 0;
     if (kk_midi_count(channel, (unsigned)note) || kk_midi_remote(channel, (unsigned)note)) return 1;
-    if (kk.mode == KK_MODE_PAD_SCALE)   /* 0.86: the same note in any octave (keys sit lower than the pads) */
-        for (unsigned n = (unsigned)note % 12U; n < 128; n += 12)
-            if (kk_midi_count(channel, n) || kk_midi_remote(channel, n)) return 1;
+    /* 0.89: Pad Scale also lights the notes the selected clip in Live is
+     * playing right now (sent by the Remote Script, display only). */
+    if (kk.mode == KK_MODE_PAD_SCALE && kk_midi_clip_note((unsigned)note)) return 1;
     return 0;
 }
 

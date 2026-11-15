@@ -102,7 +102,10 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._names_sent = {}            # 0.81: slot -> name last sent
         self._seltrack_sent = None
+        self._clip_notes_sent = set()     # 0.89: selected clip's sounding notes, as sent
+        self._note_cache = (None, 0, [])  # (clip, tick, [(pitch, start, end)])
         self._ticks = 0
+        self._ticks_total = 0
         self._received = False
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
         self._stop_held = self._stop_used = False   # Clip Mode STOP key (0.77)
@@ -973,6 +976,47 @@ class KamoteKeys(ControlSurface):
             self._seltrack_sent = number
             self._send_midi((0xB0 | CLIP_CHANNEL, SELTRACK_CC, number))
 
+    # --------------------------- selected clip's notes for Pad Scale (0.89)
+    def _playing_clip(self):
+        track = self.song().view.selected_track
+        for slot in list(getattr(track, 'clip_slots', []) or []):
+            if slot.has_clip and slot.clip.is_playing and getattr(slot.clip, 'is_midi_clip', True):
+                return slot.clip
+        return None
+
+    def _clip_notes(self, clip):
+        """[(pitch, start, end)] of the clip, re-read about once a second."""
+        cached, tick, notes = self._note_cache
+        if self._same(cached, clip) and self._ticks_total - tick < 10:
+            return notes
+        span = max(float(getattr(clip, 'length', 0) or 0), float(getattr(clip, 'loop_end', 0) or 0)) + 1.0
+        notes = []
+        if hasattr(clip, 'get_notes_extended'):
+            for n in clip.get_notes_extended(0, 128, 0.0, span):
+                if not getattr(n, 'mute', False):
+                    notes.append((n.pitch, n.start_time, n.start_time + n.duration))
+        else:
+            for pitch, start, duration, _velocity, mute in clip.get_notes(0.0, 0, span, 128):
+                if not mute:
+                    notes.append((pitch, start, start + duration))
+        self._note_cache = (clip, self._ticks_total, notes)
+        return notes
+
+    def _send_clip_notes(self):
+        active = set()
+        try:
+            clip = self._playing_clip()
+            if clip is not None:
+                pos = float(clip.playing_position)
+                active = set(p for p, a, b in self._clip_notes(clip) if a <= pos < b)
+        except Exception as error:
+            self.log_message('KamoteKeys: clip notes: %s' % error)
+        for pitch in sorted(self._clip_notes_sent - active):
+            self._send_midi((0x80 | CLIP_CHANNEL, pitch, 0))
+        for pitch in sorted(active - self._clip_notes_sent):
+            self._send_midi((0x90 | CLIP_CHANNEL, pitch, 100))
+        self._clip_notes_sent = active
+
     def _send_all(self):
         self._send_midi((0xB0 | CLIP_CHANNEL, HELLO_CC, PROTOCOL))
         self._send_midi((0xB0 | CLIP_CHANNEL, SCENE_CC, min(self._scene, 127)))
@@ -981,6 +1025,7 @@ class KamoteKeys(ControlSurface):
         self._send_tempo(force=True)
         self._send_highlight(force=True)
         self._send_names(force=True)
+        self._clip_notes_sent = set()     # the keyboard may have restarted: re-send what sounds
         for pad in range(TRACKS * SCENES):
             self._send_state(pad, force=True)
         self._step.send_all()
@@ -1001,6 +1046,8 @@ class KamoteKeys(ControlSurface):
         self._send_tempo()
         self._send_highlight()
         self._send_names()
+        self._ticks_total += 1
+        self._send_clip_notes()
         if self._step.active and time.time() - self._step_seen > STEP_TIMEOUT:
             self.log_message('KamoteKeys: no Step Mode heartbeat, leaving Step Mode')
             self._step.set_active(False)     # keyboard gone or switched port: never stay stuck in Step Mode

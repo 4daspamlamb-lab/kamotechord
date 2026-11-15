@@ -236,6 +236,22 @@ class T(unittest.TestCase):
         press(50); self.assertIn(('quantize', 5, 1.0), t.log)                           # E QUANTIZE (1/16)
         press(47); self.assertIsNone(slot.clip)                                         # B DELETE
 
+    def test_selected_clip_notes_sent_for_pad_scale(self):
+        class N(object):
+            def __init__(self, pitch, start, duration): self.pitch = pitch; self.start_time = start; self.duration = duration; self.mute = False
+        t = self.song._tracks[1]; self.song.view.selected_track = self.song.visible_tracks[1]
+        slot = t.clip_slots[0]; clip = Clip(slot); slot.clip = clip
+        clip.is_playing = True; clip.length = 4.0; clip.playing_position = 0.5
+        clip.get_notes_extended = lambda a, b, c, d: [N(60, 0.0, 1.0), N(64, 0.25, 0.5), N(67, 2.0, 1.0)]
+        self.s.sent.clear(); self.s.update_display()
+        self.assertEqual(sorted(m[1] for m in self.s.sent if m[0] == 0x9F), [60, 64])         # sounding at beat 0.5
+        clip.playing_position = 2.5; self.s.sent.clear(); self.s.update_display()
+        self.assertEqual(sorted(m[1] for m in self.s.sent if m[0] == 0x8F), [60, 64])
+        self.assertEqual([m[1] for m in self.s.sent if m[0] == 0x9F], [67])
+        self.s.sent.clear(); self.s.update_display(); self.assertEqual(self.s.sent, [])      # only changes
+        clip.is_playing = False; self.s.update_display()
+        self.assertIn((0x8F, 67, 0), self.s.sent)                                            # stopped: all off
+
     def test_hello_and_full_state_on_load(self):
         self.assertIn((0xBF, HELLO_CC, 1), self.s.sent)
         self.assertEqual(len([m for m in self.s.sent if m[0] == 0xBF and STATE_CC <= m[1] < STATE_CC + 16]), 16)
