@@ -83,9 +83,6 @@ NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected t
 NAME_LEN = 12
 FX_CC = 114                              # 0.82: reply 114-117 = new position 0..126, 127 = no device
 FX_NONE = 127
-FILTER_CLASSES = ('AutoFilter', 'AutoFilter2')
-DELAY_CLASSES = ('Delay', 'Echo', 'PingPongDelay', 'FilterDelay', 'SimpleDelay', 'GrainDelay')
-REVERB_CLASSES = ('Reverb', 'Hybrid')
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
 
 
@@ -480,8 +477,33 @@ class KamoteKeys(ControlSurface):
                 return p
         return None
 
-    def _find(self, track, classes):
-        return next((d for d in self._devices(track) if getattr(d, 'class_name', '') in classes), None)
+    @staticmethod
+    def _labels(device):
+        """Internal, display and shown names, lower case without spaces."""
+        return [str(getattr(device, a, '') or '').lower().replace(' ', '').replace('-', '')
+                for a in ('class_name', 'class_display_name', 'name')]
+
+    def _is(self, device, kind):
+        labels = self._labels(device)
+        if kind == 'filter':
+            return any('autofilter' in l for l in labels)
+        if kind == 'delay':
+            return any(('delay' in l or 'echo' in l) and 'autofilter' not in l for l in labels)
+        return any('reverb' in l for l in labels) or labels[0] == 'hybrid'
+
+    def _find(self, track, kind):
+        # 0.85: match the internal, display or shown name (Live versions name
+        # devices differently, e.g. the newer Auto Filter).
+        return next((d for d in self._devices(track) if self._is(d, kind)), None)
+
+    def _report_missing(self, track, kind):
+        try:
+            seen = ', '.join('%s (%s)' % (getattr(d, 'name', '?'), getattr(d, 'class_name', '?')) for d in self._devices(track))
+            text = 'KamoteKeys: no %s on %s. Devices: %s' % (kind, getattr(track, 'name', '?'), seen or 'none')
+        except Exception as error:
+            text = 'KamoteKeys: no %s (%s)' % (kind, error)
+        self.log_message(text)
+        self._status(text)
 
     @staticmethod
     def _nudge(param, steps, per_step):
@@ -491,9 +513,12 @@ class KamoteKeys(ControlSurface):
 
     def _filter(self, device, steps):
         """One-knob DJ filter: left = low-pass closing, centre = open, right = high-pass."""
-        kind, freq = self._param(device, 'Filter Type'), self._param(device, 'Frequency')
-        if kind is None or freq is None:
+        kind = self._param(device, 'Filter Type', 'Type')
+        freq = self._param(device, 'Frequency', 'Freq', 'Cutoff')
+        if freq is None:
             return None
+        if kind is None or not list(getattr(kind, 'value_items', []) or []):
+            return self._nudge(freq, steps, 0.02)              # no type switch: frequency only
         items = [str(i).lower() for i in list(getattr(kind, 'value_items', []) or [])]
         low = next((i for i, n in enumerate(items) if 'low' in n), 0)
         high = next((i for i, n in enumerate(items) if 'high' in n), 1)
@@ -517,19 +542,24 @@ class KamoteKeys(ControlSurface):
     def _fx(self, which, steps):
         """K4-K7 on the selected track: 0 filter, 1 delay amount, 2 reverb amount, 3 reverb decay."""
         position = None
+        kind = ('filter', 'delay', 'reverb', 'reverb')[which]
         try:
             track = self.song().view.selected_track
-            if which == 0:
-                device = self._find(track, FILTER_CLASSES)
-                position = self._filter(device, steps) if device is not None else None
+            device = self._find(track, kind)
+            if device is None:
+                self._report_missing(track, kind)
+            elif which == 0:
+                position = self._filter(device, steps)
             else:
-                device = self._find(track, DELAY_CLASSES if which == 1 else REVERB_CLASSES)
-                param = None
-                if device is not None:
-                    param = self._param(device, 'Decay Time', 'Decay') if which == 3 else self._param(device, 'Dry/Wet')
+                param = self._param(device, 'Decay Time', 'Decay') if which == 3 else self._param(device, 'Dry/Wet', 'Dry Wet', 'Mix')
                 position = self._nudge(param, steps, 0.02) if param is not None else None
+            if device is not None and position is None:
+                names = ', '.join(p.name for p in list(device.parameters))
+                self._status('KamoteKeys: %s found, but not its control. Parameters: %s' % (kind, names[:300]))
+                self.log_message('KamoteKeys: %s parameters: %s' % (kind, names))
         except Exception as error:
             self.log_message('KamoteKeys: effect %d: %s' % (which, error))
+            self._status('KamoteKeys: effect error: %s' % error)
         value = FX_NONE if position is None else max(0, min(126, int(round(position * 126))))
         self._send_midi((0xB0 | CLIP_CHANNEL, FX_CC + which, value))
 

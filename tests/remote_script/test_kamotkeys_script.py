@@ -95,8 +95,8 @@ class Param(object):
         self.name = name; self.value = value; self.min = lo; self.max = hi; self.value_items = items or []
 
 class Device(object):
-    def __init__(self, class_name, params, chains=None):
-        self.class_name = class_name; self.parameters = [Param('Device On', 1.0)] + params
+    def __init__(self, class_name, params, chains=None, name=None):
+        self.class_name = class_name; self.name = name or class_name; self.parameters = [Param('Device On', 1.0)] + params
         self.can_have_chains = chains is not None; self.chains = chains or []
 
 class Chain(object):
@@ -201,6 +201,19 @@ class T(unittest.TestCase):
         self.assertEqual(fx(2, 5), 76); self.assertAlmostEqual(rev.parameters[1].value, 0.6)    # reverb amount
         self.assertGreater(fx(3, 10), 30); self.assertAlmostEqual(rev.parameters[2].value, 0.4)  # sustain = decay
         self.assertEqual(fx(1, 3), 127)                                    # no delay on this track
+
+    def test_fx_matches_newer_device_names_and_reports_missing(self):
+        from KamoteKeys.KamoteKeys import FX_CC
+        t = self.song._tracks[1]; t.name = 'Lead'; self.song.view.selected_track = self.song.visible_tracks[1]
+        filt = Device('AutoFilter2', [Param('Filter Type', 0, 0, 3, ['Low-pass', 'High-pass', 'Band-pass', 'Notch']), Param('Frequency', 1.0)], name='Auto Filter')
+        dly = Device('StereoDelay', [Param('Dry/Wet', 0.5)], name='Delay')
+        t.devices = [filt, dly]
+        msgs = []; self.s._status = msgs.append
+        fx = lambda i, d: (self.s.sent.clear(), deliver((0xBE, 40 + i, 64 + d)), [m[2] for m in self.s.sent if m[1] == FX_CC + i][-1])[2]
+        self.assertLess(fx(0, -5), 63)                  # newer Auto Filter found, low-pass
+        self.assertEqual(fx(1, 5), 76)                  # Delay found by its shown name
+        self.assertEqual(fx(2, 1), 127)                 # no reverb
+        self.assertIn('no reverb on Lead', msgs[-1]); self.assertIn('Auto Filter (AutoFilter2)', msgs[-1])
 
     def test_no_session_box(self):
         deliver((0xBE, 32, 127)); deliver((0xBE, 28, 127))       # track right, scene down
