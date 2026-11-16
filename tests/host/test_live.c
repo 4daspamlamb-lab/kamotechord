@@ -91,15 +91,19 @@ void test_031(void)
         tap(KK_BTN_CHORD); frames(30, 5); CHECK(kk.mode == KK_MODE_NORMAL, "back to Normal");
         frames(30, 5); shot("14_normal_after_clip"); tap(KK_BTN_CHORD); host_clear();
     }
-    /* 0.65: a plain press selects (note 84+) until F# toggles pads to play (36+). */
+    /* 0.93: pads send the launch note (36+); the pad mode (CC 63) tells the script what to do. */
     host_clear(); pad(3, 110);
-    CHECK(out_count(USB, 0x9F, 84 + 2) == 1 && host_local_n == 0, "pad 3 -> select note 86 ch16 (default), never the synth");
-    pad(3, 0); CHECK(out_count(USB, 0x8F, 84 + 2) == 1, "release -> note off");
-    /* 0.75: F# = PLAY key. Tap: the next clip pressed is launched, then select again. */
-    host_clear(); key(6, 100); key(6, 0); pad(3, 110); pad(3, 0);
-    CHECK(!kk.clip_play && host_out_n == 2 && out_count(USB, 0x9F, 38) == 1, "tap F#, pad 3 -> launch note 38 once (silent key)");
-    host_clear(); pad(3, 110); pad(3, 0);
-    CHECK(out_count(USB, 0x9F, 84 + 2) == 1, "next press selects again");
+    CHECK(out_count(USB, 0x9F, 38) == 1 && host_local_n == 0, "pad 3 -> note 38 ch16, never the synth");
+    pad(3, 0); CHECK(out_count(USB, 0x8F, 38) == 1, "release -> note off");
+    /* F# = PLAY mode, G# = STOP mode, F = MUTE mode (again = normal), G = NORMAL. */
+    host_clear(); key(6, 100); key(6, 0);
+    CHECK(kk.clip_pads == 1 && last_out(USB, CC15, 0) == (KK_CC_CLIP_PADS | 1 << 8) && out_count(USB, 0x90, -1) == 0, "F#: PLAY mode (CC 63 = 1, silent key)");
+    host_clear(); pad(3, 110); pad(3, 0); pad(4, 110); pad(4, 0);
+    CHECK(kk.clip_pads == 1 && out_count(USB, 0x9F, 38) == 1 && out_count(USB, 0x9F, 39) == 1, "PLAY mode stays on for every pad");
+    key(8, 100); key(8, 0); CHECK(kk.clip_pads == 2, "G#: STOP mode");
+    key(5, 100); key(5, 0); CHECK(kk.clip_pads == 3, "F: MUTE mode");
+    key(5, 100); key(5, 0); CHECK(kk.clip_pads == 0, "F again: back to NORMAL");
+    key(6, 100); key(6, 0); key(7, 100); key(7, 0); CHECK(kk.clip_pads == 0 && last_out(USB, CC15, 0) == KK_CC_CLIP_PADS, "G: NORMAL");
     /* Hold F#: every clip pressed meanwhile is launched. */
     host_clear(); key(6, 100); pad(3, 110); pad(3, 0); pad(4, 110); pad(4, 0); key(6, 0);
     CHECK(out_count(USB, 0x9F, 38) == 1 && out_count(USB, 0x9F, 39) == 1 && !kk.clip_play, "hold F#: pads 3 and 4 launch, then select again");
@@ -148,13 +152,13 @@ void test_031(void)
     CHECK(kk.clip_action == 2 && out_count(USB, 0x9F, 68 + 9) == 1 && out_count(USB, 0x8F, 68 + 9) == 1, "A# + pad 10 -> delete note 77");
     frames(20, 5); shot("17_clip_delete");
     key(10, 0); CHECK(kk.clip_action == 0, "key released: back to the plain press");
-    host_clear(); key(2, 100); key(2, 0); key(8, 100); key(8, 0);
+    host_clear(); key(2, 100); key(2, 0); key(8, 100); key(8, 0); key(8, 100); key(8, 0);
     CHECK(out_count(USB, 0x9F, KK_CLIP_ARRANGE_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_ARRANGE_NOTE) == 1 &&
-          out_count(USB, 0x9F, KK_CLIP_STOP_NOTE) == 1 && out_count(USB, 0x8F, KK_CLIP_STOP_NOTE) == 1, "0.77: D = Scene Arrange (102), G# = STOP (103)");
+          out_count(USB, 0x9F, KK_CLIP_STOP_NOTE) == 0 && kk.clip_pads == 0, "D = Scene Arrange (102); 0.93: G# = STOP mode on / off, no note");
     host_clear(); key(36, 100); key(29, 100); key(29, 0); key(31, 100); key(31, 0); key(36, 0);
     CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
           "0.91: SHIFT + F / G: track left / right (CC 31 / 32), no notes");
-    host_clear(); key(5, 100); key(5, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low F plays a note in Clip Mode");
+    host_clear(); key(9, 100); key(9, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low A plays a note in Clip Mode");
     /* 0.67: Step Mode entered from Clip Mode returns to Clip Mode; PARA there plays the clip. */
     tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP, "SEQ REC from Clip Mode -> Step Mode");
     host_clear(); tap(KK_BTN_PARA);
@@ -186,7 +190,7 @@ void test_031(void)
     CHECK(kk_midi_host_scene() == 4, "grid follows the script's scene offset");
     frames(20, 5); shot("18_clip_scene5");
     host_in(0xBF, KK_HOST_SCENE_CC, 0);
-    host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 84 + 2) == 1, "plain press after release: select");
+    host_clear(); pad(3, 100); pad(3, 0); CHECK(out_count(USB, 0x9F, 38) == 1, "plain press after release: the pad's note (normal mode)");
     host_clear(); key(1, 100); tap(KK_BTN_CHORD); key(1, 0);
     CHECK(host_out_n == 0 || out_count(USB, 0x90, -1) == 0, "OVERDUB key held across leaving Clip Mode stays silent");
     key(1, 100); key(1, 0); CHECK(out_count(USB, 0x90, 49) == 1, "outside Clip Mode C# plays its note");

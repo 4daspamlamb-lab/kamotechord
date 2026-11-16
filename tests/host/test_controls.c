@@ -96,7 +96,10 @@ void test_buttons(void)
     host_clear(); show_on();
     CHECK(kk.anim_active && host_out_n == 0, "0.92: GLOBE held = light show, no Ableton message");
     show_off(); CHECK(!kk.anim_active, "GLOBE released: show ends");
-    host_clear(); btn(KK_BTN_PLAY, 1); btn(KK_BTN_PLAY, 0); CHECK(host_out_n == 0, "0.92: SEQ PLAY does nothing");
+    host_clear(); btn(KK_BTN_PLAY, 1); btn(KK_BTN_PLAY, 0);
+    CHECK(kk.step_auto && kk_led_button(KK_BTN_PLAY) == 2 && out_count(USB, 0xBD, KK_STEP_AUTO_STATE_CC) == 1 && out_count(USB, CC15, -1) == 0,
+          "0.93: SEQ PLAY = AUTO on (lit, state to the script), no Ableton message");
+    tap(KK_BTN_PLAY); CHECK(!kk.step_auto, "AUTO off again");
     /* 0.51: PARA = Play/Pause (CC 23); HOME (LEFT) + PARA = metronome (CC 26),
      * and HOME then sends no Undo. */
     host_clear(); unsigned page = kk.page, mode = kk.mode;
@@ -203,14 +206,23 @@ void test_velocity_faders(void)
     groove_midi_poll();
     CHECK(last_out(USB, CC15, 1) == (KK_CC_TRACK_VOLUME | 77 << 8) && last_out(USB, CC15, 0) == (KK_CC_TRACK_MACRO | 33 << 8) &&
           kk.scale.scale == sc && kk.scale.root == rt, "faders 2/3 -> CC38/39, scale untouched");
-    kk.encoder[2] = 1; frames(2, 20); CHECK(kk.scale.scale == sc + 1, "K3 = scale");
-    kk.encoder[1] = 2; frames(2, 20); CHECK(kk.scale.root == (rt + 2) % 12, "K2 = key");
-    kk.encoder[2] = -1; kk.encoder[1] = -2; frames(2, 20);
-    /* 0.82: K4-K7 = the selected track's effects (relative CC 40-43); the script answers on CC 114-117. */
+    /* 0.93: Patch page E1 / E2 / E3 = scale / key / brightness. */
+    tap(KK_BTN_PATCH); unsigned br = kk.brightness_level;
+    kk.encoder[0] = 1; kk.encoder[1] = 2; kk.encoder[2] = -1; frames(2, 20);
+    CHECK(kk.scale.scale == sc + 1 && kk.scale.root == (rt + 2) % 12 && kk.brightness_level == br - 1, "Patch page: E1 scale, E2 key, E3 brightness");
+    kk.encoder[0] = -1; kk.encoder[1] = -2; kk.encoder[2] = 1; frames(2, 20); tap(KK_BTN_PATCH);
+    /* 0.93: main screen E1-E8 = macros (CC 55-62 relative); the script answers name + value. */
     unsigned pr = kk.program, g = kk.arp.gate; host_in(0xBF, KK_CLIP_HELLO_CC, 1);
-    host_clear(); kk.encoder[6] = 2; kk.encoder[3] = -1; frames(2, 20); groove_midi_poll();
-    CHECK(out_count(USB, CC15, KK_CC_FX_DECAY) == 1 && out_count(USB, CC15, KK_CC_FX_FILTER) == 1 &&
-          kk.arp.gate == g && kk.program == pr, "K7 / K4 -> CC 43 / 40, ARP and patch untouched");
+    host_clear(); kk.encoder[0] = 1; kk.encoder[7] = -2; frames(2, 20); groove_midi_poll();
+    CHECK(out_count(USB, CC15, KK_CC_MACRO) == 1 && out_count(USB, CC15, KK_CC_MACRO + 7) == 1 && kk.scale.scale == sc && kk.master == kk.master,
+          "E1 / E8 -> macro 1 / 8 (CC 55 / 62)");
+    host_in(0xBF, KK_HOST_NAME_CC, 9); for (const char *c = "Cutoff"; *c; ++c) host_in(0xBF, KK_HOST_CHAR_CC, (uint8_t)*c);
+    host_in(0xBF, KK_HOST_MACRO_CC, 0); host_in(0xBF, KK_HOST_MACRO_VALUE_CC, 63); frames(3, 20);
+    { unsigned ix, val = kk_midi_macro(&ix); CHECK(val == 63 && ix == 0 && !strcmp(kk_midi_track_name(9), "Cutoff"), "macro reply stored (name, value)"); }
+    /* SHIFT (top C) held: E1 BPM, E2-E5 effects (CC 40-43), E8 master. */
+    host_clear(); key(36, 100); kk.encoder[4] = 2; kk.encoder[1] = -1; frames(2, 20); key(36, 0); groove_midi_poll();
+    CHECK(out_count(USB, CC15, KK_CC_FX_DECAY) == 1 && out_count(USB, CC15, KK_CC_FX_FILTER) == 1 && out_count(USB, CC15, KK_CC_MACRO) == 0 &&
+          kk.arp.gate == g && kk.program == pr, "SHIFT + E5 / E2 -> CC 43 / 40, no macros");
     CHECK(last_out(USB, CC15, 0) == (KK_CC_FX_DECAY | 66 << 8) && last_out(USB, CC15, 1) == (KK_CC_FX_FILTER | 63 << 8), "relative values 64 + steps");
     host_in(0xBF, KK_HOST_FX_CC + 3, 90); frames(2, 20);
     CHECK(kk_midi_fx(3) == 90, "script answer stored");

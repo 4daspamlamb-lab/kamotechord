@@ -55,7 +55,7 @@ void test_step_mode(void)
     tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_CLIP, "tap CHORD -> stays in Clip Mode");
     tap(KK_BTN_CHORD); CHECK(kk.mode == KK_MODE_NORMAL, "tap CHORD again -> Normal");
     host_clear(); tap(KK_BTN_REC);
-    CHECK(kk.mode == KK_MODE_STEP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 0) == (KK_STEP_SYNC_CC | 127 << 8),
+    CHECK(kk.mode == KK_MODE_STEP && out_count(USB, 0xBD, KK_STEP_SYNC_CC) == 1 && last_out(USB, 0xBD, 1) == (KK_STEP_SYNC_CC | 127 << 8) && last_out(USB, 0xBD, 0) == KK_STEP_AUTO_STATE_CC,
           "SEQ REC -> Step Mode, tells the script (ch 14 CC 127 = 127)");
     CHECK(kk_led_button(KK_BTN_REC) == 2, "SEQ REC lit");
     btn(KK_BTN_CHORD, 1); host_ms += 700; frames(2, 1); btn(KK_BTN_CHORD, 0);
@@ -224,7 +224,7 @@ void test_bluetooth(void)
     host_ble_busy = 2; pad(3, 100); pad(3, 0); key(1, 100); key(1, 0); key(2, 100); key(2, 0);
     host_ble_busy = 1; key(10, 100); pad(4, 100); pad(4, 0); key(10, 0); key(36, 100); key(30, 100); key(30, 0); key(29, 100); key(29, 0); key(36, 0);
     frames(20, 5);
-    CHECK(ble_count(0x9F, 84 + 2) == 1 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1 && ble_count(0x9F, KK_CLIP_ARRANGE_NOTE) == 1 &&
+    CHECK(ble_count(0x9F, 38) == 1 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1 && ble_count(0x9F, KK_CLIP_ARRANGE_NOTE) == 1 &&
           ble_count(0x9F, 68 + 3) == 1 && ble_count(0xBE, KK_CC_SCENE_LAUNCH) == 2 && ble_count(0xBE, KK_CC_TRACKS_LEFT) == 2,
           "BLE: clip select, COPY, ARRANGE, DELETE, SHIFT scene launch / track");
     ble_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); settle();
@@ -234,7 +234,7 @@ void test_bluetooth(void)
     ble_in(0xBF, KK_CLIP_HELLO_CC, 1);
     CHECK(kk_midi_host_port() == 2 && kk_midi_rx_count(2) > 0, "the script's port is remembered (BLE)");
     tap(KK_BTN_CHORD); host_clear(); pad(3, 100); pad(3, 0); key(1, 100); key(1, 0);
-    CHECK(ble_count(0x9F, 84 + 2) == 1 && out_count(USB, 0x9F, -1) == 0 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1,
+    CHECK(ble_count(0x9F, 38) == 1 && out_count(USB, 0x9F, -1) == 0 && ble_count(0x9F, KK_CLIP_COPY_NOTE) == 1,
           "Clip Mode goes to the script's port (BLE), not AUTO's USB");
     tap(KK_BTN_CHORD);
     { uint8_t m[3] = {0xBF, KK_CLIP_HELLO_CC, 1}; fm1_app_midi_received(1, m, 3); }

@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.92" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.93" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -63,6 +63,10 @@ enum {
      * (filter: 63 = open, below low-pass, above high-pass); 127 = the
      * selected track has no such device. */
     KK_HOST_FX_CC = 114, KK_FX_NONE = 127,
+    /* host -> device (0.93): CC 118 = macro index just changed (0..7), CC 119
+     * = its value 0..126 (127 = no device); its name arrives first as track
+     * name slot 9 (CC 111 / 112). */
+    KK_HOST_MACRO_CC = 118, KK_HOST_MACRO_VALUE_CC = 119,
     /* host -> device (0.89): channel 16 Note On / Off = a note the selected
      * clip is playing now (lights Pad Scale pads, never sounds). */
     KK_TRACK_NAME_LEN = 12
@@ -101,7 +105,9 @@ enum {
     KK_STEP_FOLLOW_CC = 99, KK_STEP_STATUS_CC = 100, KK_STEP_DRUMVIEW_CC = 101, KK_STEP_ACTIVE_CC = 102,
     KK_STEP_KEYOCT_CC = 103, KK_STEP_KEYS_CC = 104, KK_STEP_BAR_CC = 105, KK_STEP_BARS_CC = 106,
     KK_STEP_INFO_LAST = 106,
-    KK_STEP_EDIT_CC = 20,     /* 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats, 64 + knob steps */
+    KK_STEP_EDIT_CC = 20,
+    KK_STEP_AUTO_STATE_CC = 38, /* 0.93: ch 14 CC 38 = AUTO on (127) / off (0), sent on toggle and on entering Step Mode */
+    KK_STEP_AUTO_CC = 30,     /* 0.93: ch 14 CC 30-37 = AUTO on, step held: macro 1-8 automation for the held steps, relative */     /* 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats, 64 + knob steps */
     KK_STEP_SYNC_CC = 127
 };
 /* Clipboard kinds (0.65): clip (A = track, B = scene), step (A = step, B = page),
@@ -147,7 +153,9 @@ enum {
     KK_CC_ARM_ADD = 51,
     KK_CC_CLIP_DUPLICATE = 52, /* 0.91: SHIFT + A: duplicate the selected clip (slot below) */
     KK_CC_LOOP_DOUBLE = 53,   /* 0.91: SHIFT + B: double the selected clip's loop */
-    KK_CC_REC_LENGTH = 54,    /* 0.91: fixed record length in bars (0 = off), sent before KNOB BANK */       /* 0.90: PATCH + top G: arm without disarming the others */
+    KK_CC_REC_LENGTH = 54,
+    KK_CC_MACRO = 55,         /* 0.93: E1-E8 = macros 1-8 of the selected track, CC 55-62 relative (64 + steps) */
+    KK_CC_CLIP_PADS = 63,     /* 0.93: Clip Mode pad mode 0 normal (play / stop), 1 play, 2 stop, 3 mute */    /* 0.91: fixed record length in bars (0 = off), sent before KNOB BANK */       /* 0.90: PATCH + top G: arm without disarming the others */
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

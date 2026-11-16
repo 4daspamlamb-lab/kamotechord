@@ -62,7 +62,11 @@ CC_TRACK_VOLUME, CC_TRACK_MACRO = 38, 39  # 0.80: Fader 2 / 3 = selected track v
 CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE = 44, 45, 47, 48, 49, 50   # 0.86 top keys (46 unused since 0.88)
 CC_ARM_ADD = 51                          # 0.90: PATCH + top G: arm without disarming the others
 CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH = 52, 53, 54   # 0.91: SHIFT + A / B; fixed length (bars, 0 = off)
+CC_MACRO = tuple(range(55, 63))          # 0.93: E1-E8 = macros 1-8 of the selected track, relative
+CC_CLIP_PADS = 63                        # 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute
+MACRO_CC, MACRO_VALUE_CC = 118, 119      # 0.93: reply: macro index, value 0..126 (127 = no device)
 STEP_EDIT_CC = 20                        # 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats
+STEP_AUTO_CC, STEP_AUTO_STATE_CC = 30, 38   # 0.93: ch 14 CC 30-37 = held steps' macro automation; CC 38 = AUTO on / off
 CC_FX = (40, 41, 42, 43)                 # 0.82: K4-K7 relative: filter, delay, reverb, reverb decay
 STOP_NOTE = 103                         # 0.77: Clip Mode STOP key (G#)
 ARR_ON, ARR_OFF, ARR_NONE = 7, 8, 9
@@ -82,7 +86,7 @@ TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_
                  CC_SCENE_DOWN, CC_SCENE_UP, CC_SCENE_LAUNCH, CC_TRACKS_LEFT, CC_TRACKS_RIGHT,
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO,
                  CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE, CC_ARM_ADD,
-                 CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH) + CC_FX
+                 CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH, CC_CLIP_PADS) + CC_FX + CC_MACRO
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
@@ -106,7 +110,8 @@ class KamoteKeys(ControlSurface):
         self._highlight_sent = None
         self._names_sent = {}            # 0.81: slot -> name last sent
         self._seltrack_sent = None
-        self._rec_bars = 0               # 0.91: fixed record length in bars (from the keyboard)
+        self._rec_bars = 0
+        self._clip_pads = 0              # 0.93: 0 normal (play / stop), 1 play, 2 stop, 3 mute               # 0.91: fixed record length in bars (from the keyboard)
         self._clip_notes_sent = set()     # 0.89: selected clip's sounding notes, as sent
         self._note_cache = (None, 0, [])  # (clip, tick, [(pitch, start, end)])
         self._ticks = 0
@@ -146,7 +151,7 @@ class KamoteKeys(ControlSurface):
                 button.add_value_listener(self._step_select_value, identify_sender=True)
                 self._step_select.append(button)
             self._step_edit = []                 # 0.91: hold a step + E1 / E2 / E3
-            for cc in range(STEP_EDIT_CC, STEP_EDIT_CC + 3):
+            for cc in list(range(STEP_EDIT_CC, STEP_EDIT_CC + 3)) + list(range(STEP_AUTO_CC, STEP_AUTO_CC + 8)) + [STEP_AUTO_STATE_CC]:
                 button = ButtonElement(True, MIDI_CC_TYPE, STEP_CHANNEL, cc)
                 button.add_value_listener(self._step_edit_value, identify_sender=True)
                 self._step_edit.append(button)
@@ -189,7 +194,42 @@ class KamoteKeys(ControlSurface):
         elif note >= OVERDUB_BASE:
             self._overdub(note - OVERDUB_BASE)
         else:
-            self._launch(note - NOTE_BASE)
+            self._pad_press(note - NOTE_BASE)
+
+    def _pad_press(self, pad):
+        """0.93 Clip Mode pad modes (from the keyboard, CC 63): 0 normal =
+        play / stop the clip and select it (an empty slot: select + arm);
+        1 play = launch every clip pressed; 2 stop = stop; 3 mute = the
+        clip's track on / off."""
+        mode = self._clip_pads
+        if mode == 1:
+            self._launch(pad, only_launch=True)
+        elif mode == 2:
+            self._stop_pad(pad)
+        elif mode == 3:
+            track, slot = self._slot(pad)
+            if track is not None:
+                try:
+                    track.mute = not track.mute
+                    self._status('KamoteKeys: %s %s' % (track.name, 'muted' if track.mute else 'unmuted'))
+                except Exception as error:
+                    self._status('KamoteKeys: mute: %s' % error)
+        else:
+            track, slot = self._slot(pad)
+            if slot is not None and slot.has_clip:
+                self._launch(pad)
+                self._highlight_slot(pad)
+            else:
+                self._select(pad)
+
+    def _highlight_slot(self, pad):
+        track, slot = self._slot(pad)
+        try:
+            if slot is not None:
+                self.song().view.selected_track = track
+                self.song().view.highlighted_clip_slot = slot
+        except Exception:
+            pass
 
     def _copy_key_value(self, value, sender):
         self._first_message()
@@ -265,7 +305,18 @@ class KamoteKeys(ControlSurface):
 
     def _step_edit_value(self, value, sender):
         self._first_message()
-        self._step.knob(sender.message_identifier() - STEP_EDIT_CC, value - 64)
+        cc = sender.message_identifier()
+        if cc == STEP_AUTO_STATE_CC:
+            self._step.auto = bool(value)
+        elif cc >= STEP_AUTO_CC:
+            index = cc - STEP_AUTO_CC
+            try:
+                param = self._macro_param(index)
+            except Exception:
+                param = None
+            self._step.automate(index, value - 64, param)
+        else:
+            self._step.knob(cc - STEP_EDIT_CC, value - 64)
 
     def _step_select_value(self, value, sender):
         self._first_message()
@@ -299,6 +350,10 @@ class KamoteKeys(ControlSurface):
             self._track_macro(value)
         elif cc in CC_FX:
             self._fx(CC_FX.index(cc), value - 64)
+        elif cc in CC_MACRO:
+            self._macro(CC_MACRO.index(cc), value - 64)
+        elif cc == CC_CLIP_PADS:
+            self._clip_pads = value              # 0.93: what a clip pad press does
         elif cc == CC_REC_LENGTH:
             self._rec_bars = value               # sent just before Session Record (0.91)
         elif value:                      # act on press; release is ignored
@@ -316,7 +371,7 @@ class KamoteKeys(ControlSurface):
             return track, None
         return track, slots[scene]
 
-    def _launch(self, pad):
+    def _launch(self, pad, only_launch=False):
         track, slot = self._slot(pad)
         what = 'no such slot' if slot is None else 'clip' if slot.has_clip else 'empty slot'
         self.log_message('KamoteKeys: pad %d -> track %d clip %d (%s)' % (
@@ -334,7 +389,7 @@ class KamoteKeys(ControlSurface):
                 # clip keeps playing (no need to hold the OVERDUB key).
                 self.song().session_record = False
                 action = 'overdub off'
-            elif clip.is_playing or clip.is_triggered:
+            elif (clip.is_playing or clip.is_triggered) and not only_launch:
                 slot.stop()              # same pad again: stop (quantized)
                 action = 'stop'
             else:
@@ -583,6 +638,44 @@ class KamoteKeys(ControlSurface):
             self._status('KamoteKeys: effect error: %s' % error)
         value = FX_NONE if position is None else max(0, min(126, int(round(position * 126))))
         self._send_midi((0xB0 | CLIP_CHANNEL, FX_CC + which, value))
+
+    # -------------------------------------------- macro page (0.93)
+    def _macro_param(self, index):
+        """Macro index+1 of the selected track's first rack, else the
+        index+1-th control of its first device (parameter 0 is Device On)."""
+        track = self.song().view.selected_track
+        devices = list(getattr(track, 'devices', []) or [])
+        device = next((d for d in devices if getattr(d, 'can_have_chains', False)), None)
+        if device is None and devices:
+            device = devices[0]
+        if device is None:
+            return None
+        params = list(device.parameters)
+        return params[index + 1] if index + 1 < len(params) else None
+
+    def _macro(self, index, steps):
+        param = None
+        try:
+            param = self._macro_param(index)
+            if param is not None and steps:
+                if getattr(param, 'is_quantized', False):
+                    param.value = max(param.min, min(param.max, param.value + (1 if steps > 0 else -1)))
+                else:
+                    self._nudge(param, steps, 0.01)
+        except Exception as error:
+            self.log_message('KamoteKeys: macro %d: %s' % (index + 1, error))
+            param = None
+        name = self._ascii(getattr(param, 'name', '')) if param is not None else ''
+        self._send_midi((0xB0 | CLIP_CHANNEL, NAME_CC, 9))
+        for c in name:
+            self._send_midi((0xB0 | CLIP_CHANNEL, CHAR_CC, ord(c)))
+        self._send_midi((0xB0 | CLIP_CHANNEL, MACRO_CC, index))
+        if param is None:
+            value = FX_NONE
+        else:
+            span = float(param.max - param.min) or 1.0
+            value = max(0, min(126, int(round((param.value - param.min) / span * 126))))
+        self._send_midi((0xB0 | CLIP_CHANNEL, MACRO_VALUE_CC, value))
 
     def _master(self, value):
         """Fader 4: Live's master volume (top = 0 dB)."""

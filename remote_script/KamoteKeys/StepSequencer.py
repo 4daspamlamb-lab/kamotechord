@@ -103,6 +103,7 @@ class StepSequencer(object):
         self._chord = []               # pitches written by a step (a locked chord), root first (0.63)
         self._zone_held, self._zone_pick = set(), []   # key-zone notes arriving as one pick
         self._note_len = 1             # new notes: sixteenths of a bar (0.63)
+        self.auto = False              # 0.93: AUTO (SEQ PLAY) on: DELETE + step clears that step's automation
         self._bars_view = False        # BARS toggled on: pads show the bars
         self._bar_delete = None        # [bar, pressed at, cleared already] while DELETE + bar is held
         self._made_clip = None         # 0.77: the clip this mode created (deleted on exit if still empty)
@@ -597,7 +598,10 @@ class StepSequencer(object):
                 return
             if F_CLEAR in self._fn:
                 self._used.add(F_CLEAR)
-                self._clear_step(index)                         # 0.64: CLEAR + step = every note there
+                if self.auto:
+                    self._clear_automation(index)               # 0.93: AUTO on: the step's automation
+                else:
+                    self._clear_step(index)                     # 0.64: CLEAR + step = every note there
                 self.update()
                 return
             if F_NOTE_LEN in self._fn:
@@ -739,6 +743,49 @@ class StepSequencer(object):
         except Exception as error:
             self._log('cannot tie: %s' % error)
         self._dirty = True
+
+    def automate(self, index, delta, param):
+        """0.93 step automation (Move's parameter locks): with AUTO on, hold
+        step pads and turn a knob: that macro is written into the clip's
+        envelope for those steps only."""
+        if not self._active or not delta or not self._held:
+            return
+        if param is None:
+            self._say('no macro %d on this track' % (index + 1))
+            return
+        if not self._ensure_clip():
+            return
+        try:
+            env = self._clip.automation_envelope(param)
+            if env is None:
+                env = self._clip.create_automation_envelope(param)
+            span = float(param.max - param.min) or 1.0
+            step = self._step()
+            for i in list(self._held):
+                t = self._step_time(i)
+                value = max(param.min, min(param.max, env.value_at_time(t + EPS) + span * 0.02 * delta))
+                env.insert_step(t, step, value)
+                self._consumed.add(i)
+            self._say('%s: %d%%' % (param.name, int(round((value - param.min) / span * 100))))
+        except Exception as error:
+            self._log('cannot write automation: %s' % error)
+
+    def _clear_automation(self, index):
+        """AUTO + DELETE + step: every envelope of the clip takes the value of the step before."""
+        if self._clip is None:
+            return
+        try:
+            t, step = self._step_time(index), self._step()
+            device_params = []
+            for device in list(getattr(self._track, 'devices', []) or []):
+                device_params.extend(list(device.parameters))
+            for param in device_params:
+                env = self._clip.automation_envelope(param)
+                if env is not None:
+                    env.insert_step(t, step, env.value_at_time(max(0.0, t - step / 2.0)) if t > EPS else param.value)
+            self._say('step %d: automation cleared' % (self._page * PADS + index + 1))
+        except Exception as error:
+            self._log('cannot clear automation: %s' % error)
 
     def knob(self, which, delta):
         """0.91: hold step pads + E1 / E2 / E3 = their velocity / length /

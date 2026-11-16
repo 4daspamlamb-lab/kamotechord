@@ -10,23 +10,28 @@ static int note_center(int note)    /* world pixels */
     if (white_of_pc[pc] >= 0) return (octave * 7 + white_of_pc[pc]) * WK + WK / 2;
     return (octave * 7 + white_of_pc[pc - 1] + 1) * WK;
 }
+/* 0.93: the piano stays put while the notes are on screen; when one is not,
+ * it moves so the view starts on the C below the lowest note (or, for a
+ * chord too wide for that, just left of it). Gentle 0.3 s ease-in-out. */
+enum { PIANO_GLIDE_MS = 300 };
 static void piano_target(uint32_t now)
 {
-    int target;
-    if (sounding_n) {
-        int lo = note_center(sounding[0]), hi = note_center(sounding[sounding_n - 1]);
-        target = hi - lo <= 240 - 2 * WK ? (lo + hi) / 2 - 120 : lo - WK;
-    } else return;   /* nothing sounding: stay where the last notes were */
+    if (!sounding_n) return;   /* nothing sounding: stay where the last notes were */
+    int lo = note_center(sounding[0]), hi = note_center(sounding[sounding_n - 1]);
+    int left = view_to16 / 16;
+    if (lo - WK / 2 >= left && hi + WK / 2 <= left + 240) return;   /* all visible: no move */
+    int octave_c = (sounding[0] / 12) * 7 * WK;                      /* the C at or below the lowest note */
+    int target = hi + WK / 2 <= octave_c + 240 ? octave_c : lo - WK;
     if (target * 16 == view_to16) return;
     view_from16 = view_x16; view_to16 = target * 16; view_started = now;
 }
 static void piano_animate(uint32_t now)
 {
     uint32_t t = now - view_started;
-    if (t >= 110U) { view_x16 = view_to16; return; }
-    /* Ease-out cubic over ~110 ms; redirection restarts from here. */
-    int32_t k = (int32_t)(t * 1024U / 110U), inv = 1024 - k;
-    int32_t e = 1024 - (int32_t)((int64_t)inv * inv / 1024 * inv / 1024);
+    if (t >= PIANO_GLIDE_MS) { view_x16 = view_to16; return; }
+    /* Smoothstep (ease in and out); redirection restarts from here. */
+    int32_t k = (int32_t)(t * 1024U / PIANO_GLIDE_MS);
+    int32_t e = (int32_t)((int64_t)k * k / 1024 * (3 * 1024 - 2 * k) / 1024);
     view_x16 = view_from16 + (int32_t)((int64_t)(view_to16 - view_from16) * e / 1024);
 }
 static uint16_t note_colour(int note)
@@ -47,7 +52,7 @@ static void draw_piano(void)
     int offset = piano_offset;
     /* 0.84: Normal Mode with nothing sounding also marks the chosen scale
      * (root cyan, other scale notes teal). */
-    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys() || (kk.mode == KK_MODE_NORMAL && !sounding_n);
+    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys() || kk.mode == KK_MODE_NORMAL;   /* 0.93: also while keys sound (no blinking) */
     for (int y = clip_y0; y < clip_y1; ++y) {
         if (y < PIANO_TOP || y >= PIANO_TOP + WHITE_H) continue;
         int ky = y - PIANO_TOP;
@@ -280,7 +285,8 @@ static void draw_big(void)
         p = append(buf, "SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
         p = append(p, "  TRACKS "); p = decimal(p, (int)kk_midi_host_tracks() + 1); p = append(p, "-"); p = decimal(p, (int)kk_midi_host_tracks() + 8);
 #ifdef KK_CLIP_PRESS_SELECT
-        p = append(p, kk.clip_play ? "  PLAY" : "  SELECT");   /* what a pad press does */
+        { static const char *const modes[4] = {"  NORMAL", "  PLAY", "  STOP", "  MUTE"};
+          p = append(p, modes[kk.clip_pads & 3U]); }   /* 0.93: what a pad press does */
 #endif
         text_center(120, w->y + 47, buf, 1, TEXT);
         copy_line(w->y + 57);
@@ -325,8 +331,11 @@ static void draw_status(void)
     char buf[48], *p;   /* "LOCK " + every chord type fits */
     if (kk.arp_on) {
         pill(6, w->y + 5, 26, 12, C565(0, 70, 80)); text(10, w->y + 8, "ARP", 1, CYAN);
-        p = append(buf, kk_division_name(kk.arp.division)); p = append(p, " ");
-        p = append(p, kk_direction_name(kk.arp.direction)); p = append(p, " "); p = decimal(p, kk.arp.gate); append(p, "%");
+        if (kk.arp.mode == KK_ARP_NORMAL) {
+            p = append(buf, kk_division_name(kk.arp.division)); p = append(p, " ");
+            p = append(p, kk_direction_name(kk.arp.direction)); p = append(p, " "); p = decimal(p, kk.arp.gate); append(p, "%");
+        } else if (kk.arp.mode == KK_ARP_CHORD_REPEAT) { p = append(buf, "CHORD REPEAT "); append(p, kk_division_name(kk.arp.division)); }
+        else { p = append(buf, kk_arp_type_name(kk.arp.mode)); p = append(p, " "); p = decimal(p, (int)kk_strum_ms()); append(p, "MS"); }
         text(38, w->y + 8, buf, 1, TEXT);
     } else text(10, w->y + 8, "ARP OFF", 1, FAINT);
     if (kk.sustain_on) text_right(234, w->y + 8, "SUSTAIN", 1, GREEN);

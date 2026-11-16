@@ -156,7 +156,11 @@ unsigned kk_led_button(unsigned id)
     switch (id) {
     case KK_BTN_CHORD: return kk.mode == KK_MODE_CLIP ? 2 : 1;        /* Clip Mode */
     case KK_BTN_REC: return kk.mode == KK_MODE_STEP || pressed ? 2 : 1;   /* Step Mode (0.59) */
-    case KK_BTN_KNOB_BANK: case KK_BTN_FADER_BANK: return pressed || kk.anim_active ? 2 : 1;
+    case KK_BTN_KNOB_BANK: case KK_BTN_FADER_BANK: return pressed ? 2 : 1;
+#ifdef KK_HAS_RGB_PADS
+    case KK_BTN_GLOBE: return pressed || kk.anim_active ? 2 : 1;      /* 0.92: light show */
+    case KK_BTN_PLAY: return kk.step_auto || pressed ? 2 : 1;          /* 0.93: AUTO */
+#endif
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
     case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */

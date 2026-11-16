@@ -60,9 +60,88 @@ static void popup_value(const char *label, const char *value)
 static const char *const fx_names[4] = {"FILTER", "DELAY", "REVERB", "SUSTAIN"};
 static uint8_t fx_wait; static uint32_t fx_wait_rev, fx_wait_until;
 #endif
-static void main_input(void)
+#ifndef KK_DEVICE_FM1
+/* 0.93 SMK-37 knobs on the main screen:
+ *  default      E1-E8 = macros 1-8 of the selected Live track (like Move)
+ *  SHIFT held   E1 BPM, E2 filter, E3 delay, E4 reverb, E5 reverb decay, E8 master
+ *  NOTE REPEAT held   E1 = repeat rate
+ *  Step Mode, step held   AUTO off: E1-E3 velocity / length / repeats;
+ *                         AUTO on: E1-E8 = that step's macro automation */
+static uint8_t macro_wait; static uint32_t macro_wait_rev, macro_wait_until;
+static void macro_reply(void)
+{
+    char v[24], *p;
+    unsigned index, value = kk_midi_macro(&index);
+    if (macro_wait && kk_midi_macro_revision() != macro_wait_rev) {
+        macro_wait = 0;
+        const char *name = kk_midi_track_name(9);
+        char label[16]; p = append(label, "MACRO "); decimal(p, (int)index + 1);
+        if (value == KK_FX_NONE) popup_value(label, "NO DEVICE");
+        else { p = decimal(v, (int)(value * 100U / 126U)); append(p, "%"); popup_value(name[0] ? name : label, v); }
+    } else if (macro_wait && (int32_t)(now_ms - macro_wait_until) > 0) { popup_value("MACRO", "NO ANSWER"); macro_wait = 0; }
+}
+static void smk_knobs(void)
 {
     char v[12], *p;
+    int d;
+    if (kk.buttons & (1U << KK_BTN_NOTE_REPEAT)) {
+        if ((d = take(0))) { kk_edit_repeat(d); popup_value("REPEAT RATE", kk_division_name(kk.repeat_division)); }
+    }
+    if (kk.mode == KK_MODE_STEP && kk_step_pads_held()) {
+        if (kk.step_auto) {
+            for (unsigned i = 0; i < 8; ++i) if ((d = take(i))) {
+                kk_midi_cc(KK_CH_STEP, KK_STEP_AUTO_CC + i, (unsigned)clampi(64 + d, 0, 127));
+                char label[16]; p = append(label, "STEP AUTO M"); decimal(p, (int)i + 1);
+                popup_value(label, d > 0 ? "+" : "-");
+            }
+        } else {
+            static const char *const what[3] = {"STEP VELOCITY", "STEP LENGTH", "STEP REPEATS"};
+            for (unsigned i = 0; i < 3; ++i) if ((d = take(i))) {
+                kk_midi_cc(KK_CH_STEP, KK_STEP_EDIT_CC + i, (unsigned)clampi(64 + d, 0, 127));
+                popup_value(what[i], d > 0 ? "+" : "-");
+            }
+        }
+    }
+    if (kk_top_shift_held()) {
+        /* Mix page: tempo and the selected track's effects; E8 = master (page_input). */
+        if ((d = take(0))) {
+            int step = d > 2 || d < -2 ? d * 2 : d;
+            kk_edit_bpm(step);
+            if (kk_midi_host_tempo_x10()) {
+                int bpm = (int)(kk_midi_host_tempo_x10() + 5) / 10 + step;
+                decimal(v, bpm < 20 ? 20 : bpm > 999 ? 999 : bpm); popup_value("LIVE TEMPO", v);
+            } else { decimal(v, kk.bpm); popup_value("TEMPO", v); }
+        }
+        for (unsigned i = 0; i < 4; ++i) if ((d = take(1 + i))) {
+            if (!kk_midi_host_protocol()) { popup_value(fx_names[i], "NEEDS LIVE"); continue; }
+            kk_midi_cc(KK_CH_ABLETON, KK_CC_FX_FILTER + i, (unsigned)clampi(64 + d, 0, 127));
+            fx_wait = (uint8_t)(i + 1); fx_wait_rev = kk_midi_fx_revision(); fx_wait_until = now_ms + 1000U;
+        }
+        (void)take(5); (void)take(6);
+    } else {
+        for (unsigned i = 0; i < 8; ++i) if ((d = take(i))) {
+            if (!kk_midi_host_protocol()) { popup_value("MACROS", "NEED LIVE"); continue; }
+            kk_midi_cc(KK_CH_ABLETON, KK_CC_MACRO + i, (unsigned)clampi(64 + d, 0, 127));
+            macro_wait = (uint8_t)(i + 1); macro_wait_rev = kk_midi_macro_revision(); macro_wait_until = now_ms + 1000U;
+        }
+    }
+    if (fx_wait && kk_midi_fx_revision() != fx_wait_rev) {
+        unsigned i = fx_wait - 1U, f = kk_midi_fx(i);
+        fx_wait = 0;
+        if (f == KK_FX_NONE) popup_value(fx_names[i], i == 0 ? "NO AUTO FILTER" : i == 1 ? "NO DELAY" : "NO REVERB");
+        else if (i == 0 && f >= 60 && f <= 66) popup_value("FILTER", "OPEN");
+        else if (i == 0) { p = append(v, f < 63 ? "LP " : "HP "); p = decimal(p, (int)((f < 63 ? 63 - f : f - 63) * 100U / 63U)); append(p, "%"); popup_value("FILTER", v); }
+        else { p = decimal(v, (int)(f * 100U / 126U)); append(p, "%"); popup_value(fx_names[i], v); }
+    } else if (fx_wait && (int32_t)(now_ms - fx_wait_until) > 0) { popup_value(fx_names[fx_wait - 1U], "NO ANSWER"); fx_wait = 0; }
+    macro_reply();
+}
+#endif
+static void main_input(void)
+{
+    char v[12];
+#ifdef KK_DEVICE_FM1
+    char *p;
+#endif
     int d;
     /* Knob shift (FM-1 SAVE held): K1-K3 do what the SMK-37 faders do. */
     static uint8_t shift_shown;
@@ -79,51 +158,22 @@ static void main_input(void)
         return;
     }
 #ifndef KK_DEVICE_FM1
-    if (kk.mode == KK_MODE_STEP && kk_step_pads_held()) {
-        /* 0.91 hold a step + E1 / E2 / E3 = its velocity / length / repeats (the script edits it). */
-        static const char *const what[3] = {"STEP VELOCITY", "STEP LENGTH", "STEP REPEATS"};
-        for (unsigned i = 0; i < 3; ++i) if ((d = take(i))) {
-            kk_midi_cc(KK_CH_STEP, KK_STEP_EDIT_CC + i, (unsigned)clampi(64 + d, 0, 127));
-            popup_value(what[i], d > 0 ? "+" : "-");
-        }
-    }
-#endif
+    smk_knobs();
+#else
     if ((d = take(0))) {
         int step = d > 2 || d < -2 ? d * 2 : d;
-        if (kk_midi_host_tempo_x10()) {                /* 0.79: sets Live's tempo */
+        if (kk_midi_host_tempo_x10()) {
             kk_edit_bpm(step);
             int bpm = (int)(kk_midi_host_tempo_x10() + 5) / 10 + step;
             decimal(v, bpm < 20 ? 20 : bpm > 999 ? 999 : bpm); popup_value("LIVE TEMPO", v);
         } else { kk_edit_bpm(step); decimal(v, kk.bpm); popup_value("TEMPO", v); }
     }
-#ifndef KK_DEVICE_FM1
-    /* 0.80 SMK-37: K1 BPM, K2 key, K3 scale, K8 master (page_input). Patch is
-     * on the PATCH page. */
-    if ((d = take(1))) kk_edit_root(d);    /* 0.90: no pop-up, the key / scale bar shows it */
-    if ((d = take(2))) kk_edit_scale(d);
-    /* 0.82: K4-K7 = the selected Live track's filter, delay, reverb and
-     * reverb decay (the Remote Script finds the devices and answers with
-     * the new position); ARP settings: hold ARP. */
-    for (unsigned i = 0; i < 4; ++i) if ((d = take(3 + i))) {
-        if (!kk_midi_host_protocol()) { popup_value(fx_names[i], "NEEDS LIVE"); continue; }
-        kk_midi_cc(KK_CH_ABLETON, KK_CC_FX_FILTER + i, (unsigned)clampi(64 + d, 0, 127));
-        fx_wait = (uint8_t)(i + 1); fx_wait_rev = kk_midi_fx_revision(); fx_wait_until = now_ms + 1000U;
-    }
-    if (fx_wait && kk_midi_fx_revision() != fx_wait_rev) {
-        unsigned i = fx_wait - 1U, f = kk_midi_fx(i);
-        fx_wait = 0;
-        if (f == KK_FX_NONE) popup_value(fx_names[i], i == 0 ? "NO AUTO FILTER" : i == 1 ? "NO DELAY" : "NO REVERB");
-        else if (i == 0 && f >= 60 && f <= 66) popup_value("FILTER", "OPEN");
-        else if (i == 0) { p = append(v, f < 63 ? "LP " : "HP "); p = decimal(p, (int)((f < 63 ? 63 - f : f - 63) * 100U / 63U)); append(p, "%"); popup_value("FILTER", v); }
-        else { p = decimal(v, (int)(f * 100U / 126U)); append(p, "%"); popup_value(fx_names[i], v); }
-    } else if (fx_wait && (int32_t)(now_ms - fx_wait_until) > 0) { popup_value(fx_names[fx_wait - 1U], "NO ANSWER"); fx_wait = 0; }
-#else
     if ((d = take(1))) { kk_edit_program(d); decimal(v, kk.program + 1); popup_value("PATCH", v); }
     if ((d = take(2))) { kk_edit_arp(2, d); popup_value("ARP DIV", kk_division_name(kk.arp.division)); }
     if ((d = take(3))) { kk_edit_arp(3, d); p = decimal(v, kk.arp.gate); append(p, "%"); popup_value("ARP GATE", v); }
     if ((d = take(4))) { kk_edit_arp(1, d); popup_value("ARP DIR", kk_direction_name(kk.arp.direction)); }
     if ((d = take(5))) { kk_edit_arp(4, d); p = decimal(v, kk.arp.swing); append(p, "%"); popup_value("ARP SWING", v); }
-    (void)take(6);   /* E7: free (Note Repeat was replaced by SUSTAIN in 0.45) */
+    (void)take(6);
 #endif
 }
 static void page_input(void)
@@ -133,6 +183,16 @@ static void page_input(void)
     case KK_PAGE_MAIN: main_input(); break;
     case KK_PAGE_BT: ble_input(); break;
     case KK_PAGE_PATCH:
+#ifndef KK_DEVICE_FM1
+        /* 0.93: E1 scale, E2 key, E3 brightness, E4 patch, E5 synth, E6 MIDI out, E7 pad sensitivity. */
+        if ((d = take(0))) kk_edit_scale(d);
+        if ((d = take(1))) kk_edit_root(d);
+        if ((d = take(2))) { kk_set_brightness((unsigned)clampi((int)kk.brightness_level + d, 0, 15)); kk_settings_touch(); }
+        if ((d = take(3))) kk_edit_program(d);
+        if ((d = take(4))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
+        if ((d = take(5))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
+        if ((d = take(6))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
+#else
         if ((d = take(0))) kk_edit_program(d);
         if ((d = take(1))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
         if ((d = take(2))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
@@ -147,6 +207,7 @@ static void page_input(void)
         (void)take(4);
 #endif
         for (unsigned i = 5; i < 7; ++i) (void)take(i);
+#endif
         break;
     case KK_PAGE_ARP:
         for (unsigned i = 0; i < 6; ++i) if ((d = take(i))) {

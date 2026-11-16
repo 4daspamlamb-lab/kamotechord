@@ -145,7 +145,7 @@ static void signatures(void)
     if (kk.mode == KK_MODE_CLIP) h = mixsig(mixsig(mixsig(mixsig(h, 99), kk.clip_pad), kk_midi_clip_state(kk.clip_pad) | kk_midi_host_protocol() << 8 | kk_midi_host_scene() << 16), kk.clip_action);
     if (kk.mode == KK_MODE_STEP)
         for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c) | kk_midi_host_protocol() << 8);
-    { unsigned ca, cb, ck = kk_midi_copy(&ca, &cb); h = mixsig(mixsig(mixsig(h, ck), ca), cb | (unsigned)kk.clip_play << 8); }
+    { unsigned ca, cb, ck = kk_midi_copy(&ca, &cb); h = mixsig(mixsig(mixsig(h, ck), ca), cb | (unsigned)kk.clip_play << 8 | (unsigned)kk.clip_pads << 9); }
     h = mixsig(h, kk_midi_host_tracks() | kk_midi_arrange() << 8);
     if (kk.mode == KK_MODE_CLIP) h = mixsig(strsig(h, kk_midi_track_name(8)), kk_midi_selected_track() | (uint32_t)kk_midi_host_highlight() << 8);
     wanted[W_BIG] = h;
@@ -164,7 +164,7 @@ static void signatures(void)
         for (unsigned c = KK_STEP_PAGE_CC; c <= KK_STEP_INFO_LAST; ++c) h = mixsig(h, kk_midi_step_info(c));
     }
     wanted[W_PIANO] = h;
-    h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8);
+    h = mixsig(base, kk.arp_on); h = mixsig(h, kk.arp.division | kk.arp.direction << 4 | kk.arp.mode << 8 | (uint32_t)kk.arp.strum << 12);
     h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U + kk.rec_length * 256U);
     h = mixsig(h, kk_velocity_override()); h = mixsig(h, kk.chord_mods | kk.chord_lock << 12); h = mixsig(h, kk_midi_local());
     if (popup_until && (int32_t)(now_ms - popup_until) < 0) h = strsig(mixsig(h, 77), popup);
@@ -172,8 +172,9 @@ static void signatures(void)
     wanted[W_STATUS] = h;
     /* Page body: hash everything shown on the open page. */
     h = mixsig(base, kk.page); h = mixsig(h, kk.program); h = strsig(h, patch_name);
+    h = mixsig(h, kk.scale.scale | kk.scale.root << 8 | (uint32_t)kk.brightness_level << 16);   /* 0.93: Patch page */
     h = mixsig(h, kk_midi_local() * 8U + kk_midi_ports_mode() + kk.pad_sensitivity * 64U);
-    h = mixsig(h, kk.arp.mode | kk.arp.direction << 2 | kk.arp.division << 5 | (uint32_t)kk.arp.gate << 8 |
+    h = mixsig(h, kk.arp.strum); h = mixsig(h, kk.arp.mode | kk.arp.direction << 4 | kk.arp.division << 8 | (uint32_t)kk.arp.gate << 12 |
                   (uint32_t)kk.arp.swing << 16 | (uint32_t)kk.arp.octaves << 24);
     h = mixsig(h, kk.arp_on * 2U + kk.repeat_on); h = mixsig(h, kk.repeat_division); h = mixsig(h, kk_tempo_x10());
     if (kk.page == KK_PAGE_BT) {
@@ -259,7 +260,7 @@ void groove_screen_init(void)
     fm1_screen_init();                 /* SDK panel bring-up; clears to black */
     now_ms = boot_started = frame_ms = guard_ms = ble_stage_since = fm1_millis();
     /* Start the piano around the anchor (second C) octave. */
-    view_x16 = view_to16 = view_from16 = (note_center(60) - 120) * 16;
+    view_x16 = view_to16 = view_from16 = (48 / 12) * 7 * WK * 16;   /* 0.93: starts on C (C3 .. ) */
     booting = 1; shown_page = 255;
 }
 void groove_screen_tap(uint32_t now) { (void)groove_tempo_tap(now); }

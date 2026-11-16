@@ -116,9 +116,17 @@ void test_spare_and_refcount(void)
     host_clear(); pedal(127); pedal(0);
     CHECK(out_count(USB, CC1, 64) == 2 && last_out(USB, CC1, 0) == 64, "pedal -> CC 64 127 / 0");
     btn(KK_BTN_NOTE_REPEAT, 1); host_ms += 1000; frames(2, 1); btn(KK_BTN_NOTE_REPEAT, 0);
-    CHECK(kk.page == KK_PAGE_MAIN, "long SUSTAIN opens no page");
-    tap(KK_BTN_NOTE_REPEAT);
-    CHECK(!kk.sustain_on, "sustain off again");
+    CHECK(kk.page == KK_PAGE_MAIN && !kk.sustain_on && !kk.repeat_on, "0.93: a long NOTE REPEAT hold is Note Repeat: no Sustain toggle, no page");
+    /* 0.93: hold NOTE REPEAT + a drum pad = real Note Repeat at the rate; pressure = loudness. */
+    tap(KK_BTN_FX);
+    host_clear(); btn(KK_BTN_NOTE_REPEAT, 1); pad(1, 100); frames(250, 2);
+    unsigned hits = out_count(USB, ON10, -1);
+    smk37_control_event(SMK37_PRESSURE, 0, 30); host_clear(); frames(100, 2);
+    CHECK(hits >= 3 && out_count(USB, ON10, -1) >= 1 && (last_out(USB, ON10, 0) >> 8) == (int)kk_pad_curve(30) && !kk.sustain_on,
+          "Note Repeat: %u hits in 0.5 s, pressure sets the velocity, no Sustain", hits);
+    pad(1, 0); btn(KK_BTN_NOTE_REPEAT, 0); host_clear(); frames(100, 2);
+    CHECK(out_count(USB, ON10, -1) == 0 && !kk.sustain_on, "released: repeats stop, Sustain untouched");
+    tap(KK_BTN_FX);
     /* Mode change releases held notes. */
     tap(KK_BTN_NOTE_REPEAT); key(0, 100); key(0, 0); host_clear(); tap(KK_BTN_FX);
     CHECK(out_count(USB, OFF1, 48) == 1 && kk_midi_count(0, 48) == 0, "mode change releases sustained notes");
@@ -149,9 +157,29 @@ void test_arp_keys_and_persistence(void)
     CHECK(n >= 3 && notes[0] == 60 && notes[1] == 63 && notes[2] == 67, "chord arp up C Eb G (%u)", n);
     key(12, 0); pad(2, 0); frames(200, 2);
     for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "arp released %u", k);
+    /* 0.93 ARP types: STRUM UP plays the chord low -> high, 15 ms apart, once. */
+    kk.arp.mode = KK_ARP_STRUM_UP; kk.arp.strum = 1;
+    host_clear(); pad(2, 100); key(12, 100); frames(1, 1);
+    { uint8_t n1[64]; unsigned c1; notes_on(USB, ON1, n1, &c1);
+      frames(60, 1); uint8_t n2[64]; unsigned c2; notes_on(USB, ON1, n2, &c2);
+      CHECK(c1 == 1 && c2 == 3 && n2[0] == 60 && n2[1] == 63 && n2[2] == 67, "strum up: C then Eb then G (%u then %u)", c1, c2);
+      frames(200, 2); notes_on(USB, ON1, n2, &c2); CHECK(c2 == 3, "strum plays once (%u)", c2); }
+    key(12, 0); pad(2, 0); frames(5, 2);
+    CHECK(out_count(USB, OFF1, 60) == 1 && out_count(USB, OFF1, 67) == 1, "release stops the strummed notes");
+    kk.arp.mode = KK_ARP_STRUM_DOWN;
+    host_clear(); pad(2, 100); key(12, 100); frames(60, 1);
+    { uint8_t n[64]; unsigned c; notes_on(USB, ON1, n, &c); CHECK(c == 3 && n[0] == 67 && n[2] == 60, "strum down: G first"); }
+    key(12, 0); pad(2, 0); frames(5, 2);
+    /* CHORD REPEAT: the whole chord on every step. */
+    kk.arp.mode = KK_ARP_CHORD_REPEAT;
+    host_clear(); pad(2, 100); key(12, 100); frames(400, 2);
+    CHECK(out_count(USB, ON1, 60) >= 2 && out_count(USB, ON1, 60) == out_count(USB, ON1, 67), "chord repeat: C and G re-struck together (%u)", out_count(USB, ON1, 60));
+    key(12, 0); pad(2, 0); frames(100, 2);
+    for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "chord repeat released %u", k);
+    kk.arp.mode = KK_ARP_NORMAL;
     /* 0.80: no hidden LATCH: a released pad in Pad Scale stops, and toggling
      * SUSTAIN never brings an old pattern back (even if an old record said LATCH). */
-    kk.arp.mode = KK_ARP_LATCH; tap(KK_BTN_SCALE);
+    kk.arp.mode = KK_ARP_STRUM_UP; tap(KK_BTN_SCALE);
     pad(3, 100); frames(100, 2); pad(3, 0); frames(100, 2);
     unsigned sounding = 0; for (unsigned k = 0; k < 128; ++k) sounding += kk_midi_count(0, k);
     host_clear(); frames(200, 2);
@@ -187,8 +215,8 @@ void test_arp_keys_and_persistence(void)
     CHECK(kk.pad_sensitivity == KK_PAD_SENSITIVITY_MAX && kk_pad_curve(1) >= 75 && kk_pad_curve(20) >= 105 && kk_pad_curve(127) == 127,
           "0.80 default = 10 MAX: lightest touch %u, tap 20 -> %u", kk_pad_curve(1), kk_pad_curve(20));
     kk.pad_sensitivity = 3; CHECK(kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "level 3 linear");
-    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 3, 2); frames(3, 2); tap(KK_BTN_PATCH);
-    CHECK(kk.pad_sensitivity == 5, "E4 raises sensitivity (%u)", kk.pad_sensitivity);
+    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 6, 2); frames(3, 2); tap(KK_BTN_PATCH);
+    CHECK(kk.pad_sensitivity == 5, "0.93: Patch page E7 raises sensitivity (%u)", kk.pad_sensitivity);
     CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
     {
         unsigned mono = 1;

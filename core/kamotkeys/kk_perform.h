@@ -9,12 +9,14 @@
 
 enum { KK_MODE_NORMAL, KK_MODE_KEY_SCALE, KK_MODE_PAD_SCALE, KK_MODE_DRUM, KK_MODE_CLIP, KK_MODE_STEP, KK_MODES };
 enum { KK_PAGE_MAIN, KK_PAGE_BT, KK_PAGE_PATCH, KK_PAGE_ARP, KK_PAGE_REPEAT, KK_PAGE_DIAG };
-enum { KK_ARP_NORMAL, KK_ARP_LATCH, KK_ARP_MODES };
+/* 0.93 ARP types (kk.arp.mode): notes one by one, strums, chord re-strike, humanized chords. */
+enum { KK_ARP_NORMAL, KK_ARP_STRUM_UP, KK_ARP_STRUM_DOWN, KK_ARP_STRUM_ALT, KK_ARP_CHORD_REPEAT, KK_ARP_HUMANIZE, KK_ARP_MODES };
+enum { KK_STRUM_SPEEDS = 5 };
 enum { KK_DIR_UP, KK_DIR_DOWN, KK_DIR_UPDOWN, KK_DIR_RANDOM, KK_DIR_ORDER, KK_DIRS };
 enum { KK_DIV_4, KK_DIV_8, KK_DIV_8T, KK_DIV_16, KK_DIV_16T, KK_DIV_32, KK_DIVS };
 enum { KK_ANIMATIONS = 8 };
 
-struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves; };
+struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves, strum; };   /* 0.93: strum = speed 0..4 */
 
 struct kk_state {
     uint8_t mode, page;
@@ -25,6 +27,8 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
     uint8_t ripple;                          /* SMK-37 ripple lights (3 x SEQ REC), not saved */
+    uint8_t step_auto;                       /* 0.93: SEQ PLAY = AUTO: held step + knobs write macro automation */
+    uint8_t clip_pads;                       /* 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute */
     uint8_t rec_length;                      /* 0.91: fixed record length 0 off, 1..4 = 1 / 2 / 4 / 8 bars (saved) */
     uint8_t arp_page_used;                   /* 0.82: a knob turned while ARP held: close the page on release */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
@@ -69,6 +73,8 @@ void kk_perform_guard(void);
 
 const char *kk_division_name(unsigned division);
 const char *kk_direction_name(unsigned direction);
+const char *kk_arp_type_name(unsigned type);         /* 0.93 */
+unsigned kk_strum_ms(void);                          /* 0.93: ms between strummed notes */
 const char *kk_mode_name(unsigned mode);
 /* Velocity after the Fader 1 override (natural = physical velocity). */
 unsigned kk_velocity(unsigned natural);
@@ -78,7 +84,9 @@ unsigned kk_velocity_override(void);   /* 0 = natural, else 1..127 */
 enum { KK_PAD_SENSITIVITY_MAX = 10, KK_PAD_SENSITIVITY_DEFAULT = 10 };   /* 0.80: 10 = MAX */
 unsigned kk_pad_curve(unsigned velocity);
 unsigned kk_rec_bars(void);                         /* 0.91: fixed record length in bars, 0 = off */
-unsigned kk_step_pads_held(void);                   /* 0.91: Step Mode: a step pad is held */
+unsigned kk_step_pads_held(void);
+unsigned kk_top_shift_held(void);
+void kk_set_clip_pads(unsigned mode);              /* 0.93: Clip Mode pad mode */                   /* 0.93: top C (SHIFT) held */                   /* 0.91: Step Mode: a step pad is held */
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);
 unsigned kk_step_drum_held(void);

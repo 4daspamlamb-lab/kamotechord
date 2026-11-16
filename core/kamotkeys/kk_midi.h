@@ -48,6 +48,8 @@ unsigned kk_midi_host_tempo_x10(void);
 unsigned kk_midi_host_scene(void);
 const char *kk_midi_track_name(unsigned slot);   /* 0.81: 0..7 shown tracks, 8 = selected; "" if unknown */
 unsigned kk_midi_selected_track(void);
+unsigned kk_midi_macro(unsigned *index);           /* 0.93: last macro reply: value 0..126, 127 none, 255 unknown */
+uint32_t kk_midi_macro_revision(void);
 unsigned kk_midi_clip_note(unsigned note);       /* 0.89: Live's selected clip plays this note now */
 unsigned kk_midi_fx(unsigned i);                  /* 0.82: effect 0..3 position 0..126, 127 none, 255 unknown */
 uint32_t kk_midi_fx_revision(void);            /* 0.81: Live's selected track, 1 based, 0 = none */

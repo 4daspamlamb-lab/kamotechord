@@ -63,7 +63,7 @@ check(energy > 0.001, 'drum engine sounds (energy ' + energy.toFixed(4) + ')');
 tap(B.FX);
 
 // Key Scale Mode + chord pads + ARP with the real engine timing.
-ev(ENC, 2, 10); ev(ENC, 1, 9); ms(100);   // 0.80: K3 scale = Minor Pentatonic, K2 key = A
+tap(B.PATCH); ev(ENC, 0, 10); ev(ENC, 1, 9); ms(100); tap(B.PATCH);   // 0.93: Patch page E1 scale = Minor Pentatonic, E2 key = A
 tap(B.SEQ); ev(PAD, 1, 100); ev(PAD, 8, 100);
 midi = []; ev(KEY, 12, 100); ms(20);
 check(out(1, 0x90).map(m => m.d[1]).join(',') === '45,48,52,55', 'Am7 from second C in A minor pentatonic (octave -2)');
@@ -83,7 +83,7 @@ tap(B.CHORD); ms(4000);                            // let earlier synth tails di
 energy = 0; ms(150); const baseline = energy;      // silence over the same window
 midi = []; energy = 0;
 ev(PAD, 4, 100); ms(100); ev(PAD, 4, 0); ms(50);
-check(out(1, 0x9f, 88).length === 1 && out(1, 0x8f, 88).length === 1, 'clip pad 5 -> ch16 select note 88 on/off (0.65 default: select)');
+check(out(1, 0x9f, 40).length === 1 && out(1, 0x8f, 40).length === 1, 'clip pad 5 -> ch16 note 40 on/off (0.93: the pad mode decides)');
 check(energy <= baseline * 1.5 + 1e-6, `clip launches make no internal sound (${energy.toExponential(2)} vs ${baseline.toExponential(2)})`);
 check(hostIn([0xbf, 126, 1]) === 0 && hostIn([0xbf, 84, 2]) === 0, 'host feedback accepted');
 ms(300);
@@ -91,7 +91,7 @@ const lcdClip = new Uint16Array(c.memory.buffer, c.sim_pixels(), 240 * 240).slic
 fs.writeFileSync(outDir + '/integration_clip.rgb565', Buffer.from(lcdClip.buffer));
 tap(B.CHORD);
 // Settings persist across a simulated power cycle (deferred flash write).
-for (let i = 0; i < 6; ++i) ev(ENC, 0, 1);       // BPM 120 -> 126 (E1)
+ev(KEY, 36, 100); for (let i = 0; i < 6; ++i) ev(ENC, 0, 1); ms(50); ev(KEY, 36, 0);   // BPM 120 -> 126 (0.93: SHIFT + E1)
 tap(B.ARP); tap(B.OCTU);
 ms(5000);                                          // > 1.5 s idle: deferred save
 c.sim_boot(0); c.sim_midi_ports(6, 0); c.sim_midi_capture(1); ms(400);  // boot resets capture

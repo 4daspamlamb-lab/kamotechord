@@ -40,11 +40,13 @@ static void audition_tick(uint32_t now)
     ++audition_done;
 }
 /* Clip Mode PLAY key (0.75): held, or tapped for the next pad. */
+#ifndef KK_CLIP_PAD_MODES
 static uint8_t play_used, play_cancelled;
 static unsigned play_key_held(void)
 {
     return (unsigned)KK_CLIP_TOGGLE_KEY < (unsigned)KK_KEYS ? (unsigned)((kk.keys >> (KK_CLIP_TOGGLE_KEY % 64U)) & 1U) : 0;
 }
+#endif
 /* ------------------------------------------------------- physical events */
 static uint8_t pedal_down, wheel_sent[2] = {64, 0}, sustain_sent;
 /* Sustain (CC 64, channel 1) is on while the SUSTAIN button latch OR a
@@ -129,6 +131,7 @@ static unsigned new_phrase(unsigned id)
 static void source_press(unsigned id, unsigned velocity)
 {
     if (id >= PAD_SOURCE) velocity = kk_pad_curve(velocity);
+    if (kk.buttons & (1U << KK_BTN_NOTE_REPEAT)) repeat_used = 1;   /* 0.93: NOTE REPEAT held + a pad / key */
 #ifndef KK_DEVICE_FM1
     if (id < KK_KEYS && (kk.buttons & (1U << KK_BTN_PATCH)) && kk_top_key_cc(id) > 0) patch_combo = 1;   /* 0.90: PATCH + top key: no Patch page */
     if (kk.buttons & (1U << KK_BTN_CHORD)) chord_used = 1;   /* 0.80: CHORD held + a pad/key: momentary */
@@ -155,6 +158,14 @@ static void source_press(unsigned id, unsigned velocity)
     if (s->modifier == 0x4000U && (s->notes[0] == KK_CC_TRACKS_LEFT || s->notes[0] == KK_CC_TRACKS_RIGHT)) {
         track_hold_id = (uint8_t)id; track_hold_cc = s->notes[0]; track_hold_next = fm1_millis() + 500U;   /* auto-repeat while held */
     }
+#ifdef KK_CLIP_PAD_MODES
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
+        (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY)) {
+        /* 0.93: latched pad modes: F# PLAY, G# STOP, F MUTE (again = back), G NORMAL. */
+        unsigned want = id == KK_CLIP_TOGGLE_KEY ? 1U : id == KK_CLIP_STOP_KEY ? 2U : id == KK_CLIP_MUTE_KEY ? 3U : 0U;
+        kk_set_clip_pads(kk.clip_pads == want ? 0U : want);
+    }
+#else
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_TOGGLE_KEY) {
         /* 0.75 PLAY key: pads select by default; hold PLAY + clip = launch it, or
          * tap PLAY and the next clip pressed is launched. Tapping again cancels. */
@@ -166,6 +177,7 @@ static void source_press(unsigned id, unsigned velocity)
         play_used = 1;
         if (!play_key_held()) { kk.clip_play = 0; ++kk.edit_revision; }   /* tapped: one clip only */
     }
+#endif
     if (id < KK_KEYS && kk.mode == KK_MODE_STEP && kk_step_key_function(id) == KK_STEP_CHORD_TOGGLE) {
         kk.step_single = !kk.step_single; s->count = 0; ++kk.edit_revision;   /* 0.64: chords <-> single notes */
     }
@@ -205,13 +217,16 @@ static void source_release(unsigned id)
 {
     struct source *s = &sources[id];
     if (!s->held) return;
+#ifndef KK_CLIP_PAD_MODES
     if (id < KK_KEYS && id == KK_CLIP_TOGGLE_KEY && kk.mode == KK_MODE_CLIP && play_used && kk.clip_play) {
         kk.clip_play = 0; ++kk.edit_revision;                     /* held PLAY used: back to select */
     }
+#endif
     unsigned was_mod = s->route == ROUTE_MOD || s->route == ROUTE_LOCK, was_clip = s->route == ROUTE_CLIPMOD;
     if (kk.sustain_on && s->route == ROUTE_DIRECT && s->sounding && s->channel != KK_CH_CLIP && s->channel != KK_CH_STEP) {
         hold_keep(s); s->sounding = 0;                   /* keep sounding until the next key */
     }
+    if (kk.sustain_on && s->route == ROUTE_STRUM) { strum_end(id, 1); hold_keep(s); }   /* 0.93: a strummed chord is held too */
     disengage(s);
     s->held = 0; s->route = ROUTE_NONE; s->count = 0; s->modifier = 0;
     if (was_mod) mods_refresh();
@@ -227,6 +242,10 @@ void kk_control_event(unsigned kind, unsigned id, int value)
         if (value) { kk.keys |= 1ULL << id; source_press(id, (unsigned)value); }
         else { kk.keys &= ~(1ULL << id); source_release(id); }
         ++kk.edit_revision;
+    } else if (kind == KK_EV_PRESSURE && id < KK_PADS) {
+        /* 0.93: pad pressure while Note Repeat rolls = loudness of the next hits. */
+        struct source *s = &sources[PAD_SOURCE + id];
+        if (s->held && s->route == ROUTE_REPEAT && value > 0) s->velocity = (uint8_t)kk_pad_curve((unsigned)value);
     } else if (kind == KK_EV_PAD && id < KK_PADS) {
 #ifdef KK_HAS_RGB_PADS
         if (value && kk.ripple) kk_led_ripple(1, id, (unsigned)value);

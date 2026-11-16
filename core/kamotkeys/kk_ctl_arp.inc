@@ -33,10 +33,14 @@ static unsigned arp_collect(struct arp_note *pool)
     }
     return n;
 }
+static struct { uint8_t channel, note; } rep_on[POOL];   /* 0.93 CHORD REPEAT: the chord now sounding */
+static unsigned rep_n;
 static void arp_stop_note(void)
 {
     if (arp_note >= 0) kk_midi_note_off(arp_channel, (unsigned)arp_note);
     arp_note = -1;
+    for (unsigned i = 0; i < rep_n; ++i) kk_midi_note_off(rep_on[i].channel, rep_on[i].note);
+    rep_n = 0;
 }
 static void arp_stop(void) { arp_stop_note(); arp_running = 0; sustained_count = 0; }
 /* Expand by octave range, then order by pitch or by press order. */
@@ -95,19 +99,31 @@ static void arp_tick(void)
     } else if (sustained_count) sustained_count = 0;      /* sustain released */
     /* 0.80: no separate LATCH mode any more (it replayed old notes while
      * Sustain was off and went silent while it was on); SUSTAIN holds the ARP. */
-    if (arp_note >= 0 && clock_us >= arp_off_us) arp_stop_note();
+    if ((arp_note >= 0 || rep_n) && clock_us >= arp_off_us) arp_stop_note();
     if (!n) { if (arp_running) { arp_stop_note(); arp_running = 0; } return; }
     if (!arp_running) { arp_running = 1; arp_step = 0; arp_next_us = clock_us; }
     if (clock_us < arp_next_us) return;
-    n = arp_sequence(pool, n);
+    if (kk.arp.mode != KK_ARP_CHORD_REPEAT) n = arp_sequence(pool, n);
     uint64_t step = step_us(kk.arp.division);
     /* Swing lengthens even steps and shortens odd ones; a pair stays 2 steps. */
     uint64_t swing = step * (kk.arp.swing > 50 ? 50 : kk.arp.swing) / 100U;
     uint64_t length = arp_step & 1 ? step - swing : step + swing;
-    const struct arp_note *next = &pool[arp_index(arp_step, n)];
     arp_stop_note();
-    kk_midi_note_on(next->channel, next->note, kk_velocity(next->velocity));
-    arp_note = next->note; arp_channel = next->channel;
+    if (kk.arp.mode == KK_ARP_CHORD_REPEAT) {
+        /* 0.93: the whole chord re-struck on every step (no octave expansion). */
+        for (unsigned i = 0; i < n && rep_n < POOL; ++i) {
+            if (pool[i].note >= 128) continue;
+            unsigned dup = 0;
+            for (unsigned j = 0; j < rep_n; ++j) dup |= rep_on[j].note == pool[i].note && rep_on[j].channel == pool[i].channel;
+            if (dup) continue;
+            kk_midi_note_on(pool[i].channel, pool[i].note, kk_velocity(pool[i].velocity));
+            rep_on[rep_n].channel = pool[i].channel; rep_on[rep_n].note = pool[i].note; ++rep_n;
+        }
+    } else {
+        const struct arp_note *next = &pool[arp_index(arp_step, n)];
+        kk_midi_note_on(next->channel, next->note, kk_velocity(next->velocity));
+        arp_note = next->note; arp_channel = next->channel;
+    }
     unsigned gate = kk.arp.gate < 10 ? 10 : kk.arp.gate > 100 ? 100 : kk.arp.gate;
     uint64_t hold = length * gate / 100U;
     if (gate >= 100 && hold > 2000) hold -= 1000;     /* legato, never overlap */
@@ -117,6 +133,55 @@ static void arp_tick(void)
     arp_next_us += length;
     if (arp_next_us <= clock_us) arp_next_us = clock_us + 1;
     ++arp_step;
+}
+
+/* --------------------------------------------------------------- Strum */
+/* 0.93 ARP types STRUM UP / DOWN / UP-DOWN and HUMANIZE: a chord's notes
+ * start one after another (kk_strum_ms apart, or at random within that for
+ * HUMANIZE) and then sound while the key is held, like a strummed guitar. */
+enum { STRUM_MAX = 48 };
+static struct { uint8_t src, channel, note, velocity, fired; uint64_t at; } strum_q[STRUM_MAX];
+static unsigned strum_n, strum_flip;
+static void strum_start(unsigned src, const struct source *s)
+{
+    unsigned n = s->count, order[KK_MAX_CHORD];
+    for (unsigned k = 0; k < n; ++k) order[k] = k;
+    for (unsigned i = 1; i < n; ++i)                  /* by pitch, low -> high */
+        for (unsigned j = i; j > 0 && s->notes[order[j - 1]] > s->notes[order[j]]; --j) { unsigned t = order[j]; order[j] = order[j - 1]; order[j - 1] = t; }
+    unsigned down = kk.arp.mode == KK_ARP_STRUM_DOWN || (kk.arp.mode == KK_ARP_STRUM_ALT && (strum_flip++ & 1U));
+    uint64_t gap = (uint64_t)kk_strum_ms() * 1000U;
+    for (unsigned k = 0; k < n && strum_n < STRUM_MAX; ++k) {
+        unsigned idx = order[down ? n - 1 - k : k], velocity = s->velocity;
+        uint64_t delay = (uint64_t)k * gap;
+        if (kk.arp.mode == KK_ARP_HUMANIZE) {
+            arp_random ^= arp_random << 13; arp_random ^= arp_random >> 17; arp_random ^= arp_random << 5;
+            delay = k ? (arp_random % (gap + 1U)) : 0;
+            int v = (int)velocity + (int)(arp_random >> 24) % 21 - 10;
+            velocity = (unsigned)(v < 1 ? 1 : v > 127 ? 127 : v);
+        }
+        strum_q[strum_n].src = (uint8_t)src; strum_q[strum_n].channel = s->channel; strum_q[strum_n].note = s->notes[idx];
+        strum_q[strum_n].velocity = (uint8_t)velocity; strum_q[strum_n].fired = 0; strum_q[strum_n].at = clock_us + delay;
+        ++strum_n;
+    }
+}
+static void strum_tick(void)
+{
+    for (unsigned i = 0; i < strum_n; ++i)
+        if (!strum_q[i].fired && clock_us >= strum_q[i].at) {
+            kk_midi_note_on(strum_q[i].channel, strum_q[i].note, kk_velocity(strum_q[i].velocity));
+            strum_q[i].fired = 1;
+        }
+}
+/* keep: Sustain holds the notes (unplayed ones start now); otherwise they stop. */
+static void strum_end(unsigned src, unsigned keep)
+{
+    unsigned m = 0;
+    for (unsigned i = 0; i < strum_n; ++i) {
+        if (strum_q[i].src != src) { strum_q[m++] = strum_q[i]; continue; }
+        if (keep && !strum_q[i].fired) kk_midi_note_on(strum_q[i].channel, strum_q[i].note, kk_velocity(strum_q[i].velocity));
+        else if (!keep && strum_q[i].fired) kk_midi_note_off(strum_q[i].channel, strum_q[i].note);
+    }
+    strum_n = m;
 }
 
 /* ---------------------------------------------------------- Note Repeat */

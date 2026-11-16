@@ -17,7 +17,7 @@ struct kk_state kk;
 /* One source per key (0..36) and pad (37..52). A source remembers exactly
  * the notes it started, so its release always stops those notes even if the
  * octave, scale, root or mode has changed while it was held. */
-enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC, ROUTE_CLIPMOD };
+enum { ROUTE_NONE, ROUTE_DIRECT, ROUTE_ARP, ROUTE_REPEAT, ROUTE_MOD, ROUTE_LOCK, ROUTE_CC, ROUTE_CLIPMOD, ROUTE_STRUM };
 /* Clip Mode action keys (0.50): source modifiers of the OVERDUB / DELETE keys. */
 enum { CLIPMOD_OVERDUB = 0x2000U, CLIPMOD_DELETE = 0x1000U, CLIPMOD_SELECT = 0x0800U };
 enum { SOURCES = KK_KEYS + KK_PADS, PAD_SOURCE = KK_KEYS };
@@ -40,6 +40,11 @@ static const char *const direction_names[KK_DIRS] = {"UP", "DOWN", "UP-DOWN", "R
 static const char *const mode_names[KK_MODES] = {"NORMAL", "KEY SCALE", "PAD SCALE", "DRUM", "CLIP", "STEP"};
 const char *kk_division_name(unsigned d) { return division_names[d % KK_DIVS]; }
 const char *kk_direction_name(unsigned d) { return direction_names[d % KK_DIRS]; }
+static const char *const arp_type_names[KK_ARP_MODES] = {"ARPEGGIO", "STRUM UP", "STRUM DOWN", "STRUM UP/DOWN", "CHORD REPEAT", "HUMANIZE"};
+const char *kk_arp_type_name(unsigned t) { return arp_type_names[t < KK_ARP_MODES ? t : 0]; }
+static const uint8_t strum_ms_table[KK_STRUM_SPEEDS] = {8, 15, 25, 40, 70};
+unsigned kk_strum_ms(void) { return strum_ms_table[kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1]; }
+static unsigned arp_is_strum(void) { return kk.arp.mode == KK_ARP_STRUM_UP || kk.arp.mode == KK_ARP_STRUM_DOWN || kk.arp.mode == KK_ARP_STRUM_ALT || kk.arp.mode == KK_ARP_HUMANIZE; }
 const char *kk_mode_name(unsigned m) { return mode_names[m < KK_MODES ? m : 0]; }
 /* Tempo in tenths of BPM: Ableton's (via the Remote Script) has priority. */
 unsigned kk_tempo_x10(void)
@@ -161,12 +166,17 @@ static void intent(unsigned id, struct source *s)
         s->notes[0] = (uint8_t)(id == KK_CLIP_COPY_KEY ? KK_CLIP_COPY_NOTE : id == KK_CLIP_PASTE_KEY ? KK_CLIP_PASTE_NOTE : KK_CLIP_ARRANGE_NOTE);
         return;
     }
+#ifdef KK_CLIP_PAD_MODES
+    if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
+        (id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY)) return;   /* 0.93: pad-mode keys, no note */
+#else
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_STOP_KEY) {
         s->channel = KK_CH_CLIP; s->notes[0] = KK_CLIP_STOP_NOTE; s->count = 1;   /* 0.77: STOP (hold + clips, or tap) */
         return;
     }
+#endif
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_MOVE_KEY)) return;   /* no note */
-    unsigned shifted = KK_TOP_SHIFT_KEY < KK_KEYS && id != KK_TOP_SHIFT_KEY && sources[KK_TOP_SHIFT_KEY].held && kk_top_shift_cc(id) >= 0;
+    unsigned shifted = (unsigned)KK_TOP_SHIFT_KEY < (unsigned)KK_KEYS && id != (unsigned)KK_TOP_SHIFT_KEY && sources[(unsigned)KK_TOP_SHIFT_KEY % SOURCES].held && kk_top_shift_cc(id) >= 0;
     if (id < KK_KEYS && (kk_top_key_cc(id) >= 0 || shifted)) {
         /* 0.86 top-octave Live keys; 0.91: the same strip in every mode. */
         int cc = kk_top_key_cc(id);
@@ -232,7 +242,7 @@ static void intent(unsigned id, struct source *s)
         note += kk.clip_action == 2 ? KK_CLIP_DELETE_BASE - KK_CLIP_NOTE_BASE
               : kk.clip_action == 3 ? KK_CLIP_SELECT_BASE - KK_CLIP_NOTE_BASE
               : kk.clip_action == 1 ? KK_CLIP_OVERDUB_BASE - KK_CLIP_NOTE_BASE
-#ifdef KK_CLIP_PRESS_SELECT
+#if defined(KK_CLIP_PRESS_SELECT) && !defined(KK_CLIP_PAD_MODES)
               : !kk.clip_play ? KK_CLIP_SELECT_BASE - KK_CLIP_NOTE_BASE   /* 0.65: plain press selects by default */
 #endif
               : 0;
@@ -248,8 +258,8 @@ static unsigned route_for(unsigned id, const struct source *s)
     if (s->channel == KK_CH_CLIP || s->channel == KK_CH_STEP) return ROUTE_DIRECT;   /* no ARP/Repeat */
     if (kk.mode == KK_MODE_STEP && id < KK_KEYS && kk_step_drum_key(id) >= 0) return ROUTE_DIRECT;   /* drum keys */
     unsigned arp_domain = id < KK_KEYS ? !in_pad_mode() || kk_pad_scale_on_keys() : in_pad_mode() && !kk_pad_scale_on_keys();
-    if (kk.arp_on && arp_domain) return ROUTE_ARP;
-    if (kk.repeat_on) return ROUTE_REPEAT;
+    if (kk.repeat_on) return ROUTE_REPEAT;           /* 0.93: Note Repeat (NOTE REPEAT held) wins over the ARP */
+    if (kk.arp_on && arp_domain) return arp_is_strum() ? ROUTE_STRUM : ROUTE_ARP;   /* 0.93: strums play once */
     return ROUTE_DIRECT;
 }
 
@@ -269,6 +279,8 @@ static void engage(unsigned id)
         s->sounding = 1;
     } else if (s->route == ROUTE_REPEAT) {
         repeat_hit(s, step_us(kk.repeat_division));
+    } else if (s->route == ROUTE_STRUM) {
+        strum_start(id, s);
     } else if (s->route == ROUTE_ARP && sustain_active()) {
         /* Sustain hold: the notes join the held pattern at once, so even a
          * tap shorter than one control tick is kept. */
@@ -281,6 +293,7 @@ static void engage(unsigned id)
 static void disengage(struct source *s)
 {
     if (s->route == ROUTE_CC && s->sounding) kk_midi_cc(KK_CH_ABLETON, s->notes[0], 0);
+    if (s->route == ROUTE_STRUM) strum_end((unsigned)(s - sources), 0);
     if ((s->route == ROUTE_DIRECT || s->route == ROUTE_REPEAT) && s->sounding)
         for (unsigned k = 0; k < s->count; ++k) kk_midi_note_off(s->channel, s->notes[k]);
     s->sounding = 0;
@@ -352,6 +365,11 @@ void kk_set_brightness(unsigned level)
     ++kk.edit_revision;
 }
 void kk_settings_touch(void) { ++kk.edit_revision; groove_settings_panel_changed(); }
+void kk_set_clip_pads(unsigned m)
+{
+    kk.clip_pads = (uint8_t)(m & 3U); ++kk.edit_revision;
+    kk_midi_cc(KK_CH_ABLETON, KK_CC_CLIP_PADS, kk.clip_pads);   /* the script does the action */
+}
 void kk_set_mode(unsigned mode)
 {
     if (mode == kk.mode) mode = mode == KK_MODE_STEP ? kk.step_from : KK_MODE_NORMAL;   /* same button again: back */
@@ -373,8 +391,8 @@ void kk_set_mode(unsigned mode)
     arp_stop();
     reroute_all();
     kk.chord_root = -1;
-    if (mode == KK_MODE_CLIP) kk_midi_clip_sync_request();   /* fresh clip LEDs */
-    if (mode == KK_MODE_STEP) kk_midi_step_mode(1);          /* the script binds the sequencer */
+    if (mode == KK_MODE_CLIP) { kk_midi_clip_sync_request(); kk_set_clip_pads(0); }   /* fresh clip LEDs; 0.93 pads: normal */
+    if (mode == KK_MODE_STEP) { kk_midi_step_mode(1); kk_midi_cc(KK_CH_STEP, KK_STEP_AUTO_STATE_CC, kk.step_auto ? 127 : 0); }   /* the script binds the sequencer; 0.93 AUTO state */
     else if (step_was) kk_midi_step_mode(kk.buttons & (1U << KK_BTN_PATCH) ? 2 : 0);   /* 0.64: leaving plays the clip */
     ++kk.edit_revision;
 }
@@ -407,8 +425,11 @@ void kk_edit_arp(unsigned parameter, int delta)
 {
     struct kk_arp_settings a = kk.arp;
     switch (parameter) {
-    case 0: return;   /* 0.80: LATCH retired, SUSTAIN holds the ARP */
-    case 1: a.direction = (uint8_t)clampi(a.direction + delta, 0, KK_DIRS - 1); break;
+    case 0: a.mode = (uint8_t)clampi(a.mode + delta, 0, KK_ARP_MODES - 1); break;   /* 0.93: ARP type (Sustain holds) */
+    case 1:   /* 0.93: strum types: strum speed; otherwise the arpeggio direction */
+        if (arp_is_strum()) a.strum = (uint8_t)clampi(a.strum + delta, 0, KK_STRUM_SPEEDS - 1);
+        else a.direction = (uint8_t)clampi(a.direction + delta, 0, KK_DIRS - 1);
+        break;
     case 2: a.division = (uint8_t)clampi(a.division + delta, 0, KK_DIVS - 1); break;
     case 3: a.gate = (uint8_t)clampi(a.gate + 5 * delta, 10, 100); break;
     case 4: a.swing = (uint8_t)clampi(a.swing + delta, 0, 50); break;
@@ -416,7 +437,7 @@ void kk_edit_arp(unsigned parameter, int delta)
     default: return;
     }
     if (memcmp(&a, &kk.arp, sizeof a)) {
-        kk.arp = a; kk_settings_touch();
+        { unsigned type_changed = a.mode != kk.arp.mode; kk.arp = a; kk_settings_touch(); if (type_changed) { arp_stop(); reroute_all(); } }
     }
 }
 void kk_edit_repeat(int delta)
@@ -478,6 +499,7 @@ static unsigned animation_speed(void)
 #include "kamotkeys/kk_ctl_keys.inc"
 /* --------------------------------------------------------------- query */
 unsigned kk_rec_bars(void) { return kk.rec_length ? 1U << (kk.rec_length - 1U) : 0; }
+unsigned kk_top_shift_held(void) { return (unsigned)KK_TOP_SHIFT_KEY < (unsigned)KK_KEYS && sources[(unsigned)KK_TOP_SHIFT_KEY % SOURCES].held; }
 unsigned kk_step_pads_held(void)
 {
     for (unsigned p = 0; p < KK_PADS; ++p)
@@ -523,13 +545,13 @@ void kk_perform_init(void)
 #endif
     /* Octaves are never restored from flash: keys start at -2, pads at 0. */
     kk.octave = KK_KEY_OCTAVE_DEFAULT; kk.pad_octave = KK_PAD_OCTAVE_DEFAULT;
-    kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, KK_DIR_UP, KK_DIV_8, 75, 0, 1};
+    kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, KK_DIR_UP, KK_DIV_8, 75, 0, 1, 1};
     kk.repeat_division = KK_DIV_16;
     kk.anim_pattern = KK_ANIMATIONS - 1;  /* first SEQ REC press shows pattern 1 */
     kk.chord_root = -1; kk.last_note = -1;
     kk.scale = (struct kk_scale_ctx){0, 0};
     arp_running = repeat_running = 0; arp_note = -1;
-    hold_count = 0; sustained_count = 0;
+    hold_count = 0; sustained_count = 0; strum_n = 0;
     pedal_down = 0; sustain_sent = 0; wheel_sent[0] = 64; wheel_sent[1] = 0;
     last_ms = fm1_millis(); clock_us = 0;
     synced_program = 255; synced_bpm = 0; program_revision = synced_revision = 0;
@@ -565,6 +587,7 @@ void kk_perform_tick(uint32_t now)
     if (kk.mode == KK_MODE_STEP && script && now - step_beat >= 2000U) { step_beat = now; kk_midi_step_mode(1); }
     audition_tick(now);
     arp_tick();
+    strum_tick();
     repeat_tick();
     if (kk.anim_active) {
         kk.anim_speed = (uint16_t)animation_speed();

@@ -226,6 +226,31 @@ class T(unittest.TestCase):
         self.s.update_display()
         self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
 
+    def test_clip_pad_modes(self):
+        t = self.song._tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
+        self.press(1); self.assertIn('fire', t.log)                       # normal: a stopped clip plays
+        self.assertIs(self.song.view.highlighted_clip_slot, slot)         # ... and is selected
+        slot.clip.is_playing = True; t.log[:] = []; self.press(1); self.assertIn('stop', t.log)   # a playing one stops
+        deliver((0xBE, 63, 1)); t.log[:] = []; self.press(1); self.assertIn('fire', t.log); self.assertNotIn('stop', t.log)   # PLAY: always launch
+        deliver((0xBE, 63, 2)); t.log[:] = []; self.press(1); self.assertIn('stop', t.log)    # STOP
+        deliver((0xBE, 63, 3)); self.press(1); self.assertTrue(t.mute); self.press(1); self.assertFalse(t.mute)   # MUTE toggles the track
+        deliver((0xBE, 63, 0)); e = self.song._tracks[2]; self.press(2)   # normal on an empty slot: select + arm
+        self.assertTrue(e.arm)
+
+    def test_macro_page(self):
+        from KamoteKeys.KamoteKeys import MACRO_CC, MACRO_VALUE_CC, NAME_CC
+        t = self.song._tracks[1]; self.song.view.selected_track = self.song.visible_tracks[1]
+        rack = Device('InstrumentGroupDevice', [Param('Macro %d' % i, 0.5, 0.0, 1.0) for i in range(1, 9)], chains=[])
+        t.devices = [Device('Reverb', [Param('Dry/Wet', 0.5)]), rack]
+        self.s.sent.clear(); deliver((0xBE, 55 + 2, 64 + 10))                     # E3 +10
+        self.assertAlmostEqual(rack.parameters[3].value, 0.6)
+        self.assertIn((0xBF, NAME_CC, 9), self.s.sent); self.assertIn((0xBF, MACRO_CC, 2), self.s.sent)
+        self.assertEqual([m[2] for m in self.s.sent if m[1] == MACRO_VALUE_CC], [76])
+        t.devices = [Device('Operator', [Param('Osc-A Level', 0.0, 0.0, 1.0)])]   # no rack: first device's controls
+        self.s.sent.clear(); deliver((0xBE, 55, 64 + 5)); self.assertAlmostEqual(t.devices[0].parameters[1].value, 0.05)
+        t.devices = []; self.s.sent.clear(); deliver((0xBE, 55, 65))
+        self.assertEqual([m[2] for m in self.s.sent if m[1] == MACRO_VALUE_CC], [127])   # no device
+
     def test_fixed_length_duplicate_double(self):
         press = lambda cc: (deliver((0xBE, cc, 127)), deliver((0xBE, cc, 0)))
         t = self.song._tracks[1]; v = self.song.view
@@ -300,12 +325,14 @@ class T(unittest.TestCase):
 
     def test_status_bar_messages(self):
         self.assertIn('KamoteKeys Remote Script loaded', self.s.shown)
+        deliver((0xBE, 63, 1))                                           # 0.93: PLAY pad mode = the launch behaviour
         t = self.song._tracks[2]; t.clip_slots[0].clip = Clip(t.clip_slots[0])
         self.press(2); self.assertTrue(self.s.shown[-1].endswith('launch'), self.s.shown[-1])
         self.press(0); self.assertIn('not armed', self.s.shown[-1])
         self.press(7); self.assertIn('does not exist', self.s.shown[-1])
 
     def test_record_empty_armed_only(self):
+        deliver((0xBE, 63, 1))                                           # 0.93: PLAY pad mode
         t = self.song._tracks[0]
         self.press(0); self.assertEqual(t.log, [])                     # unarmed empty: nothing
         t.arm = True; self.s.update_display(); self.assertEqual(self.state(0), 6)
@@ -607,6 +634,30 @@ class StepTest(unittest.TestCase):
         c = self.codes(); self.assertEqual(len(c), 16)
         self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
         self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
+
+    def test_step_automation_auto(self):
+        class Env(object):
+            def __init__(self, v): self.steps = []; self.base = v
+            def value_at_time(self, t):
+                for a, d, v in reversed(self.steps):
+                    if a <= t < a + d: return v
+                return self.base
+            def insert_step(self, t, d, v): self.steps.append((t, d, v))
+        envs = {}
+        rack = self.song.track.devices[0]
+        rack.can_have_chains = True; rack.parameters = [Param('Device On', 1.0)] + [Param('Macro %d' % i, 0.5) for i in range(1, 9)]
+        self.mode(True); self.tap(4)                                       # a note on step 5
+        self.clip.automation_envelope = lambda p: envs.get(p.name)
+        def create(p): envs[p.name] = Env(p.value); return envs[p.name]
+        self.clip.create_automation_envelope = create
+        deliver((0xBD, 38, 127))                                           # AUTO on
+        self.pad(4); deliver((0xBD, 30 + 1, 64 + 5)); self.pad(4, False)  # step 5 + E2 +5
+        env = envs['Macro 2']; self.assertEqual(len(env.steps), 1)
+        t, d, v = env.steps[0]; self.assertAlmostEqual(t, 1.0); self.assertAlmostEqual(d, 0.25); self.assertAlmostEqual(v, 0.6)
+        self.assertEqual(sorted(n.start_time for n in self.clip.notes), [1.0])   # the step stayed on
+        self.fn(68); self.pad(4); self.pad(4, False); self.fn(68, False)   # AUTO + DELETE + step: automation cleared
+        self.assertAlmostEqual(env.steps[-1][2], 0.5)
+        self.assertEqual(sorted(n.start_time for n in self.clip.notes), [1.0])   # notes untouched
 
     def test_hold_step_knobs_edit_it(self):
         self.mode(True); deliver((0x9D, 36, 90)); deliver((0x8D, 36, 0))           # pad velocity -> new step velocity

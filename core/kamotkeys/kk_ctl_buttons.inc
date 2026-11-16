@@ -10,6 +10,7 @@ static uint8_t left_combo, patch_combo, para_cc = KK_CC_PLAY_PAUSE, chord_long;
 #ifndef KK_DEVICE_FM1
 static uint8_t chord_used, chord_back, chord_step_from;   /* 0.80: momentary Clip Mode */
 #endif
+static uint8_t repeat_used;                        /* 0.93: NOTE REPEAT held and used (no Sustain toggle) */
 static uint8_t track_hold_id = 255, track_hold_cc;   /* 0.86 / 0.91: a track key held: repeat */
 static uint32_t track_hold_next;
 static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
@@ -71,7 +72,12 @@ static void button(unsigned id, unsigned down, uint32_t now)
     /* 0.92 SMK-37: SEQ PLAY does nothing (finish & next = top G#); GLOBE is the
      * light-show (RGB) button: held = light show, each new press = next
      * pattern, three quick presses = ripple lights on / off. Stop = PARA. */
-    case KK_BTN_PLAY: return;
+    case KK_BTN_PLAY:   /* 0.93: AUTO = step automation on / off (Step Mode: held step + knobs) */
+        if (down) {
+            kk.step_auto = !kk.step_auto; ++kk.edit_revision;
+            kk_midi_cc(KK_CH_STEP, KK_STEP_AUTO_STATE_CC, kk.step_auto ? 127 : 0);   /* the script needs it for DELETE */
+        }
+        return;
     case KK_BTN_GLOBE:
         if (down) {
             show_combo = 1; show_since = now; show_ripple_done = 0;
@@ -175,12 +181,17 @@ static void button(unsigned id, unsigned down, uint32_t now)
         else if (kk.page != KK_PAGE_ARP && held_ms < 600) kk_set_arp(!kk.arp_on);
         else if (kk.page == KK_PAGE_ARP && (held_ms < 600 || kk.arp_page_used)) open_page(KK_PAGE_MAIN);
         return;
-    case KK_BTN_NOTE_REPEAT:   /* SUSTAIN (hold until the next key) on/off */
-        if (down) {
+    case KK_BTN_NOTE_REPEAT:
+        /* 0.93: tap = SUSTAIN on / off (as before, now on release); hold =
+         * real Note Repeat: pads / keys pressed meanwhile repeat at the rate
+         * (E1 while holding), pad pressure sets the loudness. */
+        if (down) { kk.repeat_on = 1; repeat_used = 0; reroute_all(); ++kk.edit_revision; return; }
+        kk.repeat_on = 0; reroute_all();
+        if (!repeat_used && held_ms < 400U) {
             kk.sustain_on = !kk.sustain_on;
             if (!kk.sustain_on) { hold_release(); sustained_count = 0; }
-            ++kk.edit_revision;
         }
+        ++kk.edit_revision;
         return;
     case KK_BTN_BT:
         if (down) open_page(kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG ? KK_PAGE_MAIN : KK_PAGE_BT);

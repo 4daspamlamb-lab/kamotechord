@@ -17,6 +17,35 @@ static void row(unsigned i, const char *label, const char *value, unsigned selec
     text_right(228, y, value, 2, selected ? CYAN : TEXT);
 }
 static uint32_t patch_name_program = 999; static char patch_name[11];
+#ifndef KK_DEVICE_FM1
+/* 0.93 SMK-37 Patch page: E1 scale, E2 key, E3 brightness, E4 patch,
+ * E5 synth, E6 MIDI out, E7 pad sensitivity, E8 master. Long values use the
+ * small font. */
+static void row_fit(unsigned i, const char *label, const char *value)
+{
+    int y = 56 + (int)i * 24;
+    text(12, y + 3, label, 1, DIM);
+    if (text_width(value, 2) <= 228 - 110) text_right(228, y, value, 2, TEXT);
+    else text_right(228, y + 3, value, 1, TEXT);
+}
+static void draw_patch(void)
+{
+    body_title("PATCH", TEAL);
+    char buf[24], *p;
+    row_fit(0, "E1 SCALE", kk_scale_name(kk.scale.scale));
+    row_fit(1, "E2 KEY", kk_note_name(kk.scale.root));
+    p = decimal(buf, kk.brightness_level * 100 / 15); append(p, "%");
+    row_fit(2, "E3 BRIGHTNESS", buf);
+    p = decimal(buf, kk.program + 1); p = append(p, " "); append(p, patch_name);
+    row_fit(3, "E4 PATCH", buf);
+    row_fit(4, "E5 INTERNAL SYNTH", kk_midi_local() ? "ON" : "OFF");
+    static const char *const ports[KK_PORTS_MODES] = {"AUTO", "ALL", "USB", "BLE"};
+    row_fit(5, "E6 MIDI OUT", ports[kk_midi_ports_mode()]);
+    static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7", "8", "9", "10 MAX"};
+    row_fit(6, "E7 PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1]);
+    text(12, 222, KK_TXT_PATCH_BACK, 1, FAINT);
+}
+#else
 static void draw_patch(void)
 {
     body_title("PATCH", TEAL);
@@ -44,12 +73,15 @@ static void draw_patch(void)
 #endif
     text(12, 222, KK_TXT_PATCH_BACK, 1, FAINT);
 }
+#endif
 static void draw_arp(void)
 {
     body_title("ARPEGGIATOR", CYAN);
     char buf[8], *p;
-    row(0, "HOLD", "USE SUSTAIN", 0);
-    row(1, KK_K2 " DIRECTION", kk_direction_name(kk.arp.direction), 0);
+    row(0, KK_K1 " TYPE", kk_arp_type_name(kk.arp.mode), 0);   /* 0.93; Sustain holds the ARP */
+    unsigned strum = kk.arp.mode == KK_ARP_STRUM_UP || kk.arp.mode == KK_ARP_STRUM_DOWN || kk.arp.mode == KK_ARP_STRUM_ALT || kk.arp.mode == KK_ARP_HUMANIZE;
+    if (strum) { p = decimal(buf, (int)kk_strum_ms()); append(p, " MS"); row(1, KK_K2 " STRUM SPEED", buf, 0); }
+    else row(1, KK_K2 " DIRECTION", kk_direction_name(kk.arp.direction), 0);
     row(2, KK_K3 " DIVISION", kk_division_name(kk.arp.division), 0);
     p = decimal(buf, kk.arp.gate); append(p, "%"); row(3, KK_K4 " GATE", buf, 0);
     p = decimal(buf, kk.arp.swing); append(p, "%"); row(4, KK_K5 " SWING", buf, 0);
