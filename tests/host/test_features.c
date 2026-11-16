@@ -6,7 +6,7 @@ void test_ripple(void)
 {
     boot(); settle();
     unsigned pattern = kk.anim_pattern;
-    show_on(); frames(310, 10); show_off();
+    show_on(); frames(250, 10); show_off();
     CHECK(!kk.ripple, "a long light show does not toggle ripples");
     pattern = kk.anim_pattern; frames(150, 10);
     /* 0.77: three quick light-show starts (within 1.2 s) = ripple lights on / off. */
@@ -333,19 +333,23 @@ void test_show_latch(void)
     boot(); settle();
     host_clear(); btn(KK_BTN_GLOBE, 1); host_ms += 3100; frames(2, 1); btn(KK_BTN_GLOBE, 0); frames(2, 1);
     CHECK(kk.anim_active && kk.show_latched && host_out_n == 0, "GLOBE held 3 s: the light show stays on");
-    /* KNOB + FADER held 1 s: next pattern every 10 s; nothing to Live. */
-    unsigned pat = kk.anim_pattern;
-    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 1000; btn(KK_BTN_KNOB_BANK, 0); btn(KK_BTN_FADER_BANK, 0);
-    CHECK(kk.show_latched && kk.show_cycle_s == 10 && out_count(USB, CC15, -1) == 0, "held 1 s: cycles every 10 s (%u), no Record / Capture", kk.show_cycle_s);
-    host_ms += 9000; frames(2, 1); CHECK(kk.anim_pattern == pat, "not yet after 9 s");
-    host_ms += 1500; frames(2, 1); CHECK(kk.anim_pattern == (pat + 1) % KK_ANIMATIONS, "next pattern after 10 s");
-    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 500; btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_KNOB_BANK, 0);
-    CHECK(kk.show_cycle_s == 5, "held 0.5 s: every 5 s (%u)", kk.show_cycle_s);
-    /* A tap of both: back to normal. */
-    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 100; btn(KK_BTN_KNOB_BANK, 0); btn(KK_BTN_FADER_BANK, 0); frames(1, 1);
-    CHECK(!kk.anim_active && !kk.show_latched && out_count(USB, CC15, -1) == 0, "tap KNOB + FADER: light show off (%d %d %d)", kk.anim_active, kk.show_latched, out_count(USB, CC15, -1));
+    /* Pads 1 + 9 held: next pattern every 5 s; pads 8 + 16: every 40 s. Nothing sounds. */
+    unsigned pat = kk.anim_pattern; host_clear();
+    pad(1, 100); pad(9, 100); pad(1, 0); pad(9, 0); groove_midi_poll();
+    CHECK(kk.show_latched && kk.show_cycle_s == 5 && host_out_n == 0, "pads 1 + 9: cycles every 5 s (%u), silent", kk.show_cycle_s);
+    host_ms += 4000; frames(2, 1); CHECK(kk.anim_pattern == pat, "not yet after 4 s");
+    host_ms += 1500; frames(2, 1); CHECK(kk.anim_pattern == (pat + 1) % KK_ANIMATIONS, "next pattern after 5 s");
+    pad(16, 100); pad(8, 100); pad(16, 0); pad(8, 0);
+    CHECK(kk.show_cycle_s == 40, "pads 8 + 16: every 40 s (%u)", kk.show_cycle_s);
+    pad(3, 100); pad(4, 100); pad(3, 0); pad(4, 0);
+    CHECK(kk.show_cycle_s == 40, "two pads in different columns: unchanged");
+    /* GLOBE held 3 s again: back to normal. */
+    btn(KK_BTN_GLOBE, 1); host_ms += 3100; frames(2, 1);
+    CHECK(!kk.anim_active && !kk.show_latched, "GLOBE held 3 s again: light show off");
+    btn(KK_BTN_GLOBE, 0); frames(2, 1);
+    CHECK(!kk.anim_active && !kk.show_latched, "and stays off after release");
     host_clear(); tap(KK_BTN_KNOB_BANK); groove_midi_poll();
-    CHECK(out_count(USB, CC15, KK_CC_RECORD) == 2, "KNOB BANK alone records again");
+    CHECK(out_count(USB, CC15, KK_CC_RECORD) == 2, "KNOB BANK records");
     /* Ripples follow the ARP: 2 s after the key press its own ring is long gone, the arpeggio keeps them coming. */
     host_ms += 2000; show_on(); show_off(); show_on(); show_off(); show_on(); show_off();
     CHECK(kk.ripple, "ripples on");

@@ -146,7 +146,13 @@ static void source_press(unsigned id, unsigned velocity)
         kk_settings_touch(); ++kk.edit_revision;
         s->modifier = 0; s->count = 0;                   /* nothing is sent */
     }
-    if (id >= PAD_SOURCE && kk.anim_active) { s->count = 0; s->modifier = 0; s->route = ROUTE_NONE; return; }
+    if (id >= PAD_SOURCE && kk.anim_active) {
+        s->count = 0; s->modifier = 0; s->route = ROUTE_NONE;
+#ifdef KK_HAS_RGB_PADS
+        show_pad_column(id - PAD_SOURCE, fm1_millis());
+#endif
+        return;
+    }
     if (kk.sustain_on && musical(route_for(id, s)) && new_phrase(id)) {
         hold_release();                                  /* the next key ends the held notes */
         sustained_count = 0;                             /* and a held arpeggio */
