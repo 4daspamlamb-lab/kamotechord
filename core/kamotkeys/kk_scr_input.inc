@@ -92,13 +92,13 @@ static void smk_knobs(void)
             for (unsigned i = 0; i < 8; ++i) if ((d = take(i))) {
                 kk_midi_cc(KK_CH_STEP, KK_STEP_AUTO_CC + i, (unsigned)clampi(64 + d, 0, 127));
                 char label[16]; p = append(label, "STEP AUTO M"); decimal(p, (int)i + 1);
-                popup_value(label, d > 0 ? "+" : "-");
+                popup_value(label, d > 0 ? "UP" : "DOWN");
             }
         } else {
             static const char *const what[3] = {"STEP VELOCITY", "STEP LENGTH", "STEP REPEATS"};
             for (unsigned i = 0; i < 3; ++i) if ((d = take(i))) {
                 kk_midi_cc(KK_CH_STEP, KK_STEP_EDIT_CC + i, (unsigned)clampi(64 + d, 0, 127));
-                popup_value(what[i], d > 0 ? "+" : "-");
+                popup_value(what[i], d > 0 ? "UP" : "DOWN");
             }
         }
     }
@@ -115,6 +115,7 @@ static void smk_knobs(void)
         for (unsigned i = 0; i < 4; ++i) if ((d = take(1 + i))) {
             if (!kk_midi_host_protocol()) { popup_value(fx_names[i], "NEEDS LIVE"); continue; }
             kk_midi_cc(KK_CH_ABLETON, KK_CC_FX_FILTER + i, (unsigned)clampi(64 + d, 0, 127));
+            popup_value(fx_names[i], d > 0 ? "UP" : "DOWN");   /* 0.99: at once; Live's value replaces it */
             fx_wait = (uint8_t)(i + 1); fx_wait_rev = kk_midi_fx_revision(); fx_wait_until = now_ms + 1000U;
         }
         (void)take(5); (void)take(6);
@@ -122,6 +123,7 @@ static void smk_knobs(void)
         for (unsigned i = 0; i < 8; ++i) if ((d = take(i))) {
             if (!kk_midi_host_protocol()) { popup_value("MACROS", "NEED LIVE"); continue; }
             kk_midi_cc(KK_CH_ABLETON, KK_CC_MACRO + i, (unsigned)clampi(64 + d, 0, 127));
+            { char label[16]; p = append(label, "MACRO "); decimal(p, (int)i + 1); popup_value(label, d > 0 ? "UP" : "DOWN"); }   /* 0.99: at once */
             macro_wait = (uint8_t)(i + 1); macro_wait_rev = kk_midi_macro_revision(); macro_wait_until = now_ms + 1000U;
         }
     }
@@ -184,14 +186,14 @@ static void page_input(void)
     case KK_PAGE_BT: ble_input(); break;
     case KK_PAGE_PATCH:
 #ifndef KK_DEVICE_FM1
-        /* 0.93: E1 scale, E2 key, E3 brightness, E4 patch, E5 synth, E6 MIDI out, E7 pad sensitivity. */
-        if ((d = take(0))) kk_edit_scale(d);
-        if ((d = take(1))) kk_edit_root(d);
+        /* 0.99: E1 key, E2 scale, E3 brightness, E4 synth, E5 MIDI out, E6 pad sensitivity (no patch knob). */
+        if ((d = take(0))) kk_edit_root(d);
+        if ((d = take(1))) kk_edit_scale(d);
         if ((d = take(2))) { kk_set_brightness((unsigned)clampi((int)kk.brightness_level + d, 0, 15)); kk_settings_touch(); }
-        if ((d = take(3))) kk_edit_program(d);
-        if ((d = take(4))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
-        if ((d = take(5))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
-        if ((d = take(6))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
+        if ((d = take(3))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
+        if ((d = take(4))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
+        if ((d = take(5))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
+        (void)take(6);
 #else
         if ((d = take(0))) kk_edit_program(d);
         if ((d = take(1))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
@@ -233,7 +235,11 @@ static void page_input(void)
         for (unsigned i = 2; i < 7; ++i) (void)take(i);
     }
     /* E8 is always MASTER volume, as on SMK37 OPEN. */
-    if ((d = take(7))) master = (uint8_t)clampi((int)master + d, 0, 127);
+    if ((d = take(7))) {
+        master = (uint8_t)clampi((int)master + d, 0, 127);
+        char mv[8], *mp = decimal(mv, (int)(master * 100U / 127U)); append(mp, "%");
+        popup_value("MASTER VOLUME", mv);                      /* 0.99: every knob says what it does */
+    }
     (void)groove_master_update((master * 1023U + 63U) / 127U);
 #endif
 }
@@ -241,9 +247,9 @@ static void page_input(void)
  * source of truth for highlights and names). */
 static void follow_notes(void)
 {
-    static uint32_t revision = ~0U; static uint8_t mode = 255, last_pad = 255; static int16_t last_note = -2;
-    if (revision == kk_midi_revision() && mode == kk.mode && last_pad == kk.last_pad && last_note == kk.last_note) return;
-    revision = kk_midi_revision(); mode = kk.mode; last_pad = kk.last_pad; last_note = kk.last_note;
+    static uint32_t revision = ~0U; static uint8_t mode = 255, last_pad = 255, key_shown = 255; static int16_t last_note = -2;
+    if (revision == kk_midi_revision() && mode == kk.mode && last_pad == kk.last_pad && last_note == kk.last_note && key_shown == kk.key_shown) return;
+    revision = kk_midi_revision(); mode = kk.mode; last_pad = kk.last_pad; last_note = kk.last_note; key_shown = kk.key_shown;
     sounding_n = kk_midi_sounding(KK_CH_MELODIC, sounding, sizeof sounding);
     if (kk.mode == KK_MODE_DRUM) {
         unsigned channel; int note = kk_pad_note(kk.last_pad, &channel);
@@ -253,7 +259,7 @@ static void follow_notes(void)
         }
         return;
     }
-    if (kk.mode == KK_MODE_PAD_SCALE && kk.last_note >= 0 && !kk_pad_scale_on_keys()) {
+    if (kk.mode == KK_MODE_PAD_SCALE && kk.last_note >= 0 && !kk_pad_scale_on_keys() && !kk.key_shown) {
         unsigned channel; int note = kk_pad_note(kk.last_pad, &channel);
         if (note >= 0) { kk_note_label(big_name, note); big_kind = 3; }
         if (sounding_n) piano_target(now_ms);

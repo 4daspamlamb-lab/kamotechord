@@ -134,6 +134,7 @@ class Song(object):
     def continue_playing(self): self.calls.append('continue'); self.is_playing = True
     def start_playing(self): self.calls.append('start')
     def stop_playing(self): self.calls.append('stop')
+    def stop_all_clips(self, quantized=True): self.calls.append('stop all clips')
     def capture_midi(self): self.calls.append('capture')
     def undo(self): self.calls.append('undo')
     def redo(self): self.calls.append('redo')
@@ -226,6 +227,28 @@ class T(unittest.TestCase):
         self.s.update_display()
         self.assertFalse(any(isinstance(c, tuple) and c[0] == 'ring' for c in self.song.calls))   # 0.84: Live is never told to draw / scroll to a box
 
+    def test_scene_mode(self):
+        """0.99: CC 63 = 4: pads 1-8 = scenes (launch the scene that plays next),
+        scene states and names on the pads, the bottom row unused."""
+        self.song.scenes[1].name = 'Chorus'
+        t = self.song._tracks[0]; t.clip_slots[1].clip = Clip(t.clip_slots[1])
+        self.s.sent.clear()
+        deliver((0xBE, 63, 4))
+        self.assertIn((0xBF, 80 + 1, 1), self.s.sent)                     # scene 2 has a clip: STOPPED
+        self.assertIn((0xBF, 80 + 0, 0), self.s.sent)                     # scene 1 empty
+        self.assertIn((0xBF, 80 + 9, 0), self.s.sent)                     # bottom row: empty
+        text = ''.join(chr(v) for st, cc, v in self.s.sent if st == 0xBF and cc == 112)
+        self.assertIn('Chorus', text)                                      # scene names for the screen
+        self.press(1)
+        self.assertEqual(self.song.calls[-1], 'scene 1')                  # pad 2 = scene 2 (0 based)
+        self.assertIs(self.song.view.selected_scene, self.song.scenes[1])
+        self.press(9); self.assertEqual(self.song.calls[-1], 'scene 1')   # bottom row: nothing
+        t.clip_slots[1].clip.is_playing = True; self.s.update_display()
+        self.assertIn((0xBF, 80 + 1, 2), self.s.sent)                     # all its clips play: PLAYING
+        self.assertIn((0xBF, 105, 1), self.s.sent)                        # the selected scene highlighted
+        deliver((0xBE, 63, 0))
+        self.assertIn((0xBF, 80 + 1, 2), self.s.sent)
+
     def test_clip_pad_modes(self):
         t = self.song._tracks[1]; slot = t.clip_slots[0]; slot.clip = Clip(slot)
         self.press(1); self.assertIn('fire', t.log)                       # normal: a stopped clip plays
@@ -277,6 +300,9 @@ class T(unittest.TestCase):
         t = self.song._tracks[1]; v = self.song.view
         v.selected_track = self.song.visible_tracks[1]; slot = t.clip_slots[0]; v.highlighted_clip_slot = slot
         press(44); self.assertTrue(t.solo); press(44); self.assertFalse(t.solo)          # A# SOLO
+        other = self.song._tracks[0]; other.solo = True
+        press(44); self.assertEqual((t.solo, other.solo), (True, False))               # 0.99: exclusive: the other solo goes off
+        press(44); self.assertFalse(t.solo)
         press(48); self.assertTrue(t.mute)                                              # A MUTE
         press(49); self.assertTrue(t.arm); press(49); self.assertFalse(t.arm)           # G ARM
         press(45); self.assertNotIn('record', t.log)                                    # F# on an empty, unarmed slot: nothing
@@ -376,6 +402,21 @@ class T(unittest.TestCase):
         self.assertIn('overdub off', self.s.shown[-1])
         self.press(1); self.assertEqual(t.log[-1], 'stop')   # next plain press stops as before
 
+    def test_record_until_done_whole_bars(self):
+        """0.99: Session Record again while a new clip records: it ends on the bar
+        line (quantization at least 1 bar), then Session Record turns off."""
+        rec = lambda: (deliver((0xBE, 25, 127)), deliver((0xBE, 25, 0)))
+        t = self.song._tracks[0]; slot = t.clip_slots[0]
+        self.song.clip_trigger_quantization = 0                          # None in Live
+        rec(); self.assertTrue(self.song.session_record)
+        slot.clip = Clip(slot); slot.clip.is_recording = True             # Live records a new clip
+        rec()
+        self.assertIn('finish', t.log)                                    # fired: ends at the bar line
+        self.assertEqual(self.song.clip_trigger_quantization, 4)          # 1 bar meanwhile
+        self.s.update_display()
+        self.assertFalse(self.song.session_record)                        # finished: no overdub
+        self.assertEqual(self.song.clip_trigger_quantization, 0)          # quantization back
+
     def test_overdub_empty_slot_arms_and_records(self):
         t = self.song._tracks[3]
         self.tap(52 + 3); self.assertTrue(t.arm); self.assertEqual(t.log, ['record'])
@@ -391,7 +432,7 @@ class T(unittest.TestCase):
         self.assertEqual(self.song.calls[-1], 'start')                 # 0.77: like the spacebar
         self.song.is_playing = True
         deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
-        self.assertEqual(self.song.calls[-1], 'stop')
+        self.assertEqual(self.song.calls[-2:], ['stop all clips', 'stop'])   # 0.99: PARA = global stop
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertTrue(self.song.metronome)
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 
@@ -771,6 +812,10 @@ class StepTest(unittest.TestCase):
         self.tap(0)
         self.assertEqual(sorted((n.pitch, n.duration) for n in self.clip.notes), [(48, 1.0), (51, 1.0), (55, 1.0)])
         self.tap(0); self.assertEqual(self.clip.notes, [])                  # the whole chord comes off
+        self.tap(2)                                                        # 0.99: step 3, then hold it +
+        self.pad(2); self.fn(85); self.pad(7); self.pad(7, False); self.fn(85, False); self.pad(2, False)   # NOTE LENGTH + pad 8
+        self.assertEqual(sorted(set(n.duration for n in self.clip.notes)), [2.0])   # 8/16 = half a bar, the step stays
+        self.tap(2); self.assertEqual(self.clip.notes, [])
         self.press(78); self.s.update_display(); self.assertEqual(self.codes()[0], 19)   # BARS tap: bar view stays
         self.tap(0); self.s.update_display(); self.assertIn(self.codes()[0], (1, 13, 14, 15))   # bar picked: pattern again
 
@@ -819,6 +864,17 @@ class StepTest(unittest.TestCase):
         object.__setattr__(self.song.view, 'highlighted_clip_slot', other)
         self.mode(True); self.assertIsNotNone(other.clip)                 # made by Step Mode
         self.mode(False); self.assertIsNone(other.clip)                   # empty: removed
+        # 0.99: moving to another slot while in Step Mode removes the empty clip it made
+        self.mode(True); self.assertIsNotNone(other.clip)
+        third = self.song.track.clip_slots[2]
+        object.__setattr__(self.song.view, 'highlighted_clip_slot', third)
+        self.song.view.fire('selected_scene'); run_scheduled()
+        self.assertIsNone(other.clip); self.assertIsNotNone(third.clip)  # left behind: gone; the new one made
+        self.tap(0)                                                        # a step: the clip has a note now
+        object.__setattr__(self.song.view, 'highlighted_clip_slot', other)
+        self.song.view.fire('selected_scene'); run_scheduled()
+        self.assertIsNotNone(third.clip)                                   # not empty: kept
+        self.mode(False)
 
     def test_bars_key_ghosts_repeats_and_key_prefs(self):
         self.mode(True)

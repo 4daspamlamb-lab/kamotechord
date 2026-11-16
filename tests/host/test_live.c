@@ -158,7 +158,16 @@ void test_031(void)
     host_clear(); key(36, 100); key(29, 100); key(29, 0); key(31, 100); key(31, 0); key(36, 0);
     CHECK(out_count(USB, CC15, KK_CC_TRACKS_LEFT) == 2 && out_count(USB, CC15, KK_CC_TRACKS_RIGHT) == 2 && out_count(USB, 0x90, -1) == 0,
           "0.91: SHIFT + F / G: track left / right (CC 31 / 32), no notes");
-    host_clear(); key(9, 100); key(9, 0); CHECK(out_count(USB, 0x90, -1) == 1, "low A plays a note in Clip Mode");
+    /* 0.99: low A = Scene Mode: CC 63 = 4; the script sends scene states and names. */
+    host_clear(); key(9, 100); key(9, 0);
+    CHECK(out_count(USB, 0x90, -1) == 0 && kk.clip_pads == KK_CLIP_PADS_SCENES && last_out(USB, CC15, 0) == (KK_CC_CLIP_PADS | 4 << 8),
+          "low A: Scene Mode on (CC 63 = 4), no note");
+    host_in(0xBF, KK_CLIP_HELLO_CC, 1); host_in(0xBF, KK_CLIP_STATE_CC + 0, KK_CLIP_PLAYING); host_in(0xBF, KK_CLIP_STATE_CC + 1, KK_CLIP_STOPPED);
+    host_in(0xBF, 111, 0); host_in(0xBF, 112, 'I'); host_in(0xBF, 112, 'N'); host_in(0xBF, 112, 'T'); host_in(0xBF, 112, 'R'); host_in(0xBF, 112, 'O');
+    host_clear(); pad(2, 100); pad(2, 0); frames(10, 20);
+    CHECK(out_count(USB, 0x9F, -1) == 1, "a pad goes to the script (it launches the scene)");
+    shot("clip_scene_mode");
+    key(9, 100); key(9, 0); CHECK(kk.clip_pads == 0, "low A again: back to clips");
     /* 0.67: Step Mode entered from Clip Mode returns to Clip Mode; PARA there plays the clip. */
     tap(KK_BTN_REC); CHECK(kk.mode == KK_MODE_STEP, "SEQ REC from Clip Mode -> Step Mode");
     host_clear(); tap(KK_BTN_PARA);

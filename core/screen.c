@@ -105,6 +105,12 @@ static void say(const char *message, unsigned ms)
     strncpy(popup, message, sizeof popup - 1); popup[sizeof popup - 1] = 0;
     popup_until = now_ms + ms; if (!popup_until) popup_until = 1;
 }
+/* The message on screen now ("" = none); for the host tests. */
+const char *kk_screen_popup(void);
+/* 0.99: Pad Scale works on its own: a key played last shows the keyboard
+ * (piano, note / chord name) as in Normal; a pad brings the pad grid back. */
+static unsigned keys_on_screen(void) { return kk.mode == KK_MODE_PAD_SCALE && kk.key_shown; }
+const char *kk_screen_popup(void) { return popup_until && (int32_t)(now_ms - popup_until) < 0 ? popup : ""; }
 
 #include "kamotkeys/kk_scr_main.inc"
 #include "kamotkeys/kk_scr_pages.inc"
@@ -116,7 +122,7 @@ static void draw_widget(unsigned id)
     case W_INFO: draw_info(); break;
     case W_BIG: draw_big(); break;
     case W_SCALE: draw_scale(); break;
-    case W_PIANO: if (kk.mode >= KK_MODE_PAD_SCALE && !kk_pad_scale_on_keys()) draw_pads(); else draw_piano(); break;   /* incl. Clip */
+    case W_PIANO: if (kk.mode >= KK_MODE_PAD_SCALE && !kk_pad_scale_on_keys() && !keys_on_screen()) draw_pads(); else draw_piano(); break;   /* incl. Clip */
     case W_STATUS: draw_status(); break;
     case W_BOOT: draw_boot(); break;
     case W_BOOT_TEXT: draw_boot_text(); break;
@@ -158,7 +164,7 @@ static void signatures(void)
     wanted[W_BIG] = h;
     wanted[W_SCALE] = mixsig(mixsig(base, kk.scale.scale), kk.scale.root);
     h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)view_x16 / 16); h = mixsig(h, (uint32_t)chord_root_shown);
-    h = mixsig(h, kk.scale.scale * 16U + kk.scale.root); h = mixsig(h, (uint32_t)kk_active_octave());
+    h = mixsig(h, kk.scale.scale * 16U + kk.scale.root); h = mixsig(h, (uint32_t)kk_active_octave() + 16U * keys_on_screen());
     for (unsigned i = 0; i < sounding_n; ++i) h = mixsig(h, sounding[i]);
     if (kk.mode >= KK_MODE_PAD_SCALE) for (unsigned p = 0; p < KK_PADS; ++p) h = mixsig(h, kk_pad_lit(p));
     if (kk.mode == KK_MODE_CLIP) {

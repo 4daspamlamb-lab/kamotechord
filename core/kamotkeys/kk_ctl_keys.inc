@@ -167,9 +167,9 @@ static void source_press(unsigned id, unsigned velocity)
     }
 #ifdef KK_CLIP_PAD_MODES
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
-        (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY)) {
-        /* 0.93: latched pad modes: F# PLAY, G# STOP, F MUTE (again = back), G NORMAL. */
-        unsigned want = id == KK_CLIP_TOGGLE_KEY ? 1U : id == KK_CLIP_STOP_KEY ? 2U : id == KK_CLIP_MUTE_KEY ? 3U : 0U;
+        (id == KK_CLIP_TOGGLE_KEY || id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY || id == KK_CLIP_SCENE_KEY)) {
+        /* 0.93: latched pad modes: F# PLAY, G# STOP, F MUTE (again = back), G NORMAL; 0.99: A SCENES. */
+        unsigned want = id == KK_CLIP_TOGGLE_KEY ? 1U : id == KK_CLIP_STOP_KEY ? 2U : id == KK_CLIP_MUTE_KEY ? 3U : id == KK_CLIP_SCENE_KEY ? KK_CLIP_PADS_SCENES : 0U;
         kk_set_clip_pads(kk.clip_pads == want ? 0U : want);
     }
 #else
@@ -216,8 +216,8 @@ static void source_press(unsigned id, unsigned velocity)
     }
     if (s->channel == KK_CH_CLIP) kk.clip_pad = (uint8_t)(id - PAD_SOURCE);
     if (s->count) {
-        if (id < KK_KEYS) { kk.chord_root = s->count > 1 ? s->notes[0] : -1; kk.last_note = s->notes[0]; }
-        else { kk.last_pad = (uint8_t)(id - PAD_SOURCE); kk.last_note = s->notes[0]; }
+        if (id < KK_KEYS) { kk.chord_root = s->count > 1 ? s->notes[0] : -1; kk.last_note = s->notes[0]; kk.key_shown = s->channel == KK_CH_MELODIC; }
+        else { kk.last_pad = (uint8_t)(id - PAD_SOURCE); kk.last_note = s->notes[0]; kk.key_shown = 0; }
     }
 }
 static void source_release(unsigned id)

@@ -170,21 +170,29 @@ void test_arp_keys_and_persistence(void)
     host_clear(); pad(2, 100); key(12, 100); frames(60, 1);
     { uint8_t n[64]; unsigned c; notes_on(USB, ON1, n, &c); CHECK(c == 3 && n[0] == 67 && n[2] == 60, "strum down: G first"); }
     key(12, 0); pad(2, 0); frames(5, 2);
-    /* 0.97: slower strums, then tempo-synced: 1/4 at 100 BPM = 600 ms between notes. */
-    kk.arp.mode = KK_ARP_STRUM_UP; kk.arp.strum = 9;
-    CHECK(kk_strum_ms() == 500, "slowest ms strum: 500 ms (%u)", kk_strum_ms());
-    kk_edit_bpm(100 - (int)kk_tempo_bpm()); kk.arp.strum = 0; kk_edit_arp(1, 13);
-    { char b[12]; CHECK(kk.arp.strum == 13 && kk_strum_ms() == 600 && !strcmp(kk_strum_name(b), "1/4"), "strum 1/4 at 100 BPM: 600 ms (%u)", kk_strum_ms()); }
-    kk_edit_arp(1, 10);
-    { char b[12]; CHECK(kk.arp.strum == 15 && kk_strum_ms() == 2400 && !strcmp(kk_strum_name(b), "1 BAR"), "slowest: 1 bar (%u ms), stops at the end", kk_strum_ms()); }
-    kk_edit_arp(1, -4); kk_edit_bpm(120 - (int)kk_tempo_bpm());   /* 1/16 at 120 BPM = 125 ms */
+    /* 0.99: strum by TIME (8..500 ms) or by BARS (1/32 .. 4 bars); E3 picks which. */
+    kk.arp.mode = KK_ARP_STRUM_UP; kk.arp.strum = 0; kk.arp.strum_bars = 0;
+    kk_edit_arp(1, 20);
+    CHECK(kk_strum_ms() == 500, "TIME: up to 500 ms (%u)", kk_strum_ms());
+    kk_edit_bpm(100 - (int)kk_tempo_bpm());
+    kk_edit_arp(2, 1);
+    { char b[12]; CHECK(kk.arp.strum_bars && kk_strum_ms() == 600 && !strcmp(kk_strum_name(b), "1/4"), "E3 right: BARS, 1/4 at 100 BPM = 600 ms (%u)", kk_strum_ms()); }
+    kk_edit_arp(1, 20);
+    { char b[12]; CHECK(kk_strum_ms() == 9600 && !strcmp(kk_strum_name(b), "4 BARS"), "really slow: 4 bars per note (%u ms)", kk_strum_ms()); }
+    { uint8_t saved[16]; kamotkeys_settings_read(saved); kk.arp.strum = 0; kk.arp.strum_bars = 0;
+      CHECK(kamotkeys_settings_apply(saved) == 0 && kk.arp.strum_bars && kk.arp.strum == 7, "BARS and 4 bars saved"); }
+    { uint8_t old[16]; kamotkeys_settings_read(old); old[9] = (uint8_t)((old[9] & 7) | 13 << 4);   /* a 0.97 record: 1/4 */
+      CHECK(kamotkeys_settings_apply(old) == 0 && kk.arp.strum_bars && kk.arp.strum == 3, "0.97 record: 1/4 bar kept"); }
+    kk_edit_arp(2, -1);
+    { char b[12]; CHECK(!kk.arp.strum_bars && !strcmp(kk_strum_name(b), "25 MS"), "E3 left: TIME (%s)", kk_strum_name(b)); }
+    kk_edit_arp(2, 1); kk_edit_arp(1, -2); kk_edit_bpm(120 - (int)kk_tempo_bpm());   /* 1/16 at 120 BPM = 125 ms */
     host_clear(); pad(2, 100); key(12, 100); frames(100, 1);
     CHECK(out_count(USB, ON1, -1) == 1, "1/16: one note after 100 ms (%u)", out_count(USB, ON1, -1));
     frames(60, 1); CHECK(out_count(USB, ON1, -1) == 2, "second at 125 ms (%u, %u ms, %u BPM)", out_count(USB, ON1, -1), kk_strum_ms(), kk_tempo_bpm());
     key(12, 0); pad(2, 0); frames(5, 2);
     for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "synced strum released %u", k);
     /* Sustain + a slow strum: let go early, the strum carries on in time. */
-    kk.arp.strum = 13; tap(KK_BTN_NOTE_REPEAT);         /* 1/4 = 500 ms at 120 */
+    kk.arp.strum = 3; tap(KK_BTN_NOTE_REPEAT);          /* 1/4 = 500 ms at 120 */
     CHECK(kk.sustain_on, "sustain on");
     host_clear(); pad(2, 100); key(12, 100); frames(100, 1); key(12, 0); pad(2, 0);
     CHECK(out_count(USB, ON1, -1) == 1, "released after the first note: no burst (%u)", out_count(USB, ON1, -1));
@@ -197,7 +205,7 @@ void test_arp_keys_and_persistence(void)
     CHECK(out_count(USB, ON1, 63) == 0 && out_count(USB, ON1, 67) == 0, "ended before the rest started: they never start");
     tap(KK_BTN_NOTE_REPEAT); CHECK(!kk.sustain_on, "sustain off");
     for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "sustained strum released %u", k);
-    kk.arp.strum = 1;
+    kk.arp.strum = 1; kk.arp.strum_bars = 0;
     /* CHORD REPEAT: the whole chord on every step. */
     kk.arp.mode = KK_ARP_CHORD_REPEAT;
     host_clear(); pad(2, 100); key(12, 100); frames(400, 2);
@@ -243,8 +251,8 @@ void test_arp_keys_and_persistence(void)
     CHECK(kk.pad_sensitivity == KK_PAD_SENSITIVITY_MAX && kk_pad_curve(1) >= 75 && kk_pad_curve(20) >= 105 && kk_pad_curve(127) == 127,
           "0.80 default = 10 MAX: lightest touch %u, tap 20 -> %u", kk_pad_curve(1), kk_pad_curve(20));
     kk.pad_sensitivity = 3; CHECK(kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "level 3 linear");
-    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 6, 2); frames(3, 2); tap(KK_BTN_PATCH);
-    CHECK(kk.pad_sensitivity == 5, "0.93: Patch page E7 raises sensitivity (%u)", kk.pad_sensitivity);
+    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 5, 2); frames(3, 2); tap(KK_BTN_PATCH);
+    CHECK(kk.pad_sensitivity == 5, "0.99: Patch page E6 raises sensitivity (%u)", kk.pad_sensitivity);
     CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
     {
         unsigned mono = 1;

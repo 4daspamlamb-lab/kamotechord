@@ -185,6 +185,14 @@ class StepSequencer(object):
     def _deferred_bind(self):
         self._bind_pending = False
         if self._active:
+            # 0.99: moved to another track / scene: the clip this mode made
+            # there is deleted if it is still empty (no notes added).
+            try:
+                here = self._song().view.highlighted_clip_slot
+            except Exception:
+                here = None
+            if self._made_clip is not None and not self._same(self._made_clip, here):
+                self._drop_empty_clip()
             self._bind(create=True)
             self.send_all()
 
@@ -606,6 +614,11 @@ class StepSequencer(object):
                 return
             if F_NOTE_LEN in self._fn:
                 self._note_len = index + 1                      # 0.63: note length in sixteenths of a bar
+                self._used.add(F_NOTE_LEN)
+                if self._held:                                  # 0.99: steps held too: they get that length
+                    self._set_held_length(self._note_len * self._bar() / 16.0)
+                    for i in self._held:
+                        self._consumed.add(i)
                 self._say('note length %d/16' % self._note_len)
                 self.update()
                 return
@@ -786,6 +799,22 @@ class StepSequencer(object):
             self._say('step %d: automation cleared' % (self._page * PADS + index + 1))
         except Exception as error:
             self._log('cannot clear automation: %s' % error)
+
+    def _set_held_length(self, duration):
+        """0.99: NOTE LENGTH (bottom C) + pad with steps held: those notes get this length."""
+        if not self._ensure_clip():
+            return
+        try:
+            for index in list(self._held):
+                t, step = self._step_time(index), self._step()
+                pitches = self._pitches()                       # the step's chord too
+                notes = [n for n in self._clip.get_notes_extended(0, 128, t - EPS, step) if n.pitch in pitches]
+                for n in notes:
+                    n.duration = max(step / 4.0, min(self._length() - (n.start_time - self._start()), duration))
+                if notes:
+                    self._clip.apply_note_modifications(notes)
+        except Exception as error:
+            self._log('note length: %s' % error)
 
     def knob(self, which, delta):
         """0.91: hold step pads + E1 / E2 / E3 = their velocity / length /
@@ -1050,6 +1079,10 @@ class StepSequencer(object):
     def _play_clip(self):
         """PARA in Step Mode (0.67): make the clip if there is none, then
         launch it; pressed while it plays, stop it."""
+        song = self._song()
+        if getattr(song, 'is_playing', False):
+            self._surface._stop_everything()          # 0.99: PARA = global stop, in Step Mode too
+            return
         if not self._ensure_clip():
             return
         try:

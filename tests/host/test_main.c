@@ -24,6 +24,7 @@ int main(void)
     test_show_latch();
     test_smooth_show();
     test_battery_curve();
+    test_pad_scale_keys();
     test_step_mode();
     test_k1_live_tempo();
     test_bluetooth();

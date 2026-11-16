@@ -64,6 +64,7 @@ CC_ARM_ADD = 51                          # 0.90: PATCH + top G: arm without disa
 CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH = 52, 53, 54   # 0.91: SHIFT + A / B; fixed length (bars, 0 = off)
 CC_MACRO = tuple(range(55, 63))          # 0.93: E1-E8 = macros 1-8 of the selected track, relative
 CC_CLIP_PADS = 63                        # 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute
+SCENE_PADS = 4                           # 0.99: CC 63 = 4: Scene Mode (pads 1-8 = scenes)
 MACRO_CC, MACRO_VALUE_CC = 118, 119      # 0.93: reply: macro index, value 0..126 (127 = no device)
 STEP_EDIT_CC = 20                        # 0.91: ch 14 CC 20 / 21 / 22 = held steps' velocity / length / repeats
 STEP_AUTO_CC, STEP_AUTO_STATE_CC = 30, 38   # 0.93: ch 14 CC 30-37 = held steps' macro automation; CC 38 = AUTO on / off
@@ -120,6 +121,8 @@ class KamoteKeys(ControlSurface):
         self._cp = CopyPaste()           # Clip Mode copy / paste (0.65)
         self._stop_held = self._stop_used = False   # Clip Mode STOP key (0.77)
         self._clip_copy = None           # (track index, scene index) of the copied clip
+        self._rec_finishing = False      # 0.99: Session Record pressed again: waiting for the bar line
+        self._rec_quant = None           # launch quantization to put back afterwards
         self._board_sent = None
         self._step = StepSequencer(self)
         # Standard _Framework controls (as in Ableton's own controller
@@ -202,7 +205,10 @@ class KamoteKeys(ControlSurface):
         1 play = launch every clip pressed; 2 stop = stop; 3 mute = the
         clip's track on / off."""
         mode = self._clip_pads
-        if mode == 1:
+        if mode == SCENE_PADS:
+            if pad < TRACKS:
+                self._launch_scene_at(self._scene + pad)   # 0.99 Scene Mode: pads 1-8 = scenes
+        elif mode == 1:
             self._launch(pad, only_launch=True)
         elif mode == 2:
             self._stop_pad(pad)
@@ -353,7 +359,11 @@ class KamoteKeys(ControlSurface):
         elif cc in CC_MACRO:
             self._macro(CC_MACRO.index(cc), value - 64)
         elif cc == CC_CLIP_PADS:
-            self._clip_pads = value              # 0.93: what a clip pad press does
+            changed = (value == SCENE_PADS) != (self._clip_pads == SCENE_PADS)
+            self._clip_pads = value              # 0.93: what a clip pad press does; 0.99: 4 = Scene Mode
+            if changed:
+                self._names_sent = {}
+                self._send_all()                 # scene states and names <-> clip states and track names
         elif cc == CC_REC_LENGTH:
             self._rec_bars = value               # sent just before Session Record (0.91)
         elif value:                      # act on press; release is ignored
@@ -478,6 +488,44 @@ class KamoteKeys(ControlSurface):
         # every move. Live now only scrolls to keep the selected track in sight.)
         self._keep_selected_in_view()
         self._status('KamoteKeys: scenes %d-%d' % (self._scene + 1, self._scene + 2))
+
+    def _launch_scene_at(self, index):
+        """Scene Mode (0.99): select and launch scene `index` (it starts at the
+        launch quantization: the scene that plays next)."""
+        song = self.song()
+        scenes = list(song.scenes)
+        if not 0 <= index < len(scenes):
+            self._status('KamoteKeys: no scene %d' % (index + 1))
+            return
+        try:
+            song.view.selected_scene = scenes[index]
+        except Exception:
+            pass
+        self._launch_scene()
+
+    def _scene_state(self, index):
+        """Scene Mode pad colour: queued, playing (all its clips play), stopped (has clips) or empty."""
+        song = self.song()
+        scenes = list(song.scenes)
+        if not 0 <= index < len(scenes):
+            return EMPTY
+        if getattr(scenes[index], 'is_triggered', False):
+            return QUEUED
+        clips = playing = 0
+        for track in list(song.visible_tracks):
+            slots = list(getattr(track, 'clip_slots', []) or [])
+            if index >= len(slots):
+                continue
+            slot = slots[index]
+            if slot.has_clip:
+                clips += 1
+                clip = slot.clip
+                if clip.is_triggered:
+                    return QUEUED
+                playing += bool(clip.is_playing)
+        if not clips:
+            return EMPTY
+        return PLAYING if playing == clips else STOPPED
 
     def _launch_scene(self):
         song = self.song()
@@ -739,13 +787,31 @@ class KamoteKeys(ControlSurface):
             self._status('KamoteKeys: finish / next track: %s' % error)
 
     # ------------------------------------- top-octave Live keys (0.86)
+    def _stop_everything(self):
+        """PARA (0.99): stop every clip and the transport."""
+        song = self.song()
+        try:
+            song.stop_all_clips(False)            # at once, not at the next bar
+        except TypeError:
+            song.stop_all_clips()
+        except Exception as error:
+            self.log_message('KamoteKeys: stop all clips: %s' % error)
+        song.stop_playing()
+        self._status('KamoteKeys: stop (all clips)')
+
     def _toggle_track(self, cc):
-        track = self.song().view.selected_track
+        song = self.song()
+        track = song.view.selected_track
         what = {CC_SOLO: 'solo', CC_MUTE: 'mute', CC_ARM: 'arm'}[cc]
         try:
             if what == 'arm' and not getattr(track, 'can_be_armed', False):
                 self._status('KamoteKeys: %s cannot be armed' % track.name)
                 return
+            if what == 'solo' and not track.solo:
+                # 0.99: exclusive solo: this track only, every other solo off.
+                for other in list(song.tracks) + list(getattr(song, 'return_tracks', []) or []):
+                    if getattr(other, 'solo', False) and not self._same(other, track):
+                        other.solo = False
             setattr(track, what, not getattr(track, what))
             self._status('KamoteKeys: %s %s %s' % (track.name, what, 'on' if getattr(track, what) else 'off'))
         except Exception as error:
@@ -768,6 +834,53 @@ class KamoteKeys(ControlSurface):
             self._status('KamoteKeys: %s %s' % (track.name, 'armed (only this one)' if arm else 'disarmed'))
         except Exception as error:
             self._status('KamoteKeys: arm: %s' % error)
+
+    def _recording_slots(self):
+        slots = []
+        for track in list(self.song().tracks):
+            for slot in list(getattr(track, 'clip_slots', []) or []):
+                try:
+                    if slot.has_clip and slot.clip.is_recording:
+                        slots.append(slot)
+                except Exception:
+                    pass
+        return slots
+
+    def _finish_recording(self):
+        """Session Record pressed again with new clips recording: end them on
+        the next whole bar (launch quantization at least 1 bar for that)."""
+        song = self.song()
+        slots = self._recording_slots()
+        if not slots:
+            return False
+        try:
+            q = int(getattr(song, 'clip_trigger_quantization', 4))
+            if q == 0 or q > 4:                         # none or under a bar: use 1 bar
+                self._rec_quant = q
+                song.clip_trigger_quantization = 4
+            for slot in slots:
+                slot.fire()                              # ends the recording at the bar line, then loops
+            self._rec_finishing = True
+            self._status('KamoteKeys: recording to the end of the bar')
+        except Exception as error:
+            self.log_message('KamoteKeys: finish recording: %s' % error)
+            song.session_record = False
+        return True
+
+    def _poll_recording(self):
+        """After _finish_recording: once nothing records, Session Record off and the quantization back."""
+        if not self._rec_finishing or self._recording_slots():
+            return
+        self._rec_finishing = False
+        song = self.song()
+        try:
+            song.session_record = False
+            if self._rec_quant is not None:
+                song.clip_trigger_quantization = self._rec_quant
+        except Exception as error:
+            self.log_message('KamoteKeys: after recording: %s' % error)
+        self._rec_quant = None
+        self._status('KamoteKeys: recorded (whole bars), playing')
 
     def _fixed_record(self):
         """Record exactly self._rec_bars bars into the selected empty slot of an
@@ -1059,6 +1172,8 @@ class KamoteKeys(ControlSurface):
     def _state(self, pad):
         if self._arrange:
             return self._arrange_state(pad)
+        if self._clip_pads == SCENE_PADS:
+            return self._scene_state(self._scene + pad) if pad < TRACKS else EMPTY
         track, slot = self._slot(pad)
         if slot is None:
             return EMPTY
@@ -1103,6 +1218,13 @@ class KamoteKeys(ControlSurface):
 
     def _highlight_pad(self):
         """Pad (0..15) showing Live's highlighted slot, or 127."""
+        if self._clip_pads == SCENE_PADS:     # 0.99: the selected scene
+            try:
+                scenes = list(self.song().scenes)
+                s = next((i for i, x in enumerate(scenes) if self._same(x, self.song().view.selected_scene)), None)
+            except Exception:
+                return 127
+            return s - self._scene if s is not None and 0 <= s - self._scene < TRACKS else 127
         try:
             song = self.song()
             view = song.view
@@ -1136,6 +1258,9 @@ class KamoteKeys(ControlSurface):
             shown = tracks[self._track:self._track + TRACKS]
             selected = song.view.selected_track
             names = [self._ascii(t.name) for t in shown] + [''] * (TRACKS - len(shown))
+            if self._clip_pads == SCENE_PADS:  # 0.99 Scene Mode: the 8 scenes' names
+                scenes = list(song.scenes)[self._scene:self._scene + TRACKS]
+                names = [self._ascii(getattr(x, 'name', '')) for x in scenes] + [''] * (TRACKS - len(scenes))
             names.append(self._ascii(getattr(selected, 'name', '')))
             number = next((i + 1 for i, x in enumerate(tracks) if self._same(x, selected)), 0)
         except Exception:
@@ -1223,6 +1348,7 @@ class KamoteKeys(ControlSurface):
         self._send_names()
         self._ticks_total += 1
         self._send_clip_notes()
+        self._poll_recording()
         if self._step.active and time.time() - self._step_seen > STEP_TIMEOUT:
             self.log_message('KamoteKeys: no Step Mode heartbeat, leaving Step Mode')
             self._step.set_active(False)     # keyboard gone or switched port: never stay stuck in Step Mode
@@ -1249,12 +1375,13 @@ class KamoteKeys(ControlSurface):
             if song.can_redo:
                 song.redo()
         elif cc == CC_PLAY_PAUSE:
-            # 0.77: like the spacebar: stop when playing, start when stopped.
+            # 0.77: like the spacebar; 0.99: a global stop: every clip stops
+            # too (Stop All Clips), so the next play starts from nothing.
             if song.is_playing:
-                song.stop_playing()
+                self._stop_everything()
             else:
                 song.start_playing()
-            self._status('KamoteKeys: %s' % ('stop' if not song.is_playing else 'play'))
+                self._status('KamoteKeys: play')
         elif cc == CC_FINISH:
             self._finish_and_next()
         elif cc in (CC_SOLO, CC_MUTE, CC_ARM_ADD):
@@ -1285,7 +1412,12 @@ class KamoteKeys(ControlSurface):
             # scene, or overdubs the playing clips; a second press stops it.
             # 0.91: with a fixed length, an empty selected slot on an armed
             # track records exactly that many bars and then loops by itself.
-            if not self._fixed_record():
+            # 0.99: pressed again while a new clip records: it records on to
+            # the end of the bar (whole bars) and then loops; Session Record
+            # turns off once it has finished, so nothing gets overdubbed.
+            if self._finish_recording():
+                pass
+            elif not self._fixed_record():
                 song.session_record = not song.session_record
         elif cc == CC_CLIP_DUPLICATE:
             self._duplicate_selected()

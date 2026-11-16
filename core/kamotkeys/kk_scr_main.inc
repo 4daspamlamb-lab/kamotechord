@@ -52,7 +52,7 @@ static void draw_piano(void)
     int offset = piano_offset;
     /* 0.84: Normal Mode with nothing sounding also marks the chosen scale
      * (root cyan, other scale notes teal). */
-    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys() || kk.mode == KK_MODE_NORMAL;   /* 0.93: also while keys sound (no blinking) */
+    unsigned scale_view = kk.mode == KK_MODE_KEY_SCALE || kk_pad_scale_on_keys() || kk.mode == KK_MODE_NORMAL || kk.mode == KK_MODE_PAD_SCALE;   /* 0.93: also while keys sound (no blinking) */
     for (int y = clip_y0; y < clip_y1; ++y) {
         if (y < PIANO_TOP || y >= PIANO_TOP + WHITE_H) continue;
         int ky = y - PIANO_TOP;
@@ -128,9 +128,12 @@ static void draw_pads(void)
         }
         if (kk.mode == KK_MODE_CLIP) {
             /* 0.81: real track number (follows the 8-track view) and the first
-             * letters of the track's name on taller tiles. */
-            unsigned track = kk_midi_host_tracks() + pad % 8 + 1;
-            decimal(label, (int)(track > 999 ? 999 : track));
+             * letters of the track's name on taller tiles. 0.99 Scene Mode:
+             * the top row is S1..S8 (the scene names), the bottom row unused. */
+            unsigned scenes = kk.clip_pads == KK_CLIP_PADS_SCENES;
+            if (scenes && pad >= 8) { pill(x, y, 28, 36, PANEL); continue; }
+            unsigned track = scenes ? kk_midi_host_scene() + pad + 1 : kk_midi_host_tracks() + pad % 8 + 1;
+            { char *q = label; if (scenes && track < 100) *q++ = 'S'; decimal(q, (int)(track > 999 ? 999 : track)); }
             char shortname[5]; const char *full = kk_midi_track_name(pad % 8);
             unsigned k = 0; while (k < 4 && full[k]) { shortname[k] = full[k]; ++k; } shortname[k] = 0;
             unsigned level, st = kk_midi_clip_state(pad);
@@ -268,6 +271,19 @@ static void draw_big(void)
         text_center(120, w->y + 55, "TAP: TRACK ON / OFF   TOP F#: LAUNCH", 1, TEXT);
         return;
     }
+    if (kk.mode == KK_MODE_CLIP && kk.clip_pads == KK_CLIP_PADS_SCENES && kk_midi_host_protocol()) {
+        /* 0.99 Scene Mode: pads 1-8 = the 8 scenes shown; the last one pressed, big. */
+        unsigned first = kk_midi_host_scene() + 1, pad = kk.clip_pad % 8;
+        text_center(120, w->y + 3, "SCENE MODE", 2, AMBER);
+        char *p = append(buf, "SCENE "); p = decimal(p, (int)(first + pad));
+        if (kk_midi_track_name(pad)[0]) { p = append(p, " "); append(p, kk_midi_track_name(pad)); }
+        unsigned size = text_width(buf, 3) <= 228 ? 3 : text_width(buf, 2) <= 228 ? 2 : 1;
+        text_center(120, w->y + 21 + (3 - (int)size) * 4, buf, size, TEXT);
+        p = append(buf, "PADS 1-8 = SCENES "); p = decimal(p, (int)first); p = append(p, "-"); decimal(p, (int)first + 7);
+        text_center(120, w->y + 47, buf, 1, TEXT);
+        copy_line(w->y + 57);
+        return;
+    }
     if (kk.mode == KK_MODE_CLIP) {
         /* 0.81: clip state small, Live's selected track (number + name) big. */
         static const char *const states[] = {"EMPTY", "STOPPED", "PLAYING", "QUEUED", "RECORDING", "QUEUED REC", "EMPTY (ARMED)"};
@@ -285,8 +301,8 @@ static void draw_big(void)
         p = append(buf, "SCENE "); p = decimal(p, (int)(kk_midi_host_scene() + kk.clip_pad / 8 + 1));
         p = append(p, "  TRACKS "); p = decimal(p, (int)kk_midi_host_tracks() + 1); p = append(p, "-"); p = decimal(p, (int)kk_midi_host_tracks() + 8);
 #ifdef KK_CLIP_PRESS_SELECT
-        { static const char *const modes[4] = {"  NORMAL", "  PLAY", "  STOP", "  MUTE"};
-          p = append(p, modes[kk.clip_pads & 3U]); }   /* 0.93: what a pad press does */
+        { static const char *const modes[KK_CLIP_PADS_SCENES + 1] = {"  NORMAL", "  PLAY", "  STOP", "  MUTE", "  SCENES"};
+          p = append(p, modes[kk.clip_pads <= KK_CLIP_PADS_SCENES ? kk.clip_pads : 0]); }   /* 0.93: what a pad press does */
 #endif
         text_center(120, w->y + 47, buf, 1, TEXT);
         copy_line(w->y + 57);

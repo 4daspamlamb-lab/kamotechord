@@ -70,7 +70,8 @@ void test_step_mode(void)
           out_count(USB, 0x9D, KK_STEP_BARS) == 1 && out_count(USB, 0x9D, KK_STEP_CLEAR) == 1,
           "0.73: D = RES, E = FOLLOW, G = LENGTH, A = BARS, A# = DELETE");
     host_clear(); key(0, 100); key(0, 0); key(5, 100); key(5, 0);
-    CHECK(out_count(USB, 0x90, -1) == 1 && out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "C plays a note, F = DOUBLE (0.80)");
+    CHECK(out_count(USB, 0x90, -1) == 0 && out_count(USB, 0x9D, KK_STEP_NOTE_LEN) == 1 && out_count(USB, 0x8D, KK_STEP_NOTE_LEN) == 1 &&
+          out_count(USB, 0x9D, KK_STEP_DOUBLE) == 1, "0.99: bottom C = NOTE LENGTH (no note), F = DOUBLE");
     /* 0.91: the top octave is the Live strip in Step Mode too; the key zone is 16 drum keys. */
     host_clear(); key(33, 100); key(33, 0); key(35, 100); key(35, 0);
     CHECK(out_count(USB, CC15, KK_CC_MUTE) == 2 && out_count(USB, CC15, KK_CC_SOLO) == 2 && out_count(USB, 0x9D, -1) == 0,
@@ -419,4 +420,23 @@ void test_battery_curve(void)
     CHECK(kk_battery_percent(812) == 101 && kk_battery_percent(0) == -1, "USB power / no reading");
     int last = -1, ok = 1; for (unsigned v = 527; v <= 660; ++v) { int p = kk_battery_percent(v); if (p < last) ok = 0; last = p; }
     CHECK(ok, "never goes down as the voltage rises");
+}
+
+
+/* 0.99: Pad Scale works on its own: a key shows the keyboard and its name,
+ * a pad brings the pad grid back. */
+void test_pad_scale_keys(void)
+{
+    boot(); settle();
+    tap(KK_BTN_SCALE); settle();
+    CHECK(kk.mode == KK_MODE_PAD_SCALE && !kk.key_shown, "Pad Scale opens on the pads");
+    pad(3, 100); frames(20, 20); pad(3, 0);
+    key(16, 100); frames(40, 20);
+    CHECK(kk.key_shown, "a key: the screen shows the keys");
+    shot("pad_scale_key");
+    key(16, 0); frames(10, 20);
+    pad(5, 100); frames(20, 20); pad(5, 0);
+    CHECK(!kk.key_shown, "a pad: back to the pad grid");
+    shot("pad_scale_pad");
+    tap(KK_BTN_SCALE);
 }

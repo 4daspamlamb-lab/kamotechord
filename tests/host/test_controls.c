@@ -206,13 +206,18 @@ void test_velocity_faders(void)
     groove_midi_poll();
     CHECK(last_out(USB, CC15, 1) == (KK_CC_TRACK_VOLUME | 77 << 8) && last_out(USB, CC15, 0) == (KK_CC_TRACK_MACRO | 33 << 8) &&
           kk.scale.scale == sc && kk.scale.root == rt, "faders 2/3 -> CC38/39, scale untouched");
-    /* 0.93: Patch page E1 / E2 / E3 = scale / key / brightness. */
-    tap(KK_BTN_PATCH); unsigned br = kk.brightness_level;
-    kk.encoder[0] = 1; kk.encoder[1] = 2; kk.encoder[2] = -1; frames(2, 20);
-    CHECK(kk.scale.scale == sc + 1 && kk.scale.root == (rt + 2) % 12 && kk.brightness_level == br - 1, "Patch page: E1 scale, E2 key, E3 brightness");
-    kk.encoder[0] = -1; kk.encoder[1] = -2; kk.encoder[2] = 1; frames(2, 20); tap(KK_BTN_PATCH);
+    /* 0.99: Patch page E1 / E2 / E3 = key / scale / brightness; E4 no longer changes the patch. */
+    tap(KK_BTN_PATCH); unsigned br = kk.brightness_level, prog = kk.program;
+    kk.encoder[0] = 2; kk.encoder[1] = 1; kk.encoder[2] = -1; frames(2, 20);
+    CHECK(kk.scale.scale == sc + 1 && kk.scale.root == (rt + 2) % 12 && kk.brightness_level == br - 1, "Patch page: E1 key, E2 scale, E3 brightness");
+    kk.encoder[3] = 1; frames(2, 20);
+    CHECK(kk.program == prog && kk_midi_local(), "E4 = internal synth (on), not the patch");
+    kk.encoder[0] = -2; kk.encoder[1] = -1; kk.encoder[2] = 1; frames(2, 20); tap(KK_BTN_PATCH);
     /* 0.93: main screen E1-E8 = macros (CC 55-62 relative); the script answers name + value. */
     unsigned pr = kk.program, g = kk.arp.gate; host_in(0xBF, KK_CLIP_HELLO_CC, 1);
+    { extern const char *kk_screen_popup(void);
+      kk.encoder[2] = 1; frames(2, 20);
+      CHECK(!strcmp(kk_screen_popup(), "MACRO 3 UP"), "0.99: a macro knob says what it turns at once (%s)", kk_screen_popup()); }
     host_clear(); kk.encoder[0] = 1; kk.encoder[7] = -2; frames(2, 20); groove_midi_poll();
     CHECK(out_count(USB, CC15, KK_CC_MACRO) == 1 && out_count(USB, CC15, KK_CC_MACRO + 7) == 1 && kk.scale.scale == sc && kk.master == kk.master,
           "E1 / E8 -> macro 1 / 8 (CC 55 / 62)");

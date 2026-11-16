@@ -27,7 +27,7 @@ enum { KK_VELOCITY_DEFAULT = 100 };
 /* 0.93 Clip Mode pad modes (latched): F# PLAY, G# STOP, F MUTE, G back to NORMAL
  * (play / stop + select). */
 #define KK_CLIP_PAD_MODES 1
-enum { KK_CLIP_MUTE_KEY = 5, KK_CLIP_NORMAL_KEY = 7 };
+enum { KK_CLIP_MUTE_KEY = 5, KK_CLIP_NORMAL_KEY = 7, KK_CLIP_SCENE_KEY = 9 /* 0.99: A = Scene Mode (pads 1-8 = scenes) */ };
 enum { KK_CLIP_COPY_KEY = 1, KK_CLIP_PASTE_KEY = 3, KK_CLIP_TOGGLE_KEY = 6 /* F#: PLAY (hold / tap, 0.75) */, KK_CLIP_ARRANGE_KEY = 2, /* D: Scene Arrange (0.77) */
        KK_CLIP_STOP_KEY = 8,   /* G#: STOP (hold + clips, or tap: the selected clip), 0.77 */
        KK_TRACKS_LEFT_KEY = 255, KK_TRACKS_RIGHT_KEY = 255, KK_CLIP_MOVE_KEY = 4,   /* 0.91: tracks via SHIFT + F / G; MOVE = low E (hold + G# / A#) */  /* top F held + top G# / A#: move the clip (0.76) */                                        /* top A / B: 8-track view (0.67) */
@@ -60,7 +60,8 @@ static inline int kk_step_key_function(unsigned key)
     switch (key) {
     /* 0.73 lowest octave: D RESOLUTION, E FOLLOW, F DOUBLE, G LENGTH, A BARS, B DRUM (0.80);
      * black: C# COPY, D# PASTE, F# / G# page, A# DELETE (hold + step / bar / key).
-     * C plays notes. */
+     * 0.99: C = NOTE LENGTH (hold + pad n = n sixteenths; on held steps too). */
+    case 0: return KK_STEP_NOTE_LEN;    /* C */
     case 2: return KK_STEP_RESOLUTION;  /* D */
     case 4: return KK_STEP_FOLLOW;      /* E */
     case 5: return KK_STEP_DOUBLE;      /* F  0.80: double everything (length and notes) */

@@ -63,7 +63,7 @@ check(energy > 0.001, 'drum engine sounds (energy ' + energy.toFixed(4) + ')');
 tap(B.FX);
 
 // Key Scale Mode + chord pads + ARP with the real engine timing.
-tap(B.PATCH); ev(ENC, 0, 10); ev(ENC, 1, 9); ms(100); tap(B.PATCH);   // 0.93: Patch page E1 scale = Minor Pentatonic, E2 key = A
+tap(B.PATCH); ev(ENC, 1, 10); ev(ENC, 0, 9); ms(100); tap(B.PATCH);   // 0.99: Patch page E2 scale = Minor Pentatonic, E1 key = A
 tap(B.SEQ); ev(PAD, 1, 100); ev(PAD, 8, 100);
 midi = []; ev(KEY, 12, 100); ms(20);
 check(out(1, 0x90).map(m => m.d[1]).join(',') === '45,48,52,55', 'Am7 from second C in A minor pentatonic (octave -2)');

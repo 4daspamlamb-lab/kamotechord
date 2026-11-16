@@ -12,7 +12,7 @@
 #define KK_CONFIG_H
 
 #define KAMOTKEYS_NAME "KamoteKeys"
-#define KAMOTKEYS_VERSION "0.98" KK_DEVICE_SUFFIX
+#define KAMOTKEYS_VERSION "0.99" KK_DEVICE_SUFFIX
 #define KAMOTKEYS_TITLE KAMOTKEYS_NAME " " KAMOTKEYS_VERSION
 
 /* MIDI channels, zero based (channel 1 = 0). */
@@ -155,7 +155,8 @@ enum {
     KK_CC_LOOP_DOUBLE = 53,   /* 0.91: SHIFT + B: double the selected clip's loop */
     KK_CC_REC_LENGTH = 54,
     KK_CC_MACRO = 55,         /* 0.93: E1-E8 = macros 1-8 of the selected track, CC 55-62 relative (64 + steps) */
-    KK_CC_CLIP_PADS = 63,     /* 0.93: Clip Mode pad mode 0 normal (play / stop), 1 play, 2 stop, 3 mute */    /* 0.91: fixed record length in bars (0 = off), sent before KNOB BANK */       /* 0.90: PATCH + top G: arm without disarming the others */
+    KK_CC_CLIP_PADS = 63,     /* 0.93: Clip Mode pad mode 0 normal (play / stop), 1 play, 2 stop, 3 mute; 0.99: 4 = scenes */
+    KK_CLIP_PADS_SCENES = 4,  /* 0.99: Scene Mode: pads 1-8 launch scenes (the script sends scene states + names) */    /* 0.91: fixed record length in bars (0 = off), sent before KNOB BANK */       /* 0.90: PATCH + top G: arm without disarming the others */
     KK_CC_TEMPO = 37,      /* 0.79: K1 with Live connected: change Live's tempo by value - 64 BPM */
     /* Spare pads 5-8, 14-16 (0.43): mappable momentary buttons, CC 102-108
      * (undefined in the MIDI spec), 127 press / 0 release. */

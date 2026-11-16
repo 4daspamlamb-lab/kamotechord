@@ -11,12 +11,12 @@ enum { KK_MODE_NORMAL, KK_MODE_KEY_SCALE, KK_MODE_PAD_SCALE, KK_MODE_DRUM, KK_MO
 enum { KK_PAGE_MAIN, KK_PAGE_BT, KK_PAGE_PATCH, KK_PAGE_ARP, KK_PAGE_REPEAT, KK_PAGE_DIAG };
 /* 0.93 ARP types (kk.arp.mode): notes one by one, strums, chord re-strike, humanized chords. */
 enum { KK_ARP_NORMAL, KK_ARP_STRUM_UP, KK_ARP_STRUM_DOWN, KK_ARP_STRUM_ALT, KK_ARP_CHORD_REPEAT, KK_ARP_HUMANIZE, KK_ARP_MODES };
-enum { KK_STRUM_SPEEDS = 16, KK_STRUM_SYNCED = 10 };   /* 0.97: 10 in ms, then 6 tempo-synced (1/32 .. 1 bar) */
+enum { KK_STRUM_TIMES = 10, KK_STRUM_BAR_STEPS = 8 };   /* 0.99: strum by TIME (8..500 ms) or by BARS (1/32 .. 4 bars) */
 enum { KK_DIR_UP, KK_DIR_DOWN, KK_DIR_UPDOWN, KK_DIR_RANDOM, KK_DIR_ORDER, KK_DIRS };
 enum { KK_DIV_4, KK_DIV_8, KK_DIV_8T, KK_DIV_16, KK_DIV_16T, KK_DIV_32, KK_DIVS };
 enum { KK_ANIMATIONS = 8 };
 
-struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves, strum; };   /* 0.93: strum = speed 0..15 */
+struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves, strum, strum_bars; };   /* strum: speed index; 0.99: strum_bars = by BARS */
 
 struct kk_state {
     uint8_t mode, page;
@@ -30,7 +30,7 @@ struct kk_state {
     uint8_t show_latched;                    /* 0.94: light show latched (GLOBE held 3 s) */
     uint16_t show_cycle_s;                   /* 0.94: latched show: next pattern every n s (0 = stays) */
     uint8_t step_auto;                       /* 0.93: SEQ PLAY = AUTO: held step + knobs write macro automation */
-    uint8_t clip_pads;                       /* 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute */
+    uint8_t clip_pads;                       /* 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute; 0.99: 4 scenes */
     uint8_t rec_length;                      /* 0.91: fixed record length 0 off, 1..4 = 1 / 2 / 4 / 8 bars (saved) */
     uint8_t arp_page_used;                   /* 0.82: a knob turned while ARP held: close the page on release */
     uint8_t knob_shift;                      /* FM-1 SAVE held: K1-K3 = velocity, scale, root */
@@ -61,6 +61,7 @@ struct kk_state {
     int16_t chord_root;                      /* root of the last generated chord, -1 */
     int16_t last_note;                       /* last direct note (display) */
     uint8_t last_pad;                        /* last pad pressed (display) */
+    uint8_t key_shown;                       /* 0.99: Pad Scale: a key was played last (screen shows the keys) */
     int16_t encoder[KK_ENCODERS];            /* pending detents for the UI */
     uint32_t pressed_at[KK_BUTTONS];
     uint32_t edit_revision;                  /* bumps on any visible change */

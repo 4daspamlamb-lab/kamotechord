@@ -22,7 +22,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     memset(d, 0, KK_SETTINGS_BYTES);
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
     d[3] = (uint8_t)(kk.arp_on | (15U - kk.brightness_level) << 2);   /* 0.77: bits 2..5 = 15 - brightness */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
-    d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = (uint8_t)(kk.arp.octaves | kk.arp.strum << 4);   /* 0.93/0.97: bits 4-7 = strum speed */
+    d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = (uint8_t)(kk.arp.octaves | kk.arp.strum_bars << 3 | kk.arp.strum << 4);   /* 0.93: bits 4-7 = strum speed; 0.99: bit 3 = by BARS */
     d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)(kk_midi_local() | kk.rec_length << 1 | kk.arp.mode << 4);   /* 0.91: bits 1-3 = fixed length; 0.93: bits 4-6 = ARP type */
 #ifdef KK_DEVICE_FM1
     d[10] = kk.scale.scale; d[14] = kk.scale.root; d[15] = kk.velocity;
@@ -46,7 +46,7 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || (!keyed && d[3] > 63) ||
         (!keyed && d[4] >= KK_ARP_MODES) ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
-        (d[9] & 15) < 1 || (d[9] & 15) > 4 || (d[9] >> 4) >= KK_STRUM_SPEEDS || d[11] > 127 || d[12] >= KK_PORTS_MODES || ((d[13] >> 1) & 7) > 4 || (d[13] >> 4) >= KK_ARP_MODES)
+        (d[9] & 7) < 1 || (d[9] & 7) > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || ((d[13] >> 1) & 7) > 4 || (d[13] >> 4) >= KK_ARP_MODES)
         return -1;
 #ifdef KK_DEVICE_FM1
     if (d[10] >= KK_SCALES || d[14] > 11 || d[15] < 1 || d[15] > 127) return -1;
@@ -54,7 +54,12 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     if (d[10] >= KK_DIVS || d[14] >= SMK37_RGB_TIMINGS || d[15] > KK_PAD_SENSITIVITY_MAX) return -1;
 #endif
     kk.bpm = (uint16_t)bpm;
-    kk.arp = (struct kk_arp_settings){(uint8_t)(d[13] >> 4), d[5], d[6], d[7], d[8], (uint8_t)(d[9] & 15), (uint8_t)(d[9] >> 4)};   /* 0.93: type + strum speed */
+    {
+        unsigned strum = d[9] >> 4, bars = (d[9] >> 3) & 1U;
+        if (!bars && strum >= KK_STRUM_TIMES) { bars = 1; strum -= KK_STRUM_TIMES; }   /* 0.97 records: 10.. = 1/32 .. 1 bar */
+        if (strum >= (bars ? KK_STRUM_BAR_STEPS : KK_STRUM_TIMES)) strum = 1;
+        kk.arp = (struct kk_arp_settings){(uint8_t)(d[13] >> 4), d[5], d[6], d[7], d[8], (uint8_t)(d[9] & 7), (uint8_t)strum, (uint8_t)bars};   /* type + strum */
+    }
     kk.program = d[11];
     kk_midi_set_ports(d[12]); kk_midi_set_local(d[13] & 1U); kk.rec_length = (uint8_t)((d[13] >> 1) & 7);
 #ifdef KK_DEVICE_FM1

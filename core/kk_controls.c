@@ -42,21 +42,22 @@ const char *kk_division_name(unsigned d) { return division_names[d % KK_DIVS]; }
 const char *kk_direction_name(unsigned d) { return direction_names[d % KK_DIRS]; }
 static const char *const arp_type_names[KK_ARP_MODES] = {"ARPEGGIO", "STRUM UP", "STRUM DOWN", "STRUM UP/DOWN", "CHORD REPEAT", "HUMANIZE"};
 const char *kk_arp_type_name(unsigned t) { return arp_type_names[t < KK_ARP_MODES ? t : 0]; }
-static const uint16_t strum_ms_table[KK_STRUM_SYNCED] = {8, 15, 25, 40, 70, 100, 150, 250, 350, 500};
-/* 0.97: past 500 ms the gap follows the tempo: 1/32, 1/16, 1/8, 1/4, 1/2, 1 bar per note. */
-static const uint8_t strum_div[KK_STRUM_SPEEDS - KK_STRUM_SYNCED] = {32, 16, 8, 4, 2, 1};
+static const uint16_t strum_ms_table[KK_STRUM_TIMES] = {8, 15, 25, 40, 70, 100, 150, 250, 350, 500};
+/* 0.99: strum by BARS (tempo-synced gap between notes): 1/32 .. 4 bars; x8 = 1/32 bar units. */
+static const uint8_t strum_32nds[KK_STRUM_BAR_STEPS] = {1, 2, 4, 8, 16, 32, 64, 128};
+static unsigned strum_steps(void) { return kk.arp.strum_bars ? KK_STRUM_BAR_STEPS : KK_STRUM_TIMES; }
 unsigned kk_strum_ms(void)
 {
-    unsigned i = kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1;
-    if (i < KK_STRUM_SYNCED) return strum_ms_table[i];
+    unsigned i = kk.arp.strum < strum_steps() ? kk.arp.strum : 0;
+    if (!kk.arp.strum_bars) return strum_ms_table[i];
     unsigned t = kk_tempo_x10(); if (t < 200U) t = 200U;
-    return 2400000U / t / strum_div[i - KK_STRUM_SYNCED];      /* a 4/4 bar = 240000 / bpm ms */
+    return 2400000U / t * strum_32nds[i] / 32U;                 /* a 4/4 bar = 240000 / bpm ms */
 }
 const char *kk_strum_name(char *buf)
 {
-    static const char *const names[KK_STRUM_SPEEDS - KK_STRUM_SYNCED] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1 BAR"};
-    unsigned i = kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1;
-    if (i >= KK_STRUM_SYNCED) return names[i - KK_STRUM_SYNCED];
+    static const char *const names[KK_STRUM_BAR_STEPS] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1 BAR", "2 BARS", "4 BARS"};
+    unsigned i = kk.arp.strum < strum_steps() ? kk.arp.strum : 0;
+    if (kk.arp.strum_bars) return names[i];
     unsigned v = strum_ms_table[i], n = 0; char tmp[6];
     do { tmp[n++] = (char)('0' + v % 10U); v /= 10U; } while (v);
     unsigned o = 0; while (n) buf[o++] = tmp[--n];
@@ -187,7 +188,7 @@ static void intent(unsigned id, struct source *s)
     }
 #ifdef KK_CLIP_PAD_MODES
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP &&
-        (id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY)) return;   /* 0.93: pad-mode keys, no note */
+        (id == KK_CLIP_STOP_KEY || id == KK_CLIP_MUTE_KEY || id == KK_CLIP_NORMAL_KEY || id == KK_CLIP_SCENE_KEY)) return;   /* 0.93: pad-mode keys, no note */
 #else
     if (id < KK_KEYS && kk.mode == KK_MODE_CLIP && id == KK_CLIP_STOP_KEY) {
         s->channel = KK_CH_CLIP; s->notes[0] = KK_CLIP_STOP_NOTE; s->count = 1;   /* 0.77: STOP (hold + clips, or tap) */
@@ -400,7 +401,7 @@ void kk_set_brightness(unsigned level)
 void kk_settings_touch(void) { ++kk.edit_revision; groove_settings_panel_changed(); }
 void kk_set_clip_pads(unsigned m)
 {
-    kk.clip_pads = (uint8_t)(m & 3U); ++kk.edit_revision;
+    kk.clip_pads = (uint8_t)(m <= KK_CLIP_PADS_SCENES ? m : 0U); ++kk.edit_revision;
     kk_midi_cc(KK_CH_ABLETON, KK_CC_CLIP_PADS, kk.clip_pads);   /* the script does the action */
 }
 void kk_set_mode(unsigned mode)
@@ -408,6 +409,7 @@ void kk_set_mode(unsigned mode)
     if (mode == kk.mode) mode = mode == KK_MODE_STEP ? kk.step_from : KK_MODE_NORMAL;   /* same button again: back */
     if (mode == KK_MODE_STEP) kk.step_from = kk.mode;   /* 0.67: leaving Step Mode returns here (e.g. Clip Mode) */
     hold_release();                                   /* sustained notes belong to the old mode */
+    kk.key_shown = 0;                                 /* 0.99: Pad Scale opens on the pad grid */
     /* 0.62: a chord LOCK survives every mode change (it is released only
      * with the LOCK pad), and the keys keep playing the locked chord. */
     unsigned keep_lock = kk.chord_lock;
@@ -460,10 +462,15 @@ void kk_edit_arp(unsigned parameter, int delta)
     switch (parameter) {
     case 0: a.mode = (uint8_t)clampi(a.mode + delta, 0, KK_ARP_MODES - 1); break;   /* 0.93: ARP type (Sustain holds) */
     case 1:   /* 0.93: strum types: strum speed; otherwise the arpeggio direction */
-        if (arp_is_strum()) a.strum = (uint8_t)clampi(a.strum + delta, 0, KK_STRUM_SPEEDS - 1);
+        if (arp_is_strum()) a.strum = (uint8_t)clampi(a.strum + delta, 0, (int)strum_steps() - 1);
         else a.direction = (uint8_t)clampi(a.direction + delta, 0, KK_DIRS - 1);
         break;
-    case 2: a.division = (uint8_t)clampi(a.division + delta, 0, KK_DIVS - 1); break;
+    case 2:   /* 0.99: strum types: strum by TIME / BARS; otherwise the division */
+        if (arp_is_strum()) {
+            unsigned bars = delta > 0;
+            if (bars != a.strum_bars) { a.strum_bars = (uint8_t)bars; a.strum = bars ? 3 : 2; }   /* 1/4 bar, 25 ms */
+        } else a.division = (uint8_t)clampi(a.division + delta, 0, KK_DIVS - 1);
+        break;
     case 3: a.gate = (uint8_t)clampi(a.gate + 5 * delta, 10, 100); break;
     case 4: a.swing = (uint8_t)clampi(a.swing + delta, 0, 50); break;
     case 5: a.octaves = (uint8_t)clampi(a.octaves + delta, 1, 4); break;
@@ -578,7 +585,7 @@ void kk_perform_init(void)
 #endif
     /* Octaves are never restored from flash: keys start at -2, pads at 0. */
     kk.octave = KK_KEY_OCTAVE_DEFAULT; kk.pad_octave = KK_PAD_OCTAVE_DEFAULT;
-    kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, KK_DIR_UP, KK_DIV_8, 75, 0, 1, 1};
+    kk.arp = (struct kk_arp_settings){KK_ARP_NORMAL, KK_DIR_UP, KK_DIV_8, 75, 0, 1, 1, 0};
     kk.repeat_division = KK_DIV_16;
     kk.anim_pattern = KK_ANIMATIONS - 1;  /* first SEQ REC press shows pattern 1 */
     kk.chord_root = -1; kk.last_note = -1;
