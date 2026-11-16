@@ -42,8 +42,27 @@ const char *kk_division_name(unsigned d) { return division_names[d % KK_DIVS]; }
 const char *kk_direction_name(unsigned d) { return direction_names[d % KK_DIRS]; }
 static const char *const arp_type_names[KK_ARP_MODES] = {"ARPEGGIO", "STRUM UP", "STRUM DOWN", "STRUM UP/DOWN", "CHORD REPEAT", "HUMANIZE"};
 const char *kk_arp_type_name(unsigned t) { return arp_type_names[t < KK_ARP_MODES ? t : 0]; }
-static const uint8_t strum_ms_table[KK_STRUM_SPEEDS] = {8, 15, 25, 40, 70};
-unsigned kk_strum_ms(void) { return strum_ms_table[kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1]; }
+static const uint16_t strum_ms_table[KK_STRUM_SYNCED] = {8, 15, 25, 40, 70, 100, 150, 250, 350, 500};
+/* 0.97: past 500 ms the gap follows the tempo: 1/32, 1/16, 1/8, 1/4, 1/2, 1 bar per note. */
+static const uint8_t strum_div[KK_STRUM_SPEEDS - KK_STRUM_SYNCED] = {32, 16, 8, 4, 2, 1};
+unsigned kk_strum_ms(void)
+{
+    unsigned i = kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1;
+    if (i < KK_STRUM_SYNCED) return strum_ms_table[i];
+    unsigned t = kk_tempo_x10(); if (t < 200U) t = 200U;
+    return 2400000U / t / strum_div[i - KK_STRUM_SYNCED];      /* a 4/4 bar = 240000 / bpm ms */
+}
+const char *kk_strum_name(char *buf)
+{
+    static const char *const names[KK_STRUM_SPEEDS - KK_STRUM_SYNCED] = {"1/32", "1/16", "1/8", "1/4", "1/2", "1 BAR"};
+    unsigned i = kk.arp.strum < KK_STRUM_SPEEDS ? kk.arp.strum : 1;
+    if (i >= KK_STRUM_SYNCED) return names[i - KK_STRUM_SYNCED];
+    unsigned v = strum_ms_table[i], n = 0; char tmp[6];
+    do { tmp[n++] = (char)('0' + v % 10U); v /= 10U; } while (v);
+    unsigned o = 0; while (n) buf[o++] = tmp[--n];
+    buf[o++] = ' '; buf[o++] = 'M'; buf[o++] = 'S'; buf[o] = 0;
+    return buf;
+}
 static unsigned arp_is_strum(void) { return kk.arp.mode == KK_ARP_STRUM_UP || kk.arp.mode == KK_ARP_STRUM_DOWN || kk.arp.mode == KK_ARP_STRUM_ALT || kk.arp.mode == KK_ARP_HUMANIZE; }
 const char *kk_mode_name(unsigned m) { return mode_names[m < KK_MODES ? m : 0]; }
 /* Tempo in tenths of BPM: Ableton's (via the Remote Script) has priority. */

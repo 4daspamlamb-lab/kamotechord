@@ -170,6 +170,34 @@ void test_arp_keys_and_persistence(void)
     host_clear(); pad(2, 100); key(12, 100); frames(60, 1);
     { uint8_t n[64]; unsigned c; notes_on(USB, ON1, n, &c); CHECK(c == 3 && n[0] == 67 && n[2] == 60, "strum down: G first"); }
     key(12, 0); pad(2, 0); frames(5, 2);
+    /* 0.97: slower strums, then tempo-synced: 1/4 at 100 BPM = 600 ms between notes. */
+    kk.arp.mode = KK_ARP_STRUM_UP; kk.arp.strum = 9;
+    CHECK(kk_strum_ms() == 500, "slowest ms strum: 500 ms (%u)", kk_strum_ms());
+    kk_edit_bpm(100 - (int)kk_tempo_bpm()); kk.arp.strum = 0; kk_edit_arp(1, 13);
+    { char b[12]; CHECK(kk.arp.strum == 13 && kk_strum_ms() == 600 && !strcmp(kk_strum_name(b), "1/4"), "strum 1/4 at 100 BPM: 600 ms (%u)", kk_strum_ms()); }
+    kk_edit_arp(1, 10);
+    { char b[12]; CHECK(kk.arp.strum == 15 && kk_strum_ms() == 2400 && !strcmp(kk_strum_name(b), "1 BAR"), "slowest: 1 bar (%u ms), stops at the end", kk_strum_ms()); }
+    kk_edit_arp(1, -4); kk_edit_bpm(120 - (int)kk_tempo_bpm());   /* 1/16 at 120 BPM = 125 ms */
+    host_clear(); pad(2, 100); key(12, 100); frames(100, 1);
+    CHECK(out_count(USB, ON1, -1) == 1, "1/16: one note after 100 ms (%u)", out_count(USB, ON1, -1));
+    frames(60, 1); CHECK(out_count(USB, ON1, -1) == 2, "second at 125 ms (%u, %u ms, %u BPM)", out_count(USB, ON1, -1), kk_strum_ms(), kk_tempo_bpm());
+    key(12, 0); pad(2, 0); frames(5, 2);
+    for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "synced strum released %u", k);
+    /* Sustain + a slow strum: let go early, the strum carries on in time. */
+    kk.arp.strum = 13; tap(KK_BTN_NOTE_REPEAT);         /* 1/4 = 500 ms at 120 */
+    CHECK(kk.sustain_on, "sustain on");
+    host_clear(); pad(2, 100); key(12, 100); frames(100, 1); key(12, 0); pad(2, 0);
+    CHECK(out_count(USB, ON1, -1) == 1, "released after the first note: no burst (%u)", out_count(USB, ON1, -1));
+    frames(450, 1); CHECK(out_count(USB, ON1, -1) == 2, "second note on time");
+    frames(500, 1); CHECK(out_count(USB, ON1, -1) == 3 && out_count(USB, OFF1, -1) == 0, "third, all held");
+    key(20, 100); key(20, 0); frames(5, 1);             /* the next key ends them */
+    CHECK(out_count(USB, OFF1, 60) == 1 && out_count(USB, OFF1, 67) == 1, "next key releases the strummed chord (%u %u %u)", out_count(USB, OFF1, 60), out_count(USB, OFF1, 67), out_count(USB, OFF1, -1));
+    host_clear(); pad(2, 100); key(12, 100); frames(10, 1); key(12, 0); pad(2, 0);
+    key(20, 100); key(20, 0); frames(1200, 1);
+    CHECK(out_count(USB, ON1, 63) == 0 && out_count(USB, ON1, 67) == 0, "ended before the rest started: they never start");
+    tap(KK_BTN_NOTE_REPEAT); CHECK(!kk.sustain_on, "sustain off");
+    for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "sustained strum released %u", k);
+    kk.arp.strum = 1;
     /* CHORD REPEAT: the whole chord on every step. */
     kk.arp.mode = KK_ARP_CHORD_REPEAT;
     host_clear(); pad(2, 100); key(12, 100); frames(400, 2);

@@ -11,12 +11,12 @@ enum { KK_MODE_NORMAL, KK_MODE_KEY_SCALE, KK_MODE_PAD_SCALE, KK_MODE_DRUM, KK_MO
 enum { KK_PAGE_MAIN, KK_PAGE_BT, KK_PAGE_PATCH, KK_PAGE_ARP, KK_PAGE_REPEAT, KK_PAGE_DIAG };
 /* 0.93 ARP types (kk.arp.mode): notes one by one, strums, chord re-strike, humanized chords. */
 enum { KK_ARP_NORMAL, KK_ARP_STRUM_UP, KK_ARP_STRUM_DOWN, KK_ARP_STRUM_ALT, KK_ARP_CHORD_REPEAT, KK_ARP_HUMANIZE, KK_ARP_MODES };
-enum { KK_STRUM_SPEEDS = 5 };
+enum { KK_STRUM_SPEEDS = 16, KK_STRUM_SYNCED = 10 };   /* 0.97: 10 in ms, then 6 tempo-synced (1/32 .. 1 bar) */
 enum { KK_DIR_UP, KK_DIR_DOWN, KK_DIR_UPDOWN, KK_DIR_RANDOM, KK_DIR_ORDER, KK_DIRS };
 enum { KK_DIV_4, KK_DIV_8, KK_DIV_8T, KK_DIV_16, KK_DIV_16T, KK_DIV_32, KK_DIVS };
 enum { KK_ANIMATIONS = 8 };
 
-struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves, strum; };   /* 0.93: strum = speed 0..4 */
+struct kk_arp_settings { uint8_t mode, direction, division, gate, swing, octaves, strum; };   /* 0.93: strum = speed 0..15 */
 
 struct kk_state {
     uint8_t mode, page;
@@ -77,6 +77,7 @@ const char *kk_division_name(unsigned division);
 const char *kk_direction_name(unsigned direction);
 const char *kk_arp_type_name(unsigned type);         /* 0.93 */
 unsigned kk_strum_ms(void);                          /* 0.93: ms between strummed notes */
+const char *kk_strum_name(char *buf);               /* 0.97: "25 MS" or "1/8" */
 const char *kk_mode_name(unsigned mode);
 /* Velocity after the Fader 1 override (natural = physical velocity). */
 unsigned kk_velocity(unsigned natural);

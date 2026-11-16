@@ -80,7 +80,7 @@ static void draw_arp(void)
     char buf[8], *p;
     row(0, KK_K1 " TYPE", kk_arp_type_name(kk.arp.mode), 0);   /* 0.93; Sustain holds the ARP */
     unsigned strum = kk.arp.mode == KK_ARP_STRUM_UP || kk.arp.mode == KK_ARP_STRUM_DOWN || kk.arp.mode == KK_ARP_STRUM_ALT || kk.arp.mode == KK_ARP_HUMANIZE;
-    if (strum) { p = decimal(buf, (int)kk_strum_ms()); append(p, " MS"); row(1, KK_K2 " STRUM SPEED", buf, 0); }
+    if (strum) row(1, KK_K2 " STRUM SPEED", kk_strum_name(buf), 0);   /* 0.97: ms, then note lengths */
     else row(1, KK_K2 " DIRECTION", kk_direction_name(kk.arp.direction), 0);
     row(2, KK_K3 " DIVISION", kk_division_name(kk.arp.division), 0);
     p = decimal(buf, kk.arp.gate); append(p, "%"); row(3, KK_K4 " GATE", buf, 0);

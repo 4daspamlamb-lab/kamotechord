@@ -109,6 +109,7 @@ static struct { uint8_t channel, note; } hold[HOLD_MAX];
 static unsigned hold_count;
 static void hold_release(void)
 {
+    strum_drop_held();                                   /* 0.97 */
     for (unsigned i = 0; i < hold_count; ++i) kk_midi_note_off(hold[i].channel, hold[i].note);
     if (hold_count) ++kk.edit_revision;
     hold_count = 0;
@@ -120,7 +121,7 @@ static void hold_keep(const struct source *s)
         hold[hold_count].channel = s->channel; hold[hold_count].note = s->notes[k]; ++hold_count;
     }
 }
-static unsigned musical(unsigned route) { return route == ROUTE_DIRECT || route == ROUTE_ARP || route == ROUTE_REPEAT; }
+static unsigned musical(unsigned route) { return route == ROUTE_DIRECT || route == ROUTE_ARP || route == ROUTE_REPEAT || route == ROUTE_STRUM; }   /* 0.97: + strum */
 /* A musical press with no other musical source held starts a new phrase. */
 static unsigned new_phrase(unsigned id)
 {

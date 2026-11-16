@@ -168,22 +168,35 @@ static void strum_start(unsigned src, const struct source *s)
 }
 static void strum_tick(void)
 {
-    for (unsigned i = 0; i < strum_n; ++i)
+    unsigned m = 0;
+    for (unsigned i = 0; i < strum_n; ++i) {
         if (!strum_q[i].fired && clock_us >= strum_q[i].at) {
             kk_midi_note_on(strum_q[i].channel, strum_q[i].note, kk_velocity(strum_q[i].velocity));
             note_ripple(SOURCES, strum_q[i].note, strum_q[i].velocity);
             strum_q[i].fired = 1;
         }
+        if (!(strum_q[i].fired && strum_q[i].src == 255U)) strum_q[m++] = strum_q[i];   /* 0.97: a held note, now playing: Sustain owns it */
+    }
+    strum_n = m;
 }
-/* keep: Sustain holds the notes (unplayed ones start now); otherwise they stop. */
+/* keep: Sustain holds the notes; 0.97: unplayed ones still start on time
+ * (a slow strum keeps strumming), until the held notes are let go. */
+enum { STRUM_HELD = 255 };
 static void strum_end(unsigned src, unsigned keep)
 {
     unsigned m = 0;
     for (unsigned i = 0; i < strum_n; ++i) {
         if (strum_q[i].src != src) { strum_q[m++] = strum_q[i]; continue; }
-        if (keep && !strum_q[i].fired) kk_midi_note_on(strum_q[i].channel, strum_q[i].note, kk_velocity(strum_q[i].velocity));
+        if (keep && !strum_q[i].fired) { strum_q[i].src = STRUM_HELD; strum_q[m++] = strum_q[i]; }
         else if (!keep && strum_q[i].fired) kk_midi_note_off(strum_q[i].channel, strum_q[i].note);
     }
+    strum_n = m;
+}
+/* Sustain let go: held strum notes not played yet never start. */
+static void strum_drop_held(void)
+{
+    unsigned m = 0;
+    for (unsigned i = 0; i < strum_n; ++i) if (strum_q[i].src != STRUM_HELD) strum_q[m++] = strum_q[i];
     strum_n = m;
 }
 

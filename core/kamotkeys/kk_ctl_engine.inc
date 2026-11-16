@@ -22,7 +22,7 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     memset(d, 0, KK_SETTINGS_BYTES);
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
     d[3] = (uint8_t)(kk.arp_on | (15U - kk.brightness_level) << 2);   /* 0.77: bits 2..5 = 15 - brightness */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
-    d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = (uint8_t)(kk.arp.octaves | kk.arp.strum << 4);   /* 0.93: bits 4-6 = strum speed */
+    d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = (uint8_t)(kk.arp.octaves | kk.arp.strum << 4);   /* 0.93/0.97: bits 4-7 = strum speed */
     d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)(kk_midi_local() | kk.rec_length << 1 | kk.arp.mode << 4);   /* 0.91: bits 1-3 = fixed length; 0.93: bits 4-6 = ARP type */
 #ifdef KK_DEVICE_FM1
     d[10] = kk.scale.scale; d[14] = kk.scale.root; d[15] = kk.velocity;
