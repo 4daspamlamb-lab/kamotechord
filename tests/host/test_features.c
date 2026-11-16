@@ -360,3 +360,50 @@ void test_show_latch(void)
     CHECK(changed > 0, "ARP notes keep sending ripples (%u)", changed);
     key(12, 0); tap(KK_BTN_ARP);
 }
+
+/* 0.96: every light-show pattern, any speed, pattern changes and ripples:
+ * no pad jumps hard on or off from one 5 ms frame to the next. */
+static unsigned max_step(unsigned n)
+{
+    unsigned worst = 0; uint32_t last[KK_PADS];
+    for (unsigned p = 0; p < KK_PADS; ++p) last[p] = host_rgb[p];
+    for (unsigned f = 0; f < n; ++f) {
+        frames(1, 5);
+        for (unsigned p = 0; p < KK_PADS; ++p) {
+            for (unsigned sh = 0; sh < 24; sh += 8) {
+                int d = (int)((host_rgb[p] >> sh) & 255) - (int)((last[p] >> sh) & 255);
+                if (d < 0) d = -d;
+                if ((unsigned)d > worst) worst = (unsigned)d;
+            }
+            last[p] = host_rgb[p];
+        }
+    }
+    return worst;
+}
+void test_smooth_show(void)
+{
+    boot(); settle();
+    fader(3, 127); fader(0, 127); frames(20, 5);           /* full brightness, fastest show */
+    unsigned worst = 0, w;
+    btn(KK_BTN_GLOBE, 1); w = max_step(100); if (w > worst) worst = w;   /* fade in */
+    btn(KK_BTN_GLOBE, 0); w = max_step(100); if (w > worst) worst = w;   /* fade out */
+    CHECK(worst <= 32, "light show fades in and out (worst step %u)", worst);
+    worst = 0;
+    btn(KK_BTN_GLOBE, 1); frames(650, 5); btn(KK_BTN_GLOBE, 0); frames(200, 5);   /* latched */
+    CHECK(kk.show_latched, "latched");
+    for (unsigned i = 0; i < KK_ANIMATIONS; ++i) {
+        w = max_step(400); if (w > worst) worst = w;     /* 2 s of the pattern at top speed */
+        btn(KK_BTN_GLOBE, 1); w = max_step(4); if (w > worst) worst = w; btn(KK_BTN_GLOBE, 0);   /* next pattern */
+    }
+    CHECK(worst <= 32, "every pattern at top speed and every pattern change is smooth (worst step %u)", worst);
+    fader(0, 0); frames(20, 5); worst = max_step(400);
+    CHECK(worst <= 32, "slowest speed smooth too (worst step %u)", worst);
+    btn(KK_BTN_GLOBE, 1); frames(700, 5); btn(KK_BTN_GLOBE, 0); frames(300, 5);
+    CHECK(!kk.show_latched && !kk.anim_active, "unlatched");
+    /* Ripples ease in too. */
+    show_on(); show_off(); show_on(); show_off(); show_on(); show_off(); frames(600, 5);
+    CHECK(kk.ripple, "ripples on");
+    key(12, 127); worst = max_step(60); key(12, 0); w = max_step(300); if (w > worst) worst = w;   /* a key: the pads only show the ring */
+    CHECK(worst <= 40, "a ripple rises and fades without a hard jump (worst step %u)", worst);
+    show_on(); show_off(); show_on(); show_off(); show_on(); show_off(); frames(600, 5);
+}

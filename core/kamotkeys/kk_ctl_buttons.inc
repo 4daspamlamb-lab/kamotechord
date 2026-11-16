@@ -94,7 +94,8 @@ static void button(unsigned id, unsigned down, uint32_t now)
             }
             kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);
             consume(PAD_SOURCE, SOURCES);              /* pads stop making sound */
-            kk.anim_active = 1; kk.anim_phase = 0;
+            /* 0.96: the phase keeps running (no jump); a new pattern crossfades */
+            kk.anim_active = 1;
             mods_refresh();
         } else { if (!show_latched) kk.anim_active = 0; show_combo = 0; }   /* 0.94: latched: keeps running */
         return;
@@ -232,7 +233,7 @@ static void long_presses(uint32_t now)
         kk_led_ripple(show_latched ? 3 : 2, 0, 127);
     }
     if (show_latched && show_cycle_ms && (int32_t)(now - show_cycle_next) >= 0) {
-        kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS); kk.anim_phase = 0;
+        kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS);   /* 0.96: crossfades */
         show_cycle_next = now + show_cycle_ms; ++kk.edit_revision;
     }
     kk.show_latched = show_latched;

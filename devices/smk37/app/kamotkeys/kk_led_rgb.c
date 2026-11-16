@@ -36,12 +36,12 @@ static uint32_t show(unsigned pattern, unsigned pad, unsigned t)
     }
     case 2: { /* spiral/perimeter comet with a smooth tail (1/256 pad units) */
         unsigned head = (t * 16U) >> 8, dist = (head - ring * 256U + 4096U) % 4096U;
-        unsigned b = dist < 1536U ? 255U - dist * 255U / 1536U : 0;
+        unsigned b = dist < 1536U ? 255U - dist * 255U / 1536U
+                   : dist > 4096U - 512U ? (dist - (4096U - 512U)) * 255U / 512U : 0;   /* 0.96: soft front */
         return scale(hue16(t + ring * 2048U), b * b / 255);
     }
-    case 3: { /* checkerboard: hold, then a quick smooth cross */
-        int a = ((int)sin16(t) - 128) * 3 + 128;
-        unsigned k = a < 0 ? 0 : a > 255 ? 255 : (unsigned)a, parity = (row + col) & 1;
+    case 3: { /* checkerboard: lingers, then a smooth cross (0.96: no clipped edge) */
+        unsigned v = sin16(t), k = v * v * (765U - 2U * v) / 65025U, parity = (row + col) & 1;
         return mix(0xff0060, 0x00b4ff, parity ? k : 255 - k);
     }
     case 4: { /* diagonal wave */
@@ -54,7 +54,8 @@ static uint32_t show(unsigned pattern, unsigned pad, unsigned t)
     }
     case 6: { /* opposing comets: top row -> right, bottom row -> left */
         unsigned head = (t * 8U) >> 8, pos = row ? 7 - col : col, dist = (head - pos * 256U + 2048U) % 2048U;
-        unsigned b = dist < 896U ? 255U - dist * 255U / 896U : 0;
+        unsigned b = dist < 896U ? 255U - dist * 255U / 896U
+                   : dist > 2048U - 320U ? (dist - (2048U - 320U)) * 255U / 320U : 0;   /* 0.96: soft front */
         return scale(row ? 0x00ffb0 : 0xff2080, b * b / 255);
     }
     default: { /* colour wave */
@@ -70,8 +71,9 @@ static uint32_t aurora(unsigned pad, unsigned ms)
     /* 0.67 Bubbles boot: each pad lights in its bubble's colour as it pops. */
     const struct kk_boot_bubble *b = &kk_boot_bubbles[pad];
     if (ms < b->t0 + 50U) return 0;
-    unsigned k = ms - b->t0 - 50U; k = k > 200U ? 200U : k;
-    return scale(kk_boot_palette[pad % 8], 90U + k * 110U / 200U);   /* quick pop to ~80 % */
+    unsigned k = ms - b->t0 - 50U; k = k > 250U ? 250U : k;
+    k = k * 255U / 250U; k = k * k * (765U - 2U * k) / 65025U;      /* 0.96: eased in from dark */
+    return scale(kk_boot_palette[pad % 8], k * 200U / 255U);
 }
 
 /* --------------------------------------------------------------- output */
@@ -121,7 +123,7 @@ static uint32_t brighter_rgb(uint32_t a, uint32_t b)
  * press point and a second echo ring. kind 2 = the giant centre ripple shown
  * when ripples are switched on (a slow double rainbow ring from the middle). */
 enum { RIPPLES = 12, RIPPLE_MS = 1300, RIPPLE_SPEED = 9 /* pads per second */, RIPPLE_WIDTH = 1300,
-       GIANT_MS = 2400, GIANT_SPEED = 5, GIANT_WIDTH = 2200, FLASH_MS = 160 };
+       GIANT_MS = 2400, GIANT_SPEED = 5, GIANT_WIDTH = 2200, FLASH_MS = 220, RIPPLE_ATTACK_MS = 60 };
 static struct { uint32_t start; int16_t x, y; uint16_t hue; uint8_t strength, giant; } ripples[RIPPLES];
 static unsigned ripple_next;
 void kk_led_ripple(unsigned kind, unsigned id, unsigned velocity)
@@ -170,16 +172,57 @@ static uint32_t ripple_colour(unsigned pad)
         unsigned fade = (life - age) * 255U / life;
         fade = 255U - (255U - fade) * (255U - fade) / 255U;           /* stays bright longer */
         unsigned b = ring * fade / 255U * ripples[i].strength / 255U;
+        if (age < RIPPLE_ATTACK_MS) b = b * (age + 8U) / (RIPPLE_ATTACK_MS + 8U);   /* 0.96: eased in, never a hard on */
         uint32_t colour;
         if (ripples[i].giant) colour = scale(hue16((uint16_t)(age * 30U + (unsigned)d * 9U)), b);   /* rainbow */
         else colour = scale(hue16((uint16_t)(ripples[i].hue + age * 20U)), b);
         if (!ripples[i].giant && age < FLASH_MS && d < 600) {         /* white flash where it started */
             unsigned f = (FLASH_MS - age) * 255U / FLASH_MS * ripples[i].strength / 255U;
+            if (age < RIPPLE_ATTACK_MS) f = f * (age + 8U) / (RIPPLE_ATTACK_MS + 8U);
             colour = brighter_rgb(colour, rgb(f, f, f)); if (f > b) b = f;
         }
         if (b > best_b) { best_b = b; best = colour; }
     }
     return best;
+}
+/* 0.96: smooth at any speed. A new pattern crossfades from the old one
+ * (both keep moving) instead of cutting, and each pad's light-show colour
+ * follows its target through a short low-pass filter, so a fast pattern
+ * can never switch a pad hard on or off from one frame to the next. */
+enum { PATTERN_FADE_MS = 900, SHOW_FILTER_MS = 45 };
+static uint8_t shown_pattern = 255, old_pattern;
+static unsigned pattern_fade = 255, frame_dt;            /* 0..255 toward shown_pattern; ms since last frame */
+static uint16_t show_state[KK_PADS][3];                  /* filtered colour, 8.8 fixed point */
+static uint8_t show_state_ok;
+static void show_frame(unsigned dt)
+{
+    frame_dt = dt;
+    if (shown_pattern == 255 || !anim_mix) { shown_pattern = kk.anim_pattern; pattern_fade = 255; }
+    if (kk.anim_pattern != shown_pattern) {
+        old_pattern = pattern_fade >= 128 ? shown_pattern : old_pattern;   /* mid-fade: keep the stronger one */
+        shown_pattern = kk.anim_pattern; pattern_fade = 0;
+    } else if (pattern_fade < 255) {
+        unsigned step = dt * 255U / PATTERN_FADE_MS; pattern_fade = pattern_fade + step >= 255U ? 255U : pattern_fade + (step ? step : 1U);
+    }
+    if (!anim_mix) show_state_ok = 0;
+}
+static uint32_t show_smooth(unsigned pad)
+{
+    unsigned t = kk.anim_phase >> 16;
+    uint32_t target = show(shown_pattern, pad, t);
+    if (pattern_fade < 255) {
+        unsigned k = pattern_fade; k = k * k * (765U - 2U * k) / 65025U;   /* eased */
+        target = mix(show(old_pattern, pad, t), target, k);
+    }
+    uint16_t *st = show_state[pad];
+    unsigned c[3] = {(target >> 16) & 255U, (target >> 8) & 255U, target & 255U};
+    for (unsigned i = 0; i < 3; ++i) {
+        unsigned want = c[i] << 8;
+        if (!(show_state_ok & 1)) st[i] = (uint16_t)want;
+        else st[i] = (uint16_t)((int)st[i] + ((int)want - (int)st[i]) * (int)frame_dt / (int)(SHOW_FILTER_MS + frame_dt));
+    }
+    if (pad == KK_PADS - 1) show_state_ok = 1;
+    return rgb(st[0] >> 8, st[1] >> 8, st[2] >> 8);
 }
 uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
 {
@@ -188,7 +231,7 @@ uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
     unsigned level;
     uint32_t c = kk_led_logical(pad, &level);
     if (anim_mix) {
-        uint32_t show_rgb = output(show(kk.anim_pattern, pad, kk.anim_phase >> 16), 1000);
+        uint32_t show_rgb = output(show_smooth(pad), 1000);
         uint32_t r = ripple_colour(pad);                 /* 0.94: rings also over the light show */
         if (r) show_rgb = brighter_rgb(show_rgb, output(r, 1000));
         return anim_mix >= 255 ? show_rgb : round_rgb(mix(output(c, level), show_rgb, anim_mix));
@@ -220,12 +263,15 @@ void kk_led_service(uint32_t boot_ms)
         if (level != levels[id]) { levels[id] = (uint8_t)level; smk37_led_level(id, level); }
     }
     uint32_t now = fm1_millis();
-    static uint32_t mix_ms;
+    static uint32_t mix_ms; static unsigned mix_lin;
     {
         uint32_t dt = now - mix_ms > 100U ? 100U : now - mix_ms;
         mix_ms = now;
-        if (kk.anim_active) anim_mix = anim_mix + dt * 255U / 200U >= 255U ? 255U : anim_mix + dt * 255U / 200U;
-        else anim_mix = anim_mix > dt * 255U / 150U ? anim_mix - dt * 255U / 150U : 0;
+        /* 0.96: the light show fades in over 450 ms and out over 400 ms (eased below) */
+        if (kk.anim_active) mix_lin = mix_lin + dt * 255U / 450U >= 255U ? 255U : mix_lin + dt * 255U / 450U;
+        else mix_lin = mix_lin > dt * 255U / 400U ? mix_lin - dt * 255U / 400U : 0;
+        anim_mix = mix_lin ? (mix_lin * mix_lin * (765U - 2U * mix_lin) / 65025U) | 1U : 0;
+        show_frame(dt);
     }
     {
         for (unsigned pad = 0; pad < KK_PADS; ++pad) {
