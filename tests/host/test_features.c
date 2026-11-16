@@ -326,3 +326,33 @@ void test_top_keys_and_key_memory(void)
     saved[3] |= 0x80; saved[4] = 30; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid scale rejected");
     kk.scale.scale = 0; kk.scale.root = 0;
 }
+
+/* 0.94: latched light show and ripples from the ARP. */
+void test_show_latch(void)
+{
+    boot(); settle();
+    host_clear(); btn(KK_BTN_GLOBE, 1); host_ms += 3100; frames(2, 1); btn(KK_BTN_GLOBE, 0); frames(2, 1);
+    CHECK(kk.anim_active && kk.show_latched && host_out_n == 0, "GLOBE held 3 s: the light show stays on");
+    /* KNOB + FADER held 1 s: next pattern every 10 s; nothing to Live. */
+    unsigned pat = kk.anim_pattern;
+    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 1000; btn(KK_BTN_KNOB_BANK, 0); btn(KK_BTN_FADER_BANK, 0);
+    CHECK(kk.show_latched && kk.show_cycle_s == 10 && out_count(USB, CC15, -1) == 0, "held 1 s: cycles every 10 s (%u), no Record / Capture", kk.show_cycle_s);
+    host_ms += 9000; frames(2, 1); CHECK(kk.anim_pattern == pat, "not yet after 9 s");
+    host_ms += 1500; frames(2, 1); CHECK(kk.anim_pattern == (pat + 1) % KK_ANIMATIONS, "next pattern after 10 s");
+    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 500; btn(KK_BTN_FADER_BANK, 0); btn(KK_BTN_KNOB_BANK, 0);
+    CHECK(kk.show_cycle_s == 5, "held 0.5 s: every 5 s (%u)", kk.show_cycle_s);
+    /* A tap of both: back to normal. */
+    btn(KK_BTN_KNOB_BANK, 1); btn(KK_BTN_FADER_BANK, 1); host_ms += 100; btn(KK_BTN_KNOB_BANK, 0); btn(KK_BTN_FADER_BANK, 0); frames(1, 1);
+    CHECK(!kk.anim_active && !kk.show_latched && out_count(USB, CC15, -1) == 0, "tap KNOB + FADER: light show off (%d %d %d)", kk.anim_active, kk.show_latched, out_count(USB, CC15, -1));
+    host_clear(); tap(KK_BTN_KNOB_BANK); groove_midi_poll();
+    CHECK(out_count(USB, CC15, KK_CC_RECORD) == 2, "KNOB BANK alone records again");
+    /* Ripples follow the ARP: 2 s after the key press its own ring is long gone, the arpeggio keeps them coming. */
+    host_ms += 2000; show_on(); show_off(); show_on(); show_off(); show_on(); show_off();
+    CHECK(kk.ripple, "ripples on");
+    settle(); frames(400, 5); uint32_t idle[KK_PADS]; for (unsigned p = 0; p < KK_PADS; ++p) idle[p] = host_rgb[p];
+    tap(KK_BTN_ARP); key(12, 100); frames(400, 5);
+    unsigned changed = 0;
+    for (unsigned f = 0; f < 40; ++f) { frames(1, 5); for (unsigned p = 0; p < KK_PADS; ++p) changed += host_rgb[p] != idle[p]; }
+    CHECK(changed > 0, "ARP notes keep sending ripples (%u)", changed);
+    key(12, 0); tap(KK_BTN_ARP);
+}

@@ -341,7 +341,11 @@ static void draw_status(void)
     if (kk.sustain_on) text_right(234, w->y + 8, "SUSTAIN", 1, GREEN);
     if (kk.anim_active) {
         p = append(buf, "LIGHT SHOW "); p = decimal(p, kk.anim_pattern + 1); p = append(p, "/8  SPEED ");
-        decimal(p, kk.anim_speed / 10);
+        p = decimal(p, kk.anim_speed / 10);
+        if (kk.show_latched) {   /* 0.94 */
+            p = append(p, kk.show_cycle_s ? "  EVERY " : "  LOCKED");
+            if (kk.show_cycle_s) { p = decimal(p, kk.show_cycle_s); append(p, "S"); }
+        }
         text(10, w->y + 22, buf, 1, CYAN);
         return;
     }

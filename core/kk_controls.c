@@ -263,6 +263,20 @@ static unsigned route_for(unsigned id, const struct source *s)
     return ROUTE_DIRECT;
 }
 
+/* 0.94: notes the keyboard plays by itself (ARP, strum, chord repeat, Note
+ * Repeat) send ripples too: keys map onto the pad columns, pads ripple from
+ * where they are. */
+static void note_ripple(unsigned src, unsigned note, unsigned velocity)
+{
+#ifdef KK_HAS_RGB_PADS
+    if (!kk.ripple) return;
+    if (src >= PAD_SOURCE && src < SOURCES) { kk_led_ripple(1, src - PAD_SOURCE, velocity); return; }
+    int k = (int)note - (KK_KEY_BASE_NOTE + 12 * kk.octave);
+    kk_led_ripple(0, (unsigned)(k < 0 ? 0 : k >= KK_KEYS ? KK_KEYS - 1 : k), velocity);
+#else
+    (void)src; (void)note; (void)velocity;
+#endif
+}
 #include "kamotkeys/kk_ctl_arp.inc"
 /* ------------------------------------------------------ engage/disengage */
 static void mods_refresh(void);

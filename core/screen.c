@@ -168,7 +168,7 @@ static void signatures(void)
     h = mixsig(h, kk.arp.gate); h = mixsig(h, kk.sustain_on * 16U + kk.rec_length * 256U);
     h = mixsig(h, kk_velocity_override()); h = mixsig(h, kk.chord_mods | kk.chord_lock << 12); h = mixsig(h, kk_midi_local());
     if (popup_until && (int32_t)(now_ms - popup_until) < 0) h = strsig(mixsig(h, 77), popup);
-    if (kk.anim_active) h = mixsig(mixsig(h, kk.anim_pattern + 100U), kk.anim_speed / 10U);
+    if (kk.anim_active) h = mixsig(mixsig(mixsig(h, kk.anim_pattern + 100U), kk.anim_speed / 10U), kk.show_latched | (uint32_t)kk.show_cycle_s << 1);
     wanted[W_STATUS] = h;
     /* Page body: hash everything shown on the open page. */
     h = mixsig(base, kk.page); h = mixsig(h, kk.program); h = strsig(h, patch_name);

@@ -127,14 +127,14 @@ static unsigned ripple_next;
 void kk_led_ripple(unsigned kind, unsigned id, unsigned velocity)
 {
     int x, y;
-    if (kind == 2) { x = 3500; y = 500; }
+    if (kind == 2 || kind == 3) { x = 3500; y = 500; }   /* 3 (0.94): giant ring closing in on the middle */
     else if (kind) { x = (int)(id % 8) * 1000; y = (int)(id / 8) * 1000; }
     else { x = (int)(id * 7000U / (KK_KEYS - 1)); y = 500; }
     unsigned i = ripple_next++ % RIPPLES;
     ripples[i].start = fm1_millis(); ripples[i].x = (int16_t)x; ripples[i].y = (int16_t)y;
     ripples[i].hue = (uint16_t)(x * 65535 / 7000 + 20000);
-    ripples[i].strength = kind == 2 ? 255 : (uint8_t)(170 + (velocity > 127 ? 127 : velocity) * 85 / 127);
-    ripples[i].giant = kind == 2;
+    ripples[i].strength = kind >= 2 ? 255 : (uint8_t)(170 + (velocity > 127 ? 127 : velocity) * 85 / 127);
+    ripples[i].giant = kind == 2 ? 1 : kind == 3 ? 2 : 0;
 }
 static unsigned isqrt(unsigned v)
 {
@@ -163,6 +163,7 @@ static uint32_t ripple_colour(unsigned pad)
         int d = (int)isqrt((unsigned)(dx * dx + dy * dy));          /* milli-pads */
         int speed = ripples[i].giant ? GIANT_SPEED : RIPPLE_SPEED, width = ripples[i].giant ? GIANT_WIDTH : RIPPLE_WIDTH;
         int radius = (int)(age * (unsigned)speed);
+        if (ripples[i].giant == 2) { radius = 4600 - radius; if (radius < 0) radius = 0; }   /* inward */
         unsigned ring = ring_level(d - radius, width);
         unsigned echo = ring_level(d - radius * 11 / 20, width * 2 / 3) / 2;   /* a second, inner ring */
         if (echo > ring) ring = echo;
@@ -188,6 +189,8 @@ uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
     uint32_t c = kk_led_logical(pad, &level);
     if (anim_mix) {
         uint32_t show_rgb = output(show(kk.anim_pattern, pad, kk.anim_phase >> 16), 1000);
+        uint32_t r = ripple_colour(pad);                 /* 0.94: rings also over the light show */
+        if (r) show_rgb = brighter_rgb(show_rgb, output(r, 1000));
         return anim_mix >= 255 ? show_rgb : round_rgb(mix(output(c, level), show_rgb, anim_mix));
     }
     if (boot_ms < KK_BOOT_MS + KK_BOOT_FADE_MS) {
@@ -195,7 +198,7 @@ uint32_t kk_led_pad(unsigned pad, uint32_t boot_ms)
         unsigned t = (boot_ms - KK_BOOT_MS) * 255U / KK_BOOT_FADE_MS;
         return output(mix(aurora(pad, boot_ms), scale(c, level * 255U / 1000U), t), 1000);
     }
-    if (kk.ripple) {
+    {   /* ripples: only exist with ripple lights on, or the light-show latch ring (0.94) */
         uint32_t r = ripple_colour(pad);
         if (r) return brighter_rgb(output(c, level), output(r, 1000));
     }

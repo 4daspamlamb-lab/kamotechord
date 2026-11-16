@@ -27,6 +27,8 @@ struct kk_state {
     uint8_t clip_pad;                        /* last Clip Mode pad pressed       */
     uint8_t clip_action;                     /* Clip Mode key held: 0 launch, 1 overdub, 2 delete, 3 select */
     uint8_t ripple;                          /* SMK-37 ripple lights (3 x SEQ REC), not saved */
+    uint8_t show_latched;                    /* 0.94: light show latched (GLOBE held 3 s) */
+    uint16_t show_cycle_s;                   /* 0.94: latched show: next pattern every n s (0 = stays) */
     uint8_t step_auto;                       /* 0.93: SEQ PLAY = AUTO: held step + knobs write macro automation */
     uint8_t clip_pads;                       /* 0.93: Clip Mode pad mode 0 normal, 1 play, 2 stop, 3 mute */
     uint8_t rec_length;                      /* 0.91: fixed record length 0 off, 1..4 = 1 / 2 / 4 / 8 bars (saved) */

@@ -21,6 +21,7 @@ int main(void)
     test_live_tempo();
     test_ripple();
     test_top_keys_and_key_memory();
+    test_show_latch();
     test_step_mode();
     test_k1_live_tempo();
     test_bluetooth();

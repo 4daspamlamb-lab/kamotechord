@@ -117,11 +117,13 @@ static void arp_tick(void)
             for (unsigned j = 0; j < rep_n; ++j) dup |= rep_on[j].note == pool[i].note && rep_on[j].channel == pool[i].channel;
             if (dup) continue;
             kk_midi_note_on(pool[i].channel, pool[i].note, kk_velocity(pool[i].velocity));
+            if (!rep_n) note_ripple(SOURCES, pool[i].note, pool[i].velocity);   /* one ring per chord */
             rep_on[rep_n].channel = pool[i].channel; rep_on[rep_n].note = pool[i].note; ++rep_n;
         }
     } else {
         const struct arp_note *next = &pool[arp_index(arp_step, n)];
         kk_midi_note_on(next->channel, next->note, kk_velocity(next->velocity));
+        note_ripple(SOURCES, next->note, next->velocity);
         arp_note = next->note; arp_channel = next->channel;
     }
     unsigned gate = kk.arp.gate < 10 ? 10 : kk.arp.gate > 100 ? 100 : kk.arp.gate;
@@ -169,6 +171,7 @@ static void strum_tick(void)
     for (unsigned i = 0; i < strum_n; ++i)
         if (!strum_q[i].fired && clock_us >= strum_q[i].at) {
             kk_midi_note_on(strum_q[i].channel, strum_q[i].note, kk_velocity(strum_q[i].velocity));
+            note_ripple(SOURCES, strum_q[i].note, strum_q[i].velocity);
             strum_q[i].fired = 1;
         }
 }
@@ -191,6 +194,7 @@ static void repeat_hit(struct source *s, uint64_t length)
 {
     if (s->sounding) for (unsigned k = 0; k < s->count; ++k) kk_midi_note_off(s->channel, s->notes[k]);
     for (unsigned k = 0; k < s->count; ++k) kk_midi_note_on(s->channel, s->notes[k], kk_velocity(s->velocity));
+    if (s->sounding || repeat_running) note_ripple((unsigned)(s - sources), s->count ? s->notes[0] : 0, s->velocity);   /* repeats, not the press */
     s->sounding = 1; s->off_us = clock_us + length / 2U;
 }
 static void repeat_tick(void)

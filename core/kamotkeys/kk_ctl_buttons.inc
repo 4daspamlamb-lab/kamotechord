@@ -13,6 +13,8 @@ static uint8_t chord_used, chord_back, chord_step_from;   /* 0.80: momentary Cli
 static uint8_t repeat_used;                        /* 0.93: NOTE REPEAT held and used (no Sustain toggle) */
 static uint8_t track_hold_id = 255, track_hold_cc;   /* 0.86 / 0.91: a track key held: repeat */
 static uint32_t track_hold_next;
+static uint8_t show_latched, bank_combo;          /* 0.94: light show latched (GLOBE held 3 s); KNOB + FADER together */
+static uint32_t show_cycle_ms, show_cycle_next, bank_combo_since;
 static uint8_t show_combo, show_ripple_done;           /* KNOB + FADER BANK light show */
 static uint32_t show_since, show_taps[3];           /* 0.77: last three light-show starts */
 /* The Bluetooth menu borrows LEFT/RIGHT as its original HOME/SAVE keys. */
@@ -94,11 +96,28 @@ static void button(unsigned id, unsigned down, uint32_t now)
             consume(PAD_SOURCE, SOURCES);              /* pads stop making sound */
             kk.anim_active = 1; kk.anim_phase = 0;
             mods_refresh();
-        } else { kk.anim_active = 0; show_combo = 0; }
+        } else { if (!show_latched) kk.anim_active = 0; show_combo = 0; }   /* 0.94: latched: keeps running */
         return;
     case KK_BTN_FADER_BANK:
     case KK_BTN_KNOB_BANK: {
-        if (down) return;                              /* sent on release, as before */
+        /* 0.94: with the light show latched, KNOB + FADER BANK together: a tap
+         * ends it; held, the show moves to the next pattern every 10 s per
+         * second held (0.5 s -> 5 s, 6 s -> 1 min). Nothing goes to Live. */
+        unsigned other = id == KK_BTN_KNOB_BANK ? KK_BTN_FADER_BANK : KK_BTN_KNOB_BANK;
+        if (down) {
+            if (show_latched && (kk.buttons & (1U << other))) { bank_combo = 1; bank_combo_since = now; }
+            return;                                    /* sent on release, as before */
+        }
+        if (bank_combo) {
+            if (kk.buttons & (1U << other)) {          /* the first of the two let go: decide now */
+                uint32_t held = now - bank_combo_since;
+                if (held < 300U) { show_latched = 0; show_cycle_ms = 0; kk.anim_active = 0; kk.show_cycle_s = 0; }
+                else { show_cycle_ms = held * 10U; show_cycle_next = now + show_cycle_ms; kk.show_cycle_s = (uint16_t)((show_cycle_ms + 500U) / 1000U); }
+                ++kk.edit_revision;
+                bank_combo = 2;
+            } else bank_combo = 0;                     /* the second one: done */
+            return;
+        }
         unsigned cc = id == KK_BTN_KNOB_BANK ? KK_CC_RECORD : KK_CC_CAPTURE;
         if (cc == KK_CC_RECORD) ableton(KK_CC_REC_LENGTH, kk_rec_bars());   /* 0.91: fixed length (0 = off) first */
         ableton(cc, 127); ableton(cc, 0);
@@ -209,6 +228,18 @@ static void button(unsigned id, unsigned down, uint32_t now)
 /* Long presses are detected while still held. */
 static void long_presses(uint32_t now)
 {
+#ifdef KK_HAS_RGB_PADS
+    /* 0.94: GLOBE held 3 s = an inward ring, then the light show stays on. */
+    if ((kk.buttons & (1U << KK_BTN_GLOBE)) && !show_latched && now - kk.pressed_at[KK_BTN_GLOBE] >= 3000U) {
+        show_latched = 1; show_cycle_ms = 0; kk.show_cycle_s = 0; kk.anim_active = 1; ++kk.edit_revision;
+        kk_led_ripple(3, 0, 127);
+    }
+    if (show_latched && show_cycle_ms && (int32_t)(now - show_cycle_next) >= 0) {
+        kk.anim_pattern = (uint8_t)((kk.anim_pattern + 1) % KK_ANIMATIONS); kk.anim_phase = 0;
+        show_cycle_next = now + show_cycle_ms; ++kk.edit_revision;
+    }
+    kk.show_latched = show_latched;
+#endif
     /* 0.86 / 0.91: holding a track key (SHIFT + F / G) moves one more track every 0.5 s. */
     if (track_hold_id < KK_KEYS) {
         if (!sources[track_hold_id].held) track_hold_id = 255;
