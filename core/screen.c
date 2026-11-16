@@ -58,21 +58,28 @@ static unsigned clip_layout(void) { return kk.page == KK_PAGE_MAIN && kk.mode ==
 static char popup[28];
 static unsigned battery_adc;
 #ifndef KK_DEVICE_FM1
-/* 0.80 battery gauge. Raw ADC (Diagnostics) assumed: Li-ion through a 1:2
- * divider against 3.3 V, so ~527 = 3.4 V empty, ~651 = 4.2 V full; above
- * KK_BATT_EXTERNAL the keyboard runs from USB power (shown as a plug).
- * Calibrate the three values from Diagnostics if the gauge reads wrong. */
-enum { KK_BATT_EMPTY = 527, KK_BATT_FULL = 651, KK_BATT_EXTERNAL = 700 };
-static unsigned battery_avg16;                       /* smoothed ADC x16 */
-static int battery_level(void)                       /* -1 none, 0..100 %, 101 = USB power */
+/* 0.80 battery gauge. Raw ADC (Diagnostics): Li-ion through a 1:2 divider
+ * against 3.3 V, ~155 counts per volt (651 = 4.2 V). 0.98: calibrated on an
+ * Elite (664 off the charger, 635 a minute later, 552 after hours of play)
+ * and read along a Li-ion discharge curve instead of a straight line: the
+ * voltage is flat through the middle and drops fast near empty. Above
+ * KK_BATT_EXTERNAL the keyboard runs from USB power (shown as a plug). */
+enum { KK_BATT_EXTERNAL = 700 };
+static const uint16_t batt_adc[11] = {527, 543, 551, 558, 566, 574, 581, 589, 605, 620, 640};   /* 3.40 .. 4.13 V */
+static const uint8_t batt_pct[11] = {0, 4, 8, 13, 20, 30, 40, 50, 65, 80, 100};
+int kk_battery_percent(unsigned a);
+int kk_battery_percent(unsigned a)                   /* -1 none, 0..100 %, 101 = USB power */
 {
-    unsigned a = battery_avg16 / 16U;
     if (a < 100) return -1;
     if (a >= KK_BATT_EXTERNAL) return 101;
-    if (a <= KK_BATT_EMPTY) return 0;
-    if (a >= KK_BATT_FULL) return 100;
-    return (int)((a - KK_BATT_EMPTY) * 100U / (KK_BATT_FULL - KK_BATT_EMPTY));
+    if (a <= batt_adc[0]) return 0;
+    for (unsigned i = 1; i < 11; ++i)
+        if (a < batt_adc[i])
+            return batt_pct[i - 1] + (int)((a - batt_adc[i - 1]) * (unsigned)(batt_pct[i] - batt_pct[i - 1]) / (unsigned)(batt_adc[i] - batt_adc[i - 1]));
+    return 100;
 }
+static unsigned battery_avg16;                       /* smoothed ADC x16 */
+static int battery_level(void) { return kk_battery_percent(battery_avg16 / 16U); }
 #endif
 #ifdef KK_DEVICE_FM1
 static unsigned master_adc;

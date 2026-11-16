@@ -407,3 +407,16 @@ void test_smooth_show(void)
     CHECK(worst <= 40, "a ripple rises and fades without a hard jump (worst step %u)", worst);
     show_on(); show_off(); show_on(); show_off(); show_on(); show_off(); frames(600, 5);
 }
+
+/* 0.98: battery gauge along a Li-ion curve (Elite readings). */
+int kk_battery_percent(unsigned adc);
+void test_battery_curve(void)
+{
+    CHECK(kk_battery_percent(664) == 100 && kk_battery_percent(640) == 100, "off the charger: 100%%");
+    int a = kk_battery_percent(635); CHECK(a >= 90 && a < 100, "a minute later: 9x%% (%d)", a);
+    int b = kk_battery_percent(552); CHECK(b >= 5 && b <= 12, "after hours of play: nearly empty (%d)", b);
+    CHECK(kk_battery_percent(527) == 0 && kk_battery_percent(500) == 0, "empty");
+    CHECK(kk_battery_percent(812) == 101 && kk_battery_percent(0) == -1, "USB power / no reading");
+    int last = -1, ok = 1; for (unsigned v = 527; v <= 660; ++v) { int p = kk_battery_percent(v); if (p < last) ok = 0; last = p; }
+    CHECK(ok, "never goes down as the voltage rises");
+}

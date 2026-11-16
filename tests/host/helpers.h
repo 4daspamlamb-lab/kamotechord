@@ -119,6 +119,7 @@ void test_ripple(void);
 void test_top_keys_and_key_memory(void);
 void test_show_latch(void);
 void test_smooth_show(void);
+void test_battery_curve(void);
 void test_step_mode(void);
 void test_live_tempo(void);
 
