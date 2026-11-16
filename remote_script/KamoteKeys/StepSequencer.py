@@ -155,7 +155,7 @@ class StepSequencer(object):
         if on and not self._active:
             self._active = True
             self._log('Step Mode started')
-            self._bind(create=True)
+            self._bind(create=False)          # 1.00: no clip until the first step is pressed
             self.send_all()
         elif not on and self._active:
             self._active = False
@@ -184,6 +184,13 @@ class StepSequencer(object):
 
     def _deferred_bind(self):
         self._bind_pending = False
+        grouped = getattr(self._surface, '_grouped_call', None)
+        if grouped is not None:
+            grouped(self._rebind)                 # 1.00: arm / disarm / tidy-up = one undo step
+        else:
+            self._rebind()
+
+    def _rebind(self):
         if self._active:
             # 0.99: moved to another track / scene: the clip this mode made
             # there is deleted if it is still empty (no notes added).
@@ -193,7 +200,7 @@ class StepSequencer(object):
                 here = None
             if self._made_clip is not None and not self._same(self._made_clip, here):
                 self._drop_empty_clip()
-            self._bind(create=True)
+            self._bind(create=False)          # 1.00: a deleted clip is not made again
             self.send_all()
 
     def _bind(self, create):
@@ -405,7 +412,10 @@ class StepSequencer(object):
         return self._clip.loop_start if self._clip is not None else 0.0
 
     def _length(self):
-        return (self._clip.loop_end - self._clip.loop_start) if self._clip is not None else 0.0
+        if self._clip is not None:
+            return self._clip.loop_end - self._clip.loop_start
+        # 1.00: no clip yet: an empty 1-bar pattern shows (the first step makes the clip).
+        return self._bar() if self._slot is not None and self._track is not None else 0.0
 
     def _pages(self):
         return max(1, int(math.ceil(self._length() / self._span() - EPS)))
@@ -468,7 +478,7 @@ class StepSequencer(object):
         for i in range(PADS):
             t = self._step_time(i)
             notes = self._notes_at(t) if self._clip is not None else []
-            if self._clip is None or t >= end - EPS:
+            if self._slot is None or t >= end - EPS:
                 code = C_OUTSIDE
             elif i in self._held:
                 code = C_HELD

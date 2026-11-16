@@ -135,6 +135,9 @@ class Song(object):
     def start_playing(self): self.calls.append('start')
     def stop_playing(self): self.calls.append('stop')
     def stop_all_clips(self, quantized=True): self.calls.append('stop all clips')
+    undo_log = None
+    def begin_undo_step(self): self.undo_log is not None and self.undo_log.append('begin undo')
+    def end_undo_step(self): self.undo_log is not None and self.undo_log.append('end undo')
     def capture_midi(self): self.calls.append('capture')
     def undo(self): self.calls.append('undo')
     def redo(self): self.calls.append('redo')
@@ -427,6 +430,23 @@ class T(unittest.TestCase):
         self.tap(68 + 8 + 2); self.assertEqual(t.log, ['delete'])       # nothing left: no action
         self.assertIn('no clip', self.s.shown[-1])
 
+    def test_one_undo_step_per_press_and_per_knob_turn(self):
+        """1.00: a press is one undo step; a knob turn is one too (closed 0.6 s
+        after the last step); Undo itself is never inside a step."""
+        log = self.song.undo_log = []
+        self.song.undo = lambda: log.append('undo')
+        self.press(2)                                                     # select + arm: several changes
+        self.assertEqual(log, ['begin undo', 'end undo'])
+        log[:] = []
+        for _ in range(5): deliver((0xBE, 55, 65))                        # macro 1 turned 5 steps
+        self.assertEqual(log, ['begin undo'])
+        self.s.update_display(); self.assertEqual(log, ['begin undo'])    # still turning
+        self.s._knob_undo_at -= 1.0; self.s.update_display()
+        self.assertEqual(log, ['begin undo', 'end undo'])                 # stopped: closed
+        log[:] = []
+        deliver((0xBE, 55, 65)); deliver((0xBE, 24, 127))                 # turn, then Undo at once
+        self.assertEqual(log, ['begin undo', 'end undo', 'undo'])         # closed first, then one undo
+
     def test_play_pause_and_metronome(self):
         deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
         self.assertEqual(self.song.calls[-1], 'start')                 # 0.77: like the spacebar
@@ -670,11 +690,15 @@ class StepTest(unittest.TestCase):
         self.mode(True); self.tap(0); self.tap(0)
 
     def test_entering_creates_a_named_one_bar_clip(self):
-        self.mode(True)                                                    # 0.67: a clip is made on entering again
-        self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
+        self.mode(True)                                                    # 1.00: no clip until the first step
+        self.assertIsNone(self.clip)
         c = self.codes(); self.assertEqual(len(c), 16)
-        self.assertEqual(c[0], 1); self.assertEqual(c[4], 1)             # empty steps (0.62: no beat marker)
-        self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
+        self.assertEqual(c[0], 1); self.assertEqual(c[15], 1)            # yet the empty 1-bar pattern shows
+        self.assertEqual(self.info(100), 3)                               # status: press a step to start
+        self.tap(0)
+        self.assertIsNotNone(self.clip); self.assertEqual(self.clip.loop_end, 4.0); self.assertEqual(self.clip.name, 'Drums')
+        self.assertEqual([n.pitch for n in self.clip.notes], [36])
+        self.s.update_display(); self.assertEqual(self.info(100), 0); self.assertEqual(self.info(97), 1)
 
     def test_step_automation_auto(self):
         class Env(object):
@@ -862,14 +886,16 @@ class StepTest(unittest.TestCase):
         self.assertIsNotNone(slot.clip)                                    # not ours: kept
         other = self.song.track.clip_slots[1]
         object.__setattr__(self.song.view, 'highlighted_clip_slot', other)
-        self.mode(True); self.assertIsNotNone(other.clip)                 # made by Step Mode
-        self.mode(False); self.assertIsNone(other.clip)                   # empty: removed
+        self.mode(True); self.assertIsNone(other.clip)                    # 1.00: no clip on entering
+        self.tap(0); self.assertIsNotNone(other.clip)                     # made by the first step
+        self.press(68)                                                     # DELETE tap: the page's notes go
+        self.mode(False); self.assertIsNone(other.clip)                   # empty again: removed
         # 0.99: moving to another slot while in Step Mode removes the empty clip it made
-        self.mode(True); self.assertIsNotNone(other.clip)
+        self.mode(True); self.tap(0); self.press(68); self.assertIsNotNone(other.clip)
         third = self.song.track.clip_slots[2]
         object.__setattr__(self.song.view, 'highlighted_clip_slot', third)
         self.song.view.fire('selected_scene'); run_scheduled()
-        self.assertIsNone(other.clip); self.assertIsNotNone(third.clip)  # left behind: gone; the new one made
+        self.assertIsNone(other.clip); self.assertIsNone(third.clip)     # left behind: gone; none made here
         self.tap(0)                                                        # a step: the clip has a note now
         object.__setattr__(self.song.view, 'highlighted_clip_slot', other)
         self.song.view.fire('selected_scene'); run_scheduled()
@@ -916,8 +942,9 @@ class StepTest(unittest.TestCase):
         self.assertEqual([n.pitch for n in self.clip.notes], [36])   # still sequences C1
         slot = self.song.track.clip_slots[0]; slot.clip = None; slot.fire('has_clip')
         self.assertEqual(len(scheduled), 1)                               # rebind deferred, not in the listener
-        run_scheduled(); self.assertIsNotNone(slot.clip)                   # a new clip
-        self.s.update_display()
+        run_scheduled(); self.assertIsNone(slot.clip)                      # 1.00: deleted: no new clip
+        self.s.update_display(); self.assertEqual(self.codes()[0], 1)       # the step pads still show
+        self.tap(0); self.assertIsNotNone(slot.clip)                       # the first step makes one
 
     def test_leaving_stops_listening(self):
         self.started(); clip = self.clip; self.mode(False)

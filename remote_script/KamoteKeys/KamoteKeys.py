@@ -88,6 +88,7 @@ TRANSPORT_CCS = (CC_START, CC_STOP, CC_CAPTURE, CC_UNDO, CC_RECORD, CC_REDO, CC_
                  CC_CLIP_UP, CC_CLIP_DOWN, CC_MASTER, CC_FINISH, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO,
                  CC_SOLO, CC_CLIP_PLAY, CC_CLIP_DELETE, CC_MUTE, CC_ARM, CC_QUANTIZE, CC_ARM_ADD,
                  CC_CLIP_DUPLICATE, CC_LOOP_DOUBLE, CC_REC_LENGTH, CC_CLIP_PADS) + CC_FX + CC_MACRO
+KNOB_CCS = (CC_MASTER, CC_TEMPO, CC_TRACK_VOLUME, CC_TRACK_MACRO) + CC_FX + CC_MACRO   # 1.00: one undo step per turn
 
 EMPTY, STOPPED, PLAYING, QUEUED, RECORDING, QUEUED_RECORD, EMPTY_ARMED = range(7)
 NAME_CC, CHAR_CC, SELTRACK_CC = 111, 112, 113   # 0.81: track names / selected track for the screen
@@ -95,6 +96,44 @@ NAME_LEN = 12
 FX_CC = 114                              # 0.82: reply 114-117 = new position 0..126, 127 = no device
 FX_NONE = 127
 FULL_REFRESH_TICKS = 50      # update_display runs ~10 Hz: full resend every ~5 s
+
+
+def _undo_group(method):
+    """1.00: everything one keyboard press does in Live is ONE undo step
+    (arming, selecting, a clip and its name ...), so Undo (LEFT) takes it
+    back with one press."""
+    def wrapper(self, *args, **kwargs):
+        self._knob_undo_close()
+        self._undo_depth += 1
+        if self._undo_depth == 1:
+            self._song_call('begin_undo_step')
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            self._undo_depth -= 1
+            if self._undo_depth == 0:
+                self._song_call('end_undo_step')
+    wrapper.__name__ = method.__name__
+    return wrapper
+
+
+def _undo_press(method):
+    """_undo_group for presses only: a release (value 0) changes nothing here."""
+    grouped = _undo_group(method)
+    def wrapper(self, value, *args, **kwargs):
+        return (grouped if value else method)(self, value, *args, **kwargs)
+    wrapper.__name__ = method.__name__
+    return wrapper
+
+
+def _undo_knob(method):
+    """1.00: a knob turn (many small steps) is one undo step: it stays open
+    while the knob turns and closes 0.6 s after it stops."""
+    def wrapper(self, *args, **kwargs):
+        self._knob_undo_touch()
+        return method(self, *args, **kwargs)
+    wrapper.__name__ = method.__name__
+    return wrapper
 
 
 class KamoteKeys(ControlSurface):
@@ -122,6 +161,8 @@ class KamoteKeys(ControlSurface):
         self._stop_held = self._stop_used = False   # Clip Mode STOP key (0.77)
         self._clip_copy = None           # (track index, scene index) of the copied clip
         self._rec_finishing = False      # 0.99: Session Record pressed again: waiting for the bar line
+        self._undo_depth = 0             # 1.00: undo grouping (see _undo_group)
+        self._knob_undo_at = None        # time of the last knob step while a knob undo step is open
         self._rec_quant = None           # launch quantization to put back afterwards
         self._board_sent = None
         self._step = StepSequencer(self)
@@ -169,12 +210,36 @@ class KamoteKeys(ControlSurface):
         self._status('KamoteKeys Remote Script loaded')
         self._send_all()
 
+    # ------------------------------------------------------- undo (1.00)
+    def _song_call(self, name):
+        try:
+            getattr(self.song(), name)()
+        except Exception:
+            pass                          # older Live: no grouping, still works
+
+    def _grouped_call(self, fn):
+        """Run fn() as one undo step (for work done later, outside a MIDI handler)."""
+        return _undo_group(lambda self: fn())(self)
+
+    def _knob_undo_touch(self):
+        if self._knob_undo_at is None and self._undo_depth == 0:
+            self._song_call('begin_undo_step')
+            self._knob_undo_at = time.time()
+        elif self._knob_undo_at is not None:
+            self._knob_undo_at = time.time()
+
+    def _knob_undo_close(self, idle=0.0):
+        if self._knob_undo_at is not None and time.time() - self._knob_undo_at >= idle:
+            self._knob_undo_at = None
+            self._song_call('end_undo_step')
+
     # ------------------------------------------------------------- input
     def _first_message(self):
         if not self._received:
             self._received = True
             self.log_message('KamoteKeys: first message received from the keyboard')
 
+    @_undo_press
     def _pad_value(self, value, sender):
         self._first_message()
         if not value:                    # note on: one action per physical press
@@ -237,6 +302,7 @@ class KamoteKeys(ControlSurface):
         except Exception:
             pass
 
+    @_undo_group
     def _copy_key_value(self, value, sender):
         self._first_message()
         if sender.message_identifier() == STOP_NOTE:
@@ -301,6 +367,7 @@ class KamoteKeys(ControlSurface):
         else:
             self._send_clipboard(self._cp.flags(), 0, 0)
 
+    @_undo_group
     def _step_value(self, value, sender):
         self._first_message()
         note = sender.message_identifier()
@@ -309,6 +376,7 @@ class KamoteKeys(ControlSurface):
         else:
             self._step.function(note, bool(value))
 
+    @_undo_knob
     def _step_edit_value(self, value, sender):
         self._first_message()
         cc = sender.message_identifier()
@@ -324,12 +392,20 @@ class KamoteKeys(ControlSurface):
         else:
             self._step.knob(cc - STEP_EDIT_CC, value - 64)
 
+    @_undo_group
     def _step_select_value(self, value, sender):
         self._first_message()
         self._step.key_zone(sender.message_identifier(), bool(value))
 
     def _step_mode_value(self, value):
         self._first_message()
+        if (value == 127) != self._step.active:
+            self._step_mode_change(value)          # entering / leaving: one undo step
+        elif value == 127:
+            self._step_seen = time.time()          # heartbeat only: nothing to undo
+
+    @_undo_group
+    def _step_mode_change(self, value):
         # 127 = start; leaving: 0 = and play the clip, 64 = quietly (PATCH held).
         if value == 127:
             self._step_seen = time.time()   # also the 2 s heartbeat (0.66)
@@ -344,6 +420,21 @@ class KamoteKeys(ControlSurface):
             self._send_all()
 
     def _transport_value(self, value, sender):
+        cc = sender.message_identifier()
+        if cc in (CC_UNDO, CC_REDO):
+            self._knob_undo_close()                # Undo never lands inside a group
+            self._transport_value_now(value, sender)
+        elif cc in KNOB_CCS:
+            self._knob_undo_touch()
+            self._transport_value_now(value, sender)
+        else:
+            self._transport_value_grouped(value, sender)
+
+    @_undo_press
+    def _transport_value_grouped(self, value, sender):
+        self._transport_value_now(value, sender)
+
+    def _transport_value_now(self, value, sender):
         self._first_message()
         cc = sender.message_identifier()
         if cc == CC_MASTER:
@@ -1348,6 +1439,7 @@ class KamoteKeys(ControlSurface):
         self._send_names()
         self._ticks_total += 1
         self._send_clip_notes()
+        self._knob_undo_close(idle=0.6)          # 1.00: a knob stopped turning: its undo step ends
         self._poll_recording()
         if self._step.active and time.time() - self._step_seen > STEP_TIMEOUT:
             self.log_message('KamoteKeys: no Step Mode heartbeat, leaving Step Mode')
@@ -1425,6 +1517,7 @@ class KamoteKeys(ControlSurface):
             self._double_selected()
 
     def disconnect(self):
+        self._knob_undo_close()
         self._step.disconnect()
         for pad in range(TRACKS * SCENES):
             self._send_midi((0xB0 | CLIP_CHANNEL, STATE_CC + pad, EMPTY))
