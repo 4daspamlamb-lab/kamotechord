@@ -164,7 +164,7 @@ unsigned kk_led_button(unsigned id)
     case KK_BTN_ARP: return kk.arp_on || pressed ? 2 : 1;
     case KK_BTN_NOTE_REPEAT: return kk.sustain_on || pressed ? 2 : 1;  /* SUSTAIN */
     case KK_BTN_SCALE: return kk.mode == KK_MODE_PAD_SCALE ? 2 : 1;   /* Pad Scale only */
-    case KK_BTN_SEQ: return kk.mode == KK_MODE_KEY_SCALE || (kk.mode == KK_MODE_STEP && kk_midi_step_info(KK_STEP_KEYS_CC)) ? 2 : 1;
+    case KK_BTN_SEQ: return kk_keys_in_scale() || (kk.mode == KK_MODE_STEP && kk_midi_step_info(KK_STEP_KEYS_CC)) ? 2 : 1;
     case KK_BTN_FX: return kk.mode == KK_MODE_DRUM ? 2 : 1;
     case KK_BTN_BT: return kk.page == KK_PAGE_BT || kk.page == KK_PAGE_DIAG || pressed ? 2 : 1;
     case KK_BTN_PATCH: return kk.page == KK_PAGE_PATCH || pressed ? 2 : 1;

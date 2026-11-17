@@ -440,3 +440,40 @@ void test_pad_scale_keys(void)
     shot("pad_scale_pad");
     tap(KK_BTN_SCALE);
 }
+
+/* 1.01: Key Scale and Pad Scale together; keys light the scale pads. */
+void test_key_and_pad_scale(void)
+{
+    boot(); settle();
+    tap(KK_BTN_SEQ); CHECK(kk.mode == KK_MODE_KEY_SCALE, "SEQ: Key Scale");
+    tap(KK_BTN_SCALE);
+    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk.keys_scale && kk_keys_in_scale(), "SCALE with Key Scale on: both on");
+    CHECK(kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 2, "both LEDs lit");
+    frames(20, 20); shot("pad_key_scale");
+    /* keys play the scale: white keys = scale degrees, black keys silent */
+    CHECK(kk.scale.scale == 0 && kk.scale.root == 0, "C major");
+    unsigned ch; host_clear(); key(13, 100); key(13, 0);
+    CHECK(out_count(USB, 0x90, -1) == 0, "black key silent in Key Scale");
+    /* a key in another octave lights one pad, the same name */
+    kk.octave = -2; key(14, 100);
+    int n = (int)last_out(USB, 0x90, 0) & 127;
+    unsigned lit = 0, which = 99;
+    for (unsigned p = 0; p < KK_PADS; ++p) if (kk_pad_lit(p)) { ++lit; which = p; }
+    CHECK(lit == 1 && kk_pad_note(which, &ch) % 12 == n % 12, "key %d lights one pad of that name (%u lit)", n, lit);
+    CHECK(!kk.key_shown, "the screen keeps the pad grid");
+    key(14, 0);
+    lit = 0; for (unsigned p = 0; p < KK_PADS; ++p) lit += kk_pad_lit(p);
+    CHECK(lit == 0, "released: dark");
+    kk.octave = 0; key(12, 100);       /* in the pads' octave: its own pad */
+    n = (int)last_out(USB, 0x90, 0) & 127; lit = 0; which = 99;
+    for (unsigned p = 0; p < KK_PADS; ++p) if (kk_pad_lit(p)) { ++lit; which = p; }
+    CHECK(lit == 1 && kk_pad_note(which, &ch) == n, "same octave: exactly its pad");
+    key(12, 0);
+    /* SEQ in Pad Scale: keys back to normal, pads stay */
+    tap(KK_BTN_SEQ); CHECK(kk.mode == KK_MODE_PAD_SCALE && !kk.keys_scale, "SEQ: keys normal, pads stay");
+    tap(KK_BTN_SEQ); CHECK(kk.keys_scale, "SEQ again: keys in scale");
+    tap(KK_BTN_SCALE); CHECK(kk.mode == KK_MODE_KEY_SCALE && !kk.keys_scale, "SCALE: pads off, Key Scale stays");
+    tap(KK_BTN_SEQ); CHECK(kk.mode == KK_MODE_NORMAL, "SEQ: normal");
+    tap(KK_BTN_SCALE); tap(KK_BTN_FX); CHECK(kk.mode == KK_MODE_DRUM && !kk.keys_scale, "another mode clears it");
+    tap(KK_BTN_FX);
+}

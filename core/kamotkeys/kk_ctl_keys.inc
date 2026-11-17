@@ -216,7 +216,7 @@ static void source_press(unsigned id, unsigned velocity)
     }
     if (s->channel == KK_CH_CLIP) kk.clip_pad = (uint8_t)(id - PAD_SOURCE);
     if (s->count) {
-        if (id < KK_KEYS) { kk.chord_root = s->count > 1 ? s->notes[0] : -1; kk.last_note = s->notes[0]; kk.key_shown = s->channel == KK_CH_MELODIC; }
+        if (id < KK_KEYS) { kk.chord_root = s->count > 1 ? s->notes[0] : -1; kk.last_note = s->notes[0]; kk.key_shown = s->channel == KK_CH_MELODIC && !kk.keys_scale; }   /* 1.01: both scales: the pad grid stays, keys light it */
         else { kk.last_pad = (uint8_t)(id - PAD_SOURCE); kk.last_note = s->notes[0]; kk.key_shown = 0; }
     }
 }

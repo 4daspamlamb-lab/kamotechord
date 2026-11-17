@@ -121,6 +121,7 @@ void test_show_latch(void);
 void test_smooth_show(void);
 void test_battery_curve(void);
 void test_pad_scale_keys(void);
+void test_key_and_pad_scale(void);
 void test_step_mode(void);
 void test_live_tempo(void);
 

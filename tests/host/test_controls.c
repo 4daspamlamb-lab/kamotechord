@@ -117,7 +117,9 @@ void test_buttons(void)
     tap(KK_BTN_SEQ);
     CHECK(kk.mode == KK_MODE_KEY_SCALE && kk_led_button(KK_BTN_SEQ) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "SEQ -> Key Scale only");
     tap(KK_BTN_SCALE);
-    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_SEQ) == 1, "SCALE -> Pad Scale only");
+    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_SEQ) == 2, "1.01: SCALE with Key Scale on -> both");
+    tap(KK_BTN_SEQ);
+    CHECK(kk.mode == KK_MODE_PAD_SCALE && kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_SEQ) == 1, "SEQ -> Pad Scale only");
     CHECK(kk_led_button(KK_BTN_SCALE) == 2 && kk_led_button(KK_BTN_FX) == 1, "SCALE LED");
     tap(KK_BTN_FX);
     CHECK(kk.mode == KK_MODE_DRUM && kk_led_button(KK_BTN_FX) == 2 && kk_led_button(KK_BTN_SCALE) == 1, "FX -> Drum");

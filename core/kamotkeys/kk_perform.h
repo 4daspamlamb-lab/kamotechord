@@ -62,6 +62,7 @@ struct kk_state {
     int16_t last_note;                       /* last direct note (display) */
     uint8_t last_pad;                        /* last pad pressed (display) */
     uint8_t key_shown;                       /* 0.99: Pad Scale: a key was played last (screen shows the keys) */
+    uint8_t keys_scale;                      /* 1.01: Pad Scale + Key Scale together (keys play the scale too) */
     int16_t encoder[KK_ENCODERS];            /* pending detents for the UI */
     uint32_t pressed_at[KK_BUTTONS];
     uint32_t edit_revision;                  /* bumps on any visible change */
@@ -90,6 +91,7 @@ unsigned kk_pad_curve(unsigned velocity);
 unsigned kk_rec_bars(void);                         /* 0.91: fixed record length in bars, 0 = off */
 unsigned kk_step_pads_held(void);
 unsigned kk_top_shift_held(void);
+unsigned kk_keys_in_scale(void);                    /* 1.01: Key Scale, alone or with Pad Scale */
 void kk_set_clip_pads(unsigned mode);              /* 0.93: Clip Mode pad mode */                   /* 0.93: top C (SHIFT) held */                   /* 0.91: Step Mode: a step pad is held */
 /* Note for a pad in the current pad mode (-1 if none) and its channel. */
 int kk_pad_note(unsigned pad, unsigned *channel);

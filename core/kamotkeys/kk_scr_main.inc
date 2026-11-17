@@ -186,7 +186,7 @@ static void draw_info(void)
 {
     const struct widget *w = &widgets[W_INFO];
     fill(0, w->y, 240, w->h, BG);
-    const char *name = kk_mode_name(kk.mode);
+    const char *name = kk.mode == KK_MODE_PAD_SCALE && kk.keys_scale ? "PAD+KEY SCALE" : kk_mode_name(kk.mode);   /* 1.01 */
     int width = text_width(name, 1) + 12;
     pill(6, w->y + 5, width, 17, blend565(BG, mode_colour(), 70));
     text(12, w->y + 10, name, 1, mode_colour());

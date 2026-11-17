@@ -169,10 +169,25 @@ static void button(unsigned id, unsigned down, uint32_t now)
         if (kk.mode == KK_MODE_STEP) { kk_midi_tap(KK_CH_STEP, id == KK_BTN_OCT_UP ? KK_STEP_OCT_UP : KK_STEP_OCT_DOWN); return; }
         kk_set_octave(kk_active_octave() + (id == KK_BTN_OCT_UP ? 1 : -1)); return;
     /* 0.45: SCALE = Pad Scale Mode, SEQ = Key Scale Mode (swapped on request). */
-    case KK_BTN_SCALE: if (down) kk_set_mode(KK_MODE_PAD_SCALE); return;
+    /* 1.01: both can be on: SCALE with Key Scale on adds Pad Scale; SEQ in
+     * Pad Scale turns the keys' scale on / off (the pads stay). */
+    case KK_BTN_SCALE:
+        if (!down) return;
+#ifndef KK_PAD_SCALE_ON_KEYS
+        if (kk.mode == KK_MODE_KEY_SCALE) { kk.keys_scale = 1; kk_set_mode(KK_MODE_PAD_SCALE); return; }
+        if (kk.mode == KK_MODE_PAD_SCALE && kk.keys_scale) { kk_set_mode(KK_MODE_KEY_SCALE); return; }   /* pads off, keys stay */
+#endif
+        kk_set_mode(KK_MODE_PAD_SCALE); return;
     case KK_BTN_SEQ:
         /* Step Mode + SEQ (0.62): the key zone becomes scale keys (per track). */
         if (down && kk.mode == KK_MODE_STEP) { kk_midi_tap(KK_CH_STEP, KK_STEP_SCALE_KEYS); return; }
+#ifndef KK_PAD_SCALE_ON_KEYS
+        if (down && kk.mode == KK_MODE_PAD_SCALE) {
+            consume(0, KK_KEYS);                       /* the keys change meaning */
+            kk.keys_scale = !kk.keys_scale; reroute_all(); ++kk.edit_revision;
+            return;
+        }
+#endif
         if (down) kk_set_mode(KK_MODE_KEY_SCALE);
         return;
     case KK_BTN_FX: if (down) kk_set_mode(KK_MODE_DRUM); return;

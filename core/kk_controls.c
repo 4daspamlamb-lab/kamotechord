@@ -240,7 +240,7 @@ static void intent(unsigned id, struct source *s)
             note = id >= KK_SPLIT_KEY ? kk_pad_scale_note(id - KK_SPLIT_KEY, kk.pad_octave, &kk.scale) : -1;
         else
 #endif
-        note = kk.mode == KK_MODE_KEY_SCALE ? kk_key_scale_note(id, kk.octave, &kk.scale)
+        note = kk_keys_in_scale() ? kk_key_scale_note(id, kk.octave, &kk.scale)
                                             : kk_key_note(id, kk.octave);
         unsigned mods = kk.chord_mods;   /* 0.62: a locked chord also plays in the pad modes */
         s->count = (uint8_t)kk_chord_build(note, mods, &kk.scale, s->notes);
@@ -404,12 +404,14 @@ void kk_set_clip_pads(unsigned m)
     kk.clip_pads = (uint8_t)(m <= KK_CLIP_PADS_SCENES ? m : 0U); ++kk.edit_revision;
     kk_midi_cc(KK_CH_ABLETON, KK_CC_CLIP_PADS, kk.clip_pads);   /* the script does the action */
 }
+unsigned kk_keys_in_scale(void) { return kk.mode == KK_MODE_KEY_SCALE || (kk.mode == KK_MODE_PAD_SCALE && kk.keys_scale); }
 void kk_set_mode(unsigned mode)
 {
     if (mode == kk.mode) mode = mode == KK_MODE_STEP ? kk.step_from : KK_MODE_NORMAL;   /* same button again: back */
     if (mode == KK_MODE_STEP) kk.step_from = kk.mode;   /* 0.67: leaving Step Mode returns here (e.g. Clip Mode) */
     hold_release();                                   /* sustained notes belong to the old mode */
     kk.key_shown = 0;                                 /* 0.99: Pad Scale opens on the pad grid */
+    if (mode != KK_MODE_PAD_SCALE && mode != KK_MODE_STEP) kk.keys_scale = 0;   /* 1.01: Key Scale with Pad Scale only */
     /* 0.62: a chord LOCK survives every mode change (it is released only
      * with the LOCK pad), and the keys keep playing the locked chord. */
     unsigned keep_lock = kk.chord_lock;
@@ -570,6 +572,25 @@ unsigned kk_pad_lit(unsigned pad)
     /* 0.89: Pad Scale also lights the notes the selected clip in Live is
      * playing right now (sent by the Remote Script, display only). */
     if (kk.mode == KK_MODE_PAD_SCALE && kk_midi_clip_note((unsigned)note)) return 1;
+    /* 1.01 Pad Scale + Key Scale: a key lights its note on the pads; if that
+     * octave is not on the pads, the one pad with the same name (the lowest). */
+    if (kk.mode == KK_MODE_PAD_SCALE && kk.keys_scale) {
+        for (unsigned lower = 0; lower < pad; ++lower) {
+            int other = kk_pad_note(lower, &channel);
+            if (other >= 0 && other % 12 == note % 12) return 0;   /* a lower pad shows this name */
+        }
+        for (unsigned k = 0; k < KK_KEYS; ++k) {
+            const struct source *key = &sources[k];
+            if ((!key->sounding && !key->held) || !musical(key->route) || key->channel != KK_CH_MELODIC) continue;
+            for (unsigned i = 0; i < key->count; ++i) {
+                int n = key->notes[i];
+                if (n % 12 != note % 12) continue;
+                unsigned on_pads = 0;
+                for (unsigned q = 0; q < KK_PADS && !on_pads; ++q) on_pads = kk_pad_note(q, &channel) == n;
+                if (!on_pads) return 1;                           /* the exact note lights its own pad above */
+            }
+        }
+    }
     return 0;
 }
 

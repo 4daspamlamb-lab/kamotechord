@@ -151,7 +151,7 @@ static void signatures(void)
 #ifndef KK_DEVICE_FM1
     { int b = battery_level(); wanted[W_HEADER] = mixsig(wanted[W_HEADER], (uint32_t)(b < 0 ? 999 : b > 100 ? 998 : b / 10)); }
 #endif
-    uint32_t h = mixsig(base, kk.mode); h = mixsig(h, (uint32_t)kk_active_octave()); h = mixsig(h, kk_tempo_x10());
+    uint32_t h = mixsig(base, kk.mode + 16U * kk.keys_scale); h = mixsig(h, (uint32_t)kk_active_octave()); h = mixsig(h, kk_tempo_x10());
     h = mixsig(h, kk_midi_host_protocol());
     wanted[W_INFO] = h;
     h = strsig(mixsig(base, big_kind * 2U + !!sounding_n), big_name); h = mixsig(h, kk.last_pad);
