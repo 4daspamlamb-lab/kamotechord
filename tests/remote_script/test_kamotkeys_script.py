@@ -452,7 +452,7 @@ class T(unittest.TestCase):
         self.assertEqual(self.song.calls[-1], 'start')                 # 0.77: like the spacebar
         self.song.is_playing = True
         deliver((0xBE, 23, 127)); deliver((0xBE, 23, 0))
-        self.assertEqual(self.song.calls[-2:], ['stop all clips', 'stop'])   # 0.99: PARA = global stop
+        self.assertEqual(self.song.calls[-1], 'stop'); self.assertNotIn('stop all clips', self.song.calls)   # 1.03: space bar: clips resume on play
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertTrue(self.song.metronome)
         deliver((0xBE, 26, 127)); deliver((0xBE, 26, 0)); self.assertFalse(self.song.metronome)
 

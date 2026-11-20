@@ -1091,7 +1091,7 @@ class StepSequencer(object):
         launch it; pressed while it plays, stop it."""
         song = self._song()
         if getattr(song, 'is_playing', False):
-            self._surface._stop_everything()          # 0.99: PARA = global stop, in Step Mode too
+            self._surface._stop_everything()          # 1.03: PARA = space bar, in Step Mode too
             return
         if not self._ensure_clip():
             return

@@ -879,16 +879,10 @@ class KamoteKeys(ControlSurface):
 
     # ------------------------------------- top-octave Live keys (0.86)
     def _stop_everything(self):
-        """PARA (0.99): stop every clip and the transport."""
-        song = self.song()
-        try:
-            song.stop_all_clips(False)            # at once, not at the next bar
-        except TypeError:
-            song.stop_all_clips()
-        except Exception as error:
-            self.log_message('KamoteKeys: stop all clips: %s' % error)
-        song.stop_playing()
-        self._status('KamoteKeys: stop (all clips)')
+        """PARA (1.03): like Live's space bar: the transport stops and the
+        playing clips with it; the next PARA starts them again."""
+        self.song().stop_playing()
+        self._status('KamoteKeys: stop')
 
     def _toggle_track(self, cc):
         song = self.song()
@@ -1467,8 +1461,8 @@ class KamoteKeys(ControlSurface):
             if song.can_redo:
                 song.redo()
         elif cc == CC_PLAY_PAUSE:
-            # 0.77: like the spacebar; 0.99: a global stop: every clip stops
-            # too (Stop All Clips), so the next play starts from nothing.
+            # 1.03: exactly like the space bar: stop, and play again resumes
+            # the clips that were playing (no Stop All Clips any more).
             if song.is_playing:
                 self._stop_everything()
             else:
