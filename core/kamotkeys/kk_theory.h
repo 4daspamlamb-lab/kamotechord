@@ -19,6 +19,14 @@ enum {
 
 struct kk_scale_ctx { uint8_t scale, root; };   /* scale 0..22, root pc 0..11 */
 
+/* 1.02 CHORD KEYS: every key plays this chord on its note (0 = off). 1..12
+ * the same shape on every key, 13..16 built from the scale. Voicing: close,
+ * spread (root an octave down), drop 2. */
+enum { KK_CHORD_KEY_TYPES = 17, KK_CHORD_SCALE_FIRST = 13, KK_VOICINGS = 3 };
+const char *kk_chord_key_name(unsigned type);
+const char *kk_voicing_name(unsigned voicing);
+unsigned kk_chord_key_build(int root, unsigned type, unsigned voicing, const struct kk_scale_ctx *s, uint8_t notes[6]);
+
 const char *kk_scale_name(unsigned scale);       /* full name, e.g. "Minor Pentatonic" */
 unsigned kk_scale_mask(unsigned scale);          /* 12-bit pitch-class set from C */
 unsigned kk_scale_size(unsigned scale);

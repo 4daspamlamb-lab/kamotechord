@@ -63,6 +63,7 @@ struct kk_state {
     uint8_t last_pad;                        /* last pad pressed (display) */
     uint8_t key_shown;                       /* 0.99: Pad Scale: a key was played last (screen shows the keys) */
     uint8_t keys_scale;                      /* 1.01: Pad Scale + Key Scale together (keys play the scale too) */
+    uint8_t chord_keys, chord_voicing;       /* 1.02: CHORD KEYS type (0 off) and voicing */
     int16_t encoder[KK_ENCODERS];            /* pending detents for the UI */
     uint32_t pressed_at[KK_BUTTONS];
     uint32_t edit_revision;                  /* bumps on any visible change */

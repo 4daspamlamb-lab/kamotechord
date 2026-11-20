@@ -477,3 +477,44 @@ void test_key_and_pad_scale(void)
     tap(KK_BTN_SCALE); tap(KK_BTN_FX); CHECK(kk.mode == KK_MODE_DRUM && !kk.keys_scale, "another mode clears it");
     tap(KK_BTN_FX);
 }
+
+/* 1.02 CHORD KEYS: every key plays the chosen chord; voicings; saved. */
+void test_chord_keys(void)
+{
+    boot(); settle();
+    uint8_t n[64]; unsigned c;
+    tap(KK_BTN_PATCH);
+    smk37_control_event(SMK37_ENCODER, 6, 1); frames(3, 2);
+    CHECK(kk.chord_keys == 1, "PATCH E7: CHORD KEYS m9");
+    frames(20, 20); shot("patch_chord_keys");
+    tap(KK_BTN_PATCH);
+    kk.octave = 0;
+    host_clear(); key(21, 100);                                  /* A */
+    notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[0] == 69 && n[1] == 72 && n[2] == 76 && n[3] == 79 && n[4] == 83, "A -> Am9: A C E G B (%u notes)", c);
+    frames(20, 20); shot("chord_keys_am9");
+    key(21, 0);
+    for (unsigned k = 0; k < 128; ++k) CHECK(!kk_midi_count(0, k), "released %u", k);
+    /* the same shape on every key */
+    host_clear(); key(14, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[0] == 62 && n[1] == 65 && n[4] == 76, "D -> Dm9 (same shape)"); key(14, 0);
+    /* chord pads still win */
+    host_clear(); pad(1, 100); key(21, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 3, "a chord pad overrides CHORD KEYS (%u)", c); key(21, 0); pad(1, 0);
+    /* SCALE 9TH in C major: A -> Am9, C -> Cmaj9, G -> G9 */
+    kk.chord_keys = 14;
+    host_clear(); key(19, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[0] == 67 && n[1] == 71 && n[2] == 74 && n[3] == 77 && n[4] == 81, "SCALE 9TH: G -> G9 (G B D F A)"); key(19, 0);
+    host_clear(); key(12, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[3] == 71 && n[4] == 74, "SCALE 9TH: C -> Cmaj9"); key(12, 0);
+    /* voicings */
+    kk.chord_keys = 1; kk.chord_voicing = 1;
+    host_clear(); key(21, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[0] == 57 && n[1] == 72, "SPREAD: root an octave down"); key(21, 0);
+    kk.chord_voicing = 2;
+    host_clear(); key(21, 100); notes_on(USB, ON1, n, &c);
+    CHECK(c == 5 && n[0] == 67 && n[1] == 69 && n[4] == 83, "DROP 2: G (2nd from top) dropped below the root"); key(21, 0);
+    { uint8_t saved[16]; kamotkeys_settings_read(saved); kk.chord_keys = 0; kk.chord_voicing = 0;
+      CHECK(kamotkeys_settings_apply(saved) == 0 && kk.chord_keys == 1 && kk.chord_voicing == 2, "saved"); }
+    kk.chord_keys = 0; kk.chord_voicing = 0; kk.octave = -2;
+}

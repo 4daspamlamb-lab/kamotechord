@@ -26,6 +26,7 @@ int main(void)
     test_battery_curve();
     test_pad_scale_keys();
     test_key_and_pad_scale();
+    test_chord_keys();
     test_step_mode();
     test_k1_live_tempo();
     test_bluetooth();

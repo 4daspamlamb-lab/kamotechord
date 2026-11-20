@@ -187,7 +187,7 @@ static void signatures(void)
     h = mixsig(base, kk.page); h = mixsig(h, kk.program); h = strsig(h, patch_name);
     h = mixsig(h, kk.scale.scale | kk.scale.root << 8 | (uint32_t)kk.brightness_level << 16);   /* 0.93: Patch page */
     h = mixsig(h, kk_midi_local() * 8U + kk_midi_ports_mode() + kk.pad_sensitivity * 64U);
-    h = mixsig(h, kk.arp.strum); h = mixsig(h, kk.arp.mode | kk.arp.direction << 4 | kk.arp.division << 8 | (uint32_t)kk.arp.gate << 12 |
+    h = mixsig(h, kk.arp.strum | kk.arp.strum_bars << 4 | (uint32_t)kk.chord_keys << 8 | (uint32_t)kk.chord_voicing << 16); h = mixsig(h, kk.arp.mode | kk.arp.direction << 4 | kk.arp.division << 8 | (uint32_t)kk.arp.gate << 12 |
                   (uint32_t)kk.arp.swing << 16 | (uint32_t)kk.arp.octaves << 24);
     h = mixsig(h, kk.arp_on * 2U + kk.repeat_on); h = mixsig(h, kk.repeat_division); h = mixsig(h, kk_tempo_x10());
     if (kk.page == KK_PAGE_BT) {

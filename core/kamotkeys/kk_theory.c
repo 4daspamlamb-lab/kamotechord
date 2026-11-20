@@ -197,6 +197,60 @@ unsigned kk_chord_build(int root, unsigned mods, const struct kk_scale_ctx *s, u
     return n;
 }
 
+/* ------------------------------------------------- 1.02 CHORD KEYS */
+static const char *const chord_key_names[KK_CHORD_KEY_TYPES] = {
+    "OFF", "m9", "maj9", "9", "m11", "maj7#11", "9sus4", "6/9", "m6/9", "add9", "madd9",
+    "QUARTAL", "POWER", "SCALE 7TH", "SCALE 9TH", "SCALE 11TH", "SCALE SUS2"};
+const char *kk_chord_key_name(unsigned type) { return chord_key_names[type < KK_CHORD_KEY_TYPES ? type : 0]; }
+const char *kk_voicing_name(unsigned voicing)
+{
+    static const char *const names[KK_VOICINGS] = {"CLOSE", "SPREAD", "DROP 2"};
+    return names[voicing < KK_VOICINGS ? voicing : 0];
+}
+/* Semitones above the root; -1 ends the list. */
+static const int8_t chord_shapes[KK_CHORD_SCALE_FIRST][7] = {
+    {-1},
+    {0, 3, 7, 10, 14, -1},        /* m9       A C E G B (the "one chord") */
+    {0, 4, 7, 11, 14, -1},        /* maj9 */
+    {0, 4, 7, 10, 14, -1},        /* 9 */
+    {0, 3, 7, 10, 14, 17, -1},    /* m11 */
+    {0, 4, 7, 11, 18, -1},        /* maj7#11 */
+    {0, 5, 7, 10, 14, -1},        /* 9sus4 */
+    {0, 4, 7, 9, 14, -1},         /* 6/9 */
+    {0, 3, 7, 9, 14, -1},         /* m6/9 */
+    {0, 4, 7, 14, -1},            /* add9 */
+    {0, 3, 7, 14, -1},            /* madd9 */
+    {0, 5, 10, 15, 19, -1},       /* quartal, "So What": A D G C E */
+    {0, 7, 12, -1}};              /* power + octave */
+/* Scale types: scale steps above the root's degree (7th, 9th, 11th, sus2). */
+static const int8_t scale_stacks[KK_CHORD_KEY_TYPES - KK_CHORD_SCALE_FIRST][7] = {
+    {0, 2, 4, 6, -1}, {0, 2, 4, 6, 8, -1}, {0, 2, 4, 6, 8, 10, -1}, {0, 1, 4, -1}};
+/* A root outside the scale: the dominant version of the same stack. */
+static const int8_t outside_shapes[KK_CHORD_KEY_TYPES - KK_CHORD_SCALE_FIRST][7] = {
+    {0, 4, 7, 10, -1}, {0, 4, 7, 10, 14, -1}, {0, 4, 7, 10, 14, 17, -1}, {0, 2, 7, -1}};
+unsigned kk_chord_key_build(int root, unsigned type, unsigned voicing, const struct kk_scale_ctx *s, uint8_t notes[KK_MAX_CHORD])
+{
+    unsigned n = 0;
+    if (root < 0 || root > 127) return 0;
+    if (!type || type >= KK_CHORD_KEY_TYPES) { add(notes, &n, root); return n; }
+    int offs[7], count = 0;
+    if (type < KK_CHORD_SCALE_FIRST) {
+        for (const int8_t *o = chord_shapes[type]; *o >= 0; ++o) offs[count++] = *o;
+    } else if (kk_in_scale(s, root)) {
+        unsigned pc = (unsigned)((root - (int)s->root) % 12 + 12) % 12;
+        int degree = __builtin_popcount(kk_scale_mask(s->scale) & ((1U << pc) - 1U));
+        for (const int8_t *o = scale_stacks[type - KK_CHORD_SCALE_FIRST]; *o >= 0; ++o) offs[count++] = diatonic(s->scale, degree, *o);
+    } else {
+        for (const int8_t *o = outside_shapes[type - KK_CHORD_SCALE_FIRST]; *o >= 0; ++o) offs[count++] = *o;
+    }
+    /* Voicing. SPREAD: the root an octave lower. DROP 2: the second note
+     * from the top an octave lower (the stack is in ascending order here). */
+    if (voicing == 1 && root >= 12) offs[0] -= 12;
+    else if (voicing == 2 && count >= 3) offs[count - 2] -= 12;
+    for (int i = 0; i < count; ++i) add(notes, &n, root + offs[i]);
+    return n;
+}
+
 /* Name a pitch-class set relative to a root. Returns a plausibility score;
  * writes the suffix. */
 static int name_suffix(unsigned set, char *out)

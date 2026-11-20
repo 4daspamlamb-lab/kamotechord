@@ -40,8 +40,8 @@ static void draw_patch(void)
     row_fit(3, "E4 INTERNAL SYNTH", kk_midi_local() ? "ON" : "OFF");
     static const char *const ports[KK_PORTS_MODES] = {"AUTO", "ALL", "USB", "BLE"};
     row_fit(4, "E5 MIDI OUT", ports[kk_midi_ports_mode()]);
-    static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7", "8", "9", "10 MAX"};
-    row_fit(5, "E6 PAD SENSITIVITY", curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1]);
+    row_fit(5, "E6 VOICING", kk_voicing_name(kk.chord_voicing));         /* 1.02 */
+    row_fit(6, "E7 CHORD KEYS", kk_chord_key_name(kk.chord_keys));
     text(12, 222, KK_TXT_PATCH_BACK, 1, FAINT);
 }
 #else
@@ -213,6 +213,10 @@ static void draw_diag(void)
     text(8, 212, line, 1, TEXT);
     p = append(line, "E2 RGB TIMING: "); p = decimal(p, kk.rgb_timing); append(p, kk.rgb_timing ? "" : " (ORIGINAL)");
     text(8, 222, line, 1, CYAN);
+    /* 1.02: pad sensitivity lives here now (set once); the PATCH page has CHORD KEYS. */
+    { static const char *const curves[KK_PAD_SENSITIVITY_MAX] = {"1 HARD", "2", "3 NORMAL", "4", "5", "6", "7", "8", "9", "10 MAX"};
+      p = append(line, "E3 PAD SENSITIVITY: "); append(p, curves[(kk.pad_sensitivity ? kk.pad_sensitivity : 3) - 1]);
+      text(8, 232, line, 1, CYAN); }
     text(150, 26, KK_TXT_DIAG_EXIT, 1, DIM);
 #else
     p = append(line, "RAW KEYS "); p = decimal(p, (int)raw_keys); text(8, 202, line, 1, TEXT);

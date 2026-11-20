@@ -243,7 +243,9 @@ static void intent(unsigned id, struct source *s)
         note = kk_keys_in_scale() ? kk_key_scale_note(id, kk.octave, &kk.scale)
                                             : kk_key_note(id, kk.octave);
         unsigned mods = kk.chord_mods;   /* 0.62: a locked chord also plays in the pad modes */
-        s->count = (uint8_t)kk_chord_build(note, mods, &kk.scale, s->notes);
+        if (!mods && kk.chord_keys)      /* 1.02 CHORD KEYS: a chord on every key (chord pads still win) */
+            s->count = (uint8_t)kk_chord_key_build(note, kk.chord_keys, kk.chord_voicing, &kk.scale, s->notes);
+        else s->count = (uint8_t)kk_chord_build(note, mods, &kk.scale, s->notes);
         return;
     }
     unsigned pad = id - PAD_SOURCE, channel;

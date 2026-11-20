@@ -23,11 +23,11 @@ void kamotkeys_settings_read(uint8_t d[KK_SETTINGS_BYTES])
     d[0] = KK_SETTINGS_VERSION; d[1] = (uint8_t)kk.bpm; d[2] = (uint8_t)(kk.bpm >> 8);
     d[3] = (uint8_t)(kk.arp_on | (15U - kk.brightness_level) << 2);   /* 0.77: bits 2..5 = 15 - brightness */ d[4] = kk.arp.mode; d[5] = kk.arp.direction; d[6] = kk.arp.division;
     d[7] = kk.arp.gate; d[8] = kk.arp.swing; d[9] = (uint8_t)(kk.arp.octaves | kk.arp.strum_bars << 3 | kk.arp.strum << 4);   /* 0.93: bits 4-7 = strum speed; 0.99: bit 3 = by BARS */
-    d[11] = kk.program; d[12] = (uint8_t)kk_midi_ports_mode(); d[13] = (uint8_t)(kk_midi_local() | kk.rec_length << 1 | kk.arp.mode << 4);   /* 0.91: bits 1-3 = fixed length; 0.93: bits 4-6 = ARP type */
+    d[11] = kk.program; d[12] = (uint8_t)(kk_midi_ports_mode() | kk.chord_keys << 2);   /* 1.02: bits 2-6 = CHORD KEYS */ d[13] = (uint8_t)(kk_midi_local() | kk.rec_length << 1 | kk.arp.mode << 4);   /* 0.91: bits 1-3 = fixed length; 0.93: bits 4-6 = ARP type */
 #ifdef KK_DEVICE_FM1
-    d[10] = kk.scale.scale; d[14] = kk.scale.root; d[15] = kk.velocity;
+    d[10] = kk.scale.scale; d[14] = (uint8_t)(kk.scale.root | kk.chord_voicing << 4); d[15] = kk.velocity;
 #else
-    d[10] = kk.repeat_division; d[14] = kk.rgb_timing; d[15] = kk.pad_sensitivity;
+    d[10] = kk.repeat_division; d[14] = (uint8_t)(kk.rgb_timing | kk.chord_voicing << 4); d[15] = kk.pad_sensitivity;   /* 1.02: bits 4-5 = voicing */
     /* 0.86: key and scale (E2 / E3) in the byte LATCH used: d[4] = scale |
      * root bits 0-2 << 5; d[3] bit 6 = root bit 3, bit 7 = "key / scale saved". */
     d[4] = (uint8_t)(kk.scale.scale | (kk.scale.root & 7U) << 5);
@@ -46,12 +46,12 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
     if (d[0] != KK_SETTINGS_VERSION || bpm < 30 || bpm > 300 || (!keyed && d[3] > 63) ||
         (!keyed && d[4] >= KK_ARP_MODES) ||
         d[5] >= KK_DIRS || d[6] >= KK_DIVS || d[7] < 10 || d[7] > 100 || d[8] > 50 ||
-        (d[9] & 7) < 1 || (d[9] & 7) > 4 || d[11] > 127 || d[12] >= KK_PORTS_MODES || ((d[13] >> 1) & 7) > 4 || (d[13] >> 4) >= KK_ARP_MODES)
+        (d[9] & 7) < 1 || (d[9] & 7) > 4 || d[11] > 127 || (d[12] & 3) >= KK_PORTS_MODES || ((d[12] >> 2) & 31) >= KK_CHORD_KEY_TYPES || ((d[14] >> 4) & 3) >= KK_VOICINGS || ((d[13] >> 1) & 7) > 4 || (d[13] >> 4) >= KK_ARP_MODES)
         return -1;
 #ifdef KK_DEVICE_FM1
-    if (d[10] >= KK_SCALES || d[14] > 11 || d[15] < 1 || d[15] > 127) return -1;
+    if (d[10] >= KK_SCALES || (d[14] & 15) > 11 || d[15] < 1 || d[15] > 127) return -1;
 #else
-    if (d[10] >= KK_DIVS || d[14] >= SMK37_RGB_TIMINGS || d[15] > KK_PAD_SENSITIVITY_MAX) return -1;
+    if (d[10] >= KK_DIVS || (d[14] & 15) >= SMK37_RGB_TIMINGS || d[15] > KK_PAD_SENSITIVITY_MAX) return -1;
 #endif
     kk.bpm = (uint16_t)bpm;
     {
@@ -61,12 +61,12 @@ int kamotkeys_settings_apply(const uint8_t d[KK_SETTINGS_BYTES])
         kk.arp = (struct kk_arp_settings){(uint8_t)(d[13] >> 4), d[5], d[6], d[7], d[8], (uint8_t)(d[9] & 7), (uint8_t)strum, (uint8_t)bars};   /* type + strum */
     }
     kk.program = d[11];
-    kk_midi_set_ports(d[12]); kk_midi_set_local(d[13] & 1U); kk.rec_length = (uint8_t)((d[13] >> 1) & 7);
+    kk_midi_set_ports(d[12] & 3U); kk.chord_keys = (uint8_t)((d[12] >> 2) & 31U); kk.chord_voicing = (uint8_t)((d[14] >> 4) & 3U); kk_midi_set_local(d[13] & 1U); kk.rec_length = (uint8_t)((d[13] >> 1) & 7);
 #ifdef KK_DEVICE_FM1
-    kk.scale.scale = d[10]; kk.scale.root = d[14]; kk.velocity = d[15];
+    kk.scale.scale = d[10]; kk.scale.root = (uint8_t)(d[14] & 15U); kk.velocity = d[15];
 #else
     kk.repeat_division = d[10];
-    kk.rgb_timing = d[14]; smk37_rgb_timing(kk.rgb_timing);
+    kk.rgb_timing = (uint8_t)(d[14] & 15U); smk37_rgb_timing(kk.rgb_timing);
     kk.pad_sensitivity = d[15] ? d[15] : 3;   /* records before 0.44: linear */
     if (kk.pad_sensitivity == 7) kk.pad_sensitivity = KK_PAD_SENSITIVITY_MAX;   /* 0.80: the old maximum becomes the new MAX */
     if (keyed) { kk.scale.scale = (uint8_t)(d[4] & 31U); kk.scale.root = (uint8_t)key_root; }   /* 0.86 */

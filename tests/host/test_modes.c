@@ -245,14 +245,15 @@ void test_arp_keys_and_persistence(void)
     kamotkeys_settings_read(saved); groove_screen_init(); host_rgb_timing = 0;
     CHECK(kamotkeys_settings_apply(saved) == 0 && kk.rgb_timing == 3 && host_rgb_timing == 3, "RGB timing restored after restart");
     saved[14] = 0; CHECK(kamotkeys_settings_apply(saved) == 0, "older records (byte 14 = 0) still load");
-    saved[14] = 99; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid timing rejected");
+    saved[14] = 15; CHECK(kamotkeys_settings_apply(saved) < 0, "invalid timing rejected");
     saved[14] = 0;
     /* 0.44: pad sensitivity (Patch page E4), saved; older records = 3. */
     CHECK(kk.pad_sensitivity == KK_PAD_SENSITIVITY_MAX && kk_pad_curve(1) >= 75 && kk_pad_curve(20) >= 105 && kk_pad_curve(127) == 127,
           "0.80 default = 10 MAX: lightest touch %u, tap 20 -> %u", kk_pad_curve(1), kk_pad_curve(20));
     kk.pad_sensitivity = 3; CHECK(kk_pad_curve(64) == 64 && kk_pad_curve(1) == 1 && kk_pad_curve(127) == 127, "level 3 linear");
-    tap(KK_BTN_PATCH); smk37_control_event(SMK37_ENCODER, 5, 2); frames(3, 2); tap(KK_BTN_PATCH);
-    CHECK(kk.pad_sensitivity == 5, "0.99: Patch page E6 raises sensitivity (%u)", kk.pad_sensitivity);
+    btn(KK_BTN_BT, 1); host_ms += 1600; frames(2, 1); btn(KK_BTN_BT, 0);
+    smk37_control_event(SMK37_ENCODER, 2, 2); frames(3, 2); tap(KK_BTN_BT);
+    CHECK(kk.pad_sensitivity == 5, "1.02: Diagnostics E3 raises sensitivity (%u)", kk.pad_sensitivity);
     CHECK(kk_pad_curve(40) >= 65 && kk_pad_curve(127) == 127 && kk_pad_curve(1) >= 1, "level 5: light hit 40 -> %u", kk_pad_curve(40));
     {
         unsigned mono = 1;

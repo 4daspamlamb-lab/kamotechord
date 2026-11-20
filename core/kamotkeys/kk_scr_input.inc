@@ -186,14 +186,14 @@ static void page_input(void)
     case KK_PAGE_BT: ble_input(); break;
     case KK_PAGE_PATCH:
 #ifndef KK_DEVICE_FM1
-        /* 0.99: E1 key, E2 scale, E3 brightness, E4 synth, E5 MIDI out, E6 pad sensitivity (no patch knob). */
+        /* 0.99: E1 key, E2 scale, E3 brightness, E4 synth, E5 MIDI out; 1.02: E6 voicing, E7 CHORD KEYS. */
         if ((d = take(0))) kk_edit_root(d);
         if ((d = take(1))) kk_edit_scale(d);
         if ((d = take(2))) { kk_set_brightness((unsigned)clampi((int)kk.brightness_level + d, 0, 15)); kk_settings_touch(); }
         if ((d = take(3))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
         if ((d = take(4))) { kk_midi_set_ports((unsigned)clampi((int)kk_midi_ports_mode() + d, 0, KK_PORTS_MODES - 1)); kk_settings_touch(); }
-        if ((d = take(5))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }
-        (void)take(6);
+        if ((d = take(5))) { kk.chord_voicing = (uint8_t)clampi((int)kk.chord_voicing + d, 0, KK_VOICINGS - 1); kk_settings_touch(); }
+        if ((d = take(6))) { kk.chord_keys = (uint8_t)clampi((int)kk.chord_keys + d, 0, KK_CHORD_KEY_TYPES - 1); kk_settings_touch(); }
 #else
         if ((d = take(0))) kk_edit_program(d);
         if ((d = take(1))) { kk_midi_set_local(d > 0); kk_settings_touch(); }
@@ -232,7 +232,8 @@ static void page_input(void)
             kk.rgb_timing = (uint8_t)clampi((int)kk.rgb_timing + d, 0, SMK37_RGB_TIMINGS - 1);
             smk37_rgb_timing(kk.rgb_timing); kk_settings_touch();
         }
-        for (unsigned i = 2; i < 7; ++i) (void)take(i);
+        if ((d = take(2))) { kk.pad_sensitivity = (uint8_t)clampi((kk.pad_sensitivity ? kk.pad_sensitivity : 3) + d, 1, KK_PAD_SENSITIVITY_MAX); kk_settings_touch(); }   /* 1.02 */
+        for (unsigned i = 3; i < 7; ++i) (void)take(i);
     }
     /* E8 is always MASTER volume, as on SMK37 OPEN. */
     if ((d = take(7))) {
