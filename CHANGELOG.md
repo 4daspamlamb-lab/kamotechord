@@ -1,5 +1,64 @@
 # Changelog
 
+## KamoteKeys 1.03 (development snapshot)
+
+- **PARA works like Live's space bar:** it stops the transport and its clips; the next press starts them again (0.99's Stop All Clips is gone). Remote Script.
+
+## KamoteKeys 1.02 (development snapshot)
+
+- **CHORD KEYS (PATCH E7):** every key plays a chord on its note. Same shape on every key: m9 (A C E G B), maj9, 9, m11, maj7#11, 9sus4, 6/9, m6/9, add9, madd9, quartal, power. From the scale: SCALE 7TH / 9TH / 11TH / SUS2. Chord pads still win.
+- **VOICING (PATCH E6):** CLOSE, SPREAD (root an octave down), DROP 2. Both saved.
+- Pad sensitivity moves to Diagnostics E3.
+
+## KamoteKeys 1.01 (development snapshot)
+
+- **Key Scale and Pad Scale together:** SCALE with Key Scale on adds Pad Scale (`PAD+KEY SCALE`); SEQ in Pad Scale turns the keys' scale on / off. Keys light their note on the scale pads (another octave: one pad of that name).
+
+## KamoteKeys 1.00 (development snapshot)
+
+- **Step Mode makes no clip until the first step:** the empty 1-bar pattern shows; a clip deleted while in Step Mode is not made again.
+- **Undo in one press:** everything one press does in Live is one undo step, and a knob turn is one step. Remote Script.
+
+## KamoteKeys 0.99 (development snapshot)
+
+- **Strum by TIME or BARS** (ARP page E3): 8–500 ms, or 1/32 … 4 bars between notes.
+- **Scene Mode:** Clip Mode, low A: pads 1–8 launch scenes 1–8 (the one that plays next); the screen shows the scenes and their names.
+- **PATCH page:** E1 key, E2 scale, E3 brightness; the patch knob is gone.
+- Every knob says what it changes as you turn it; E8 shows the master volume.
+- **Session Record again** while a new clip records: it ends on the next bar line (whole bars) and loops; Session Record then turns off.
+- **Step Mode:** bottom C = NOTE LENGTH (hold + pad n = n sixteenths, also on held steps); an empty clip it made is removed when you move to another slot.
+- **Solo is exclusive**; Pad Scale shows a played key on the screen's keyboard.
+
+## KamoteKeys 0.98 (development snapshot)
+
+- Battery gauge calibrated on an Elite and read along a Li-ion curve (no more 18 % when nearly empty).
+
+## KamoteKeys 0.97 (development snapshot)
+
+- Slower strums; with Sustain, a slow strum keeps time after the key is let go; the next key releases a sustained strum.
+
+## KamoteKeys 0.96 (development snapshot)
+
+- **Smooth pad animations:** the light show fades in and out, patterns crossfade, fast patterns never snap a pad on or off, ripples and the boot ease in.
+
+## KamoteKeys 0.95 (development snapshot)
+
+- **GLOBE held 3 s** latches the light show (inward ring); held 3 s again ends it (outward ring).
+- With the light show latched, **a top pad + the pad under it** = next pattern every column × 5 s (pads 1 + 9: 5 s … 8 + 16: 40 s).
+
+## KamoteKeys 0.94 (development snapshot)
+
+- Ripple lights follow ARP, strum, chord repeat and Note Repeat notes; ripples show over the light show.
+
+## KamoteKeys 0.93 (development snapshot)
+
+- **Knobs = macros** of Live's selected track (E1–E8, like Move); SHIFT (top C) held: E1 BPM, E2–E5 effects.
+- **ARP types:** arpeggio, strum up / down / up-down, chord repeat, humanize.
+- **NOTE REPEAT held** = Note Repeat (E1 = rate); tap = Sustain.
+- **SEQ PLAY = AUTO:** in Step Mode, hold a step + turn a knob = that step's macro automation.
+- **Clip Mode pad modes:** F# PLAY, G# STOP, F MUTE, G back to NORMAL.
+- PATCH page: scale, key, brightness first; scale highlights stay while keys are held; the screen keyboard glides and stays on C for single notes.
+
 ## KamoteKeys 0.92 (development snapshot)
 
 - **GLOBE is the light-show (RGB) button:** hold = light show, press again = next pattern, three quick presses = ripple lights. KNOB BANK + FADER BANK no longer start it.

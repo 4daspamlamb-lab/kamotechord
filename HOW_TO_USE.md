@@ -5,6 +5,7 @@ A hands-on guide. The full reference is in [README.md](README.md); the pictures 
 | Diagram | Shows |
 |---|---|
 | `SMK37-Controls.png` | every button, fader and knob |
+| `SMK37-Knobs.png` | what the knobs do on each screen |
 | `SMK37-Modes-Table.png` | what each control does in each mode |
 | `SMK37-Play-Modes.png` | Normal, Key Scale, Pad Scale and Drum Mode |
 | `SMK37-Clip-Mode.png` | Clip Mode (CHORD) |
@@ -26,7 +27,7 @@ A hands-on guide. The full reference is in [README.md](README.md); the pictures 
 1. Copy the folder `Ableton/KamoteKeys` from the zip to
    `~/Music/Ableton/User Library/Remote Scripts/KamoteKeys` (the folder must contain `__init__.py` directly).
 2. Restart Live. In **Settings → Link, Tempo & MIDI**, pick **KamoteKeys** as a Control Surface.
-3. Set its **Input and Output to the same port**: the keyboard's USB port, or its Bluetooth port when you play wirelessly. For both, add KamoteKeys twice (one row USB, one row Bluetooth).
+3. Set its **Input and Output to the same port**: the keyboard's USB port, or its Bluetooth port when you play wirelessly. For both, add KamoteKeys twice (one row USB, one row Bluetooth): the Live commands (play, record, capture, undo …) only work on a port that has its own KamoteKeys row.
 4. In the MIDI ports list turn on **Track** and **Remote** for that input, **Remote** for that output.
 5. Check on the keyboard: hold **BT 1.5 s** (Diagnostics). The green line `LIVE USB` / `LIVE BLE` means the script answers. In Clip Mode the pads show your clips.
 
@@ -38,26 +39,28 @@ Each time you update KamoteKeys, also replace the Remote Script folder and resta
 
 | Control | Does |
 |---|---|
-| **PARA** | Start / Stop, like the spacebar |
-| **GLOBE** | Light show while held (press again: next pattern; 3 quick presses: ripple lights) |
-| **SEQ PLAY** | nothing (finish & next track = top G#) |
-| **KNOB BANK** | Session Record (record / overdub) |
+| **PARA** | Play / stop, like the space bar: stop halts Live and its clips, the next press starts them again |
+| **GLOBE** | Light show while held (press again: next pattern; hold 3 s: it stays on; 3 quick presses: ripple lights) |
+| **SEQ PLAY** | AUTO on / off (step automation in Step Mode) |
+| **KNOB BANK** | Session Record (record / overdub); again while a new clip records: it ends on the next bar line |
 | **FADER BANK** | Capture MIDI |
-| **◀ / ▶** | Undo / Redo (◀ + PARA or PATCH + PARA = metronome) |
+| **◀ / ▶** | Undo / Redo (◀ + PARA or PATCH + PARA = metronome). One press undoes one keyboard action |
 | **OCT − / +** | Octave of the keys (or the pads in Pad Scale / Drum) |
 | **Fader 1** | Velocity (bottom 10 % = play dynamics, above = fixed) |
 | **Fader 2** | Live: volume of the selected track |
 | **Fader 3** | Live: Macro 1 of the selected track's rack (no rack: Send A) |
 | **Fader 4** | **Master volume** (the keyboard and Live's master) |
-| **E1 / E2 / E3** | BPM (Live's tempo when connected) / **key** / **scale** |
-| **E4 – E7** | Selected Live track: **filter** (left low-pass, right high-pass), **delay**, **reverb**, **sustain** (reverb decay) |
-| **E8** | Keyboard master volume |
-| **PATCH** | Patch page: patch, internal synth on/off, MIDI out, pad sensitivity (E4, 10 = MAX), **pad brightness (E5)** |
-| **ARP** | Arpeggiator on/off. **Hold**: ARP settings on the knobs (turn while holding: closes on release; let go without turning: stays open) |
-| **NOTE REPEAT** | Sustain: notes hold until the next key (with ARP: holds the arpeggio) |
+| **E1 – E8** | The **8 macros** of Live's selected track (like Move); the screen shows the name and value |
+| **SHIFT (top C) + E1 – E5** | BPM, then the selected track's **filter**, **delay**, **reverb**, **reverb decay** |
+| **PATCH** | Patch page: **E1 key**, **E2 scale**, **E3 brightness**, E4 internal synth, E5 MIDI out, **E6 voicing**, **E7 CHORD KEYS** |
+| **ARP** | Arpeggiator on/off. **Hold**: ARP settings (type: arpeggio, strum, chord repeat, humanize; turn while holding: closes on release) |
+| **NOTE REPEAT** | Tap: Sustain (notes hold until the next key; with ARP: holds the arpeggio). **Hold**: Note Repeat (E1 = rate) |
 | **CHORD** | Clip Mode. **Hold**: Clip Mode only while held |
+| **SCALE / SEQ** | Pad Scale / Key Scale; both can be on together |
 
-The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / Reverb on the track; the screen says `NO REVERB` etc. if one is missing.
+Every knob shows what it changes on the screen as you turn it. Pad sensitivity is in Diagnostics (hold BT 1.5 s, E3).
+
+Macros and effects need the Remote Script; the effects need an Auto Filter / Delay (or Echo) / Reverb on the track (the screen says `NO REVERB` etc. if one is missing).
 
 **Top-octave Live strip** (the same in every mode), for the track / clip selected in Live:
 
@@ -66,15 +69,15 @@ The effect knobs need the Remote Script and an Auto Filter / Delay (or Echo) / R
 | top F / F# | quantize clip / launch-stop clip | track ◀ / launch scene |
 | top G / G# | arm only this track (PATCH + G: add) / finish & next track | track ▶ / scene ▲ |
 | top A / A# | mute track / delete clip | duplicate clip / scene ▼ |
-| top B | solo track | double the loop |
+| top B | solo only this track | double the loop |
 | top E | (plays a note) | fixed record length OFF / 1 / 2 / 4 / 8 bars |
 
-Key and scale (E2 / E3) are remembered after power-off.
+Key and scale are remembered after power-off.
 
 ### Record and overdub
 | To … | Do |
 |---|---|
-| record a new clip | select an empty slot on an armed track (top G arms), press **KNOB BANK**; again = stop |
+| record a new clip | select an empty slot on an armed track (top G arms), press **KNOB BANK**; again = it records on to the end of the bar, then loops |
 | record exactly 1 / 2 / 4 / 8 bars | **SHIFT + top E** until the screen shows the length (`REC 4 BARS`), then **KNOB BANK**: it stops by itself and loops |
 | **overdub** (add notes to a clip) | select a track whose clip is **playing**, arm it, press **KNOB BANK**; old notes stay; again = stop |
 | overdub in Clip Mode | hold the **lowest C** and press the clip's pad |
@@ -89,17 +92,19 @@ Key and scale (E2 / E3) are remembered after power-off.
 - Hold a chord pad (MAJ, MIN, DIM, SUS4 on the top row; 7, MAJ7, 6, 9 below) and play a key: you get that chord on the key. Combine a type and an extension (MIN + 7 = m7).
 - **LOCK** (pad 13): hold your chord pads and tap LOCK. Now every key plays that chord, in **every mode**, until you tap LOCK again.
 - Pads 5–8 and 14–16 are free buttons (CC 102–108) for MIDI-mapping in Live.
+- **One key, one lush chord (CHORD KEYS):** PATCH page **E7**. Pick **m9** and every key plays a minor 9th on its note (A → A C E G B); also maj9, 9, m11, maj7#11, 9sus4, 6/9, m6/9, add9, madd9, quartal, power, or **SCALE 7TH / 9TH / 11TH / SUS2** (chords from your key and scale). **E6** voicing: CLOSE, SPREAD (root an octave down), DROP 2. Chord pads still override it; turn E7 to OFF for single notes.
 
 ### Play in a scale (Key Scale, SEQ)
 - Press **SEQ**. White keys now play the scale from E3 with the key from E2; the 2nd C is the root. Black keys are silent, so you can't play a wrong note.
 - Chord pads still work and stay in the scale. A locked chord stays on.
 
 ### Pads as notes (Pad Scale, SCALE) and drums (Drum, FX)
-- **SCALE**: the 16 pads play the scale (root pads cyan). A pad also lights when the playing clip on Live's selected track plays its note.
+- **SCALE**: the 16 pads play the scale (root pads cyan). A pad also lights when the playing clip on Live's selected track plays its note. A key you play shows on the screen's keyboard; a pad brings the pad map back.
+- **Both at once:** turn on Key Scale (SEQ), then press SCALE: `PAD+KEY SCALE`. The keys play the scale and light their note on the pads.
 - **FX**: the pads are GM drums on channel 10 (kick top left, rim below it, snare next …), coloured by drum type. OCT moves them by an octave.
 
 ### Lights
-- **Light show**: hold **GLOBE**. Press it again for the next pattern; Fader 1 sets the speed.
+- **Light show**: hold **GLOBE**. Press it again for the next pattern; Fader 1 sets the speed. **Hold GLOBE 3 s** and it stays on after you let go (3 s again: off). While it stays on, hold a **top pad and the pad under it** to change pattern by itself: pads 1 + 9 every 5 s, 2 + 10 every 10 s … 8 + 16 every 40 s.
 - **Ripple lights**: press **GLOBE three times quickly** to turn ripples on (again to turn them off). Turning them on sends a big rainbow ring from the middle; every press then flashes and sends a coloured ring across the pads.
 
 ---
@@ -110,9 +115,11 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 
 | To … | Do |
 |---|---|
-| select a slot (and arm its track) | press its pad |
-| play / stop clips | hold **F#** and press them (or tap F#, then press one clip) |
-| stop clips | hold **G#** and press them (tap G#: stop the selected clip) |
+| play / stop a clip (and select it); select an empty slot and arm its track | press its pad (NORMAL, the default; low **G** returns to it) |
+| launch every clip you press | tap **F#** (PLAY mode) |
+| stop clips | tap **G#** (STOP mode), press them |
+| mute / unmute tracks | tap **F** (MUTE mode), press their clips |
+| **launch scenes** | tap the low **A** (SCENE mode): pads 1–8 = scenes 1–8; the scene you press plays next. The screen shows the scene names |
 | overdub into a clip | hold the **lowest C** and press it (an empty slot: record a new clip) |
 | record a new clip | select an empty slot, press **KNOB BANK** |
 | copy / paste a clip | tap **C#**, press the clip; tap **D#**, press where it goes (hold D# for several) |
@@ -130,17 +137,18 @@ Press **CHORD**. The pads are 8 tracks × 2 scenes of Live's Session View, colou
 
 ## 5. Step sequencer (Step Mode, SEQ REC)
 
-Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC**. The track is armed and a 1-bar clip is made if the slot is empty. The 16 pads are the 16 steps of the shown bar.
+Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC**. The track is armed. If the slot is empty, the pads show an empty 1-bar pattern and the clip is made when you press the first step. The 16 pads are the 16 steps of the shown bar.
 
 ### Program a beat
 1. Press a **drum key** in the 2nd octave (C = kick, D = snare, F# = closed hat …): you hear it and the pads now edit that sound.
 2. Tap pads to add / remove steps (amber = note, brighter = louder). Other sounds on a step show as a lilac tint.
-3. Pick another drum key and add its steps. **PARA** plays the clip (and stops it).
-4. Press **SEQ REC** again to go back to where you came from. An empty clip that Step Mode made is removed.
+3. Pick another drum key and add its steps. **PARA** plays the clip; while Live plays, PARA stops it (space bar).
+4. Press **SEQ REC** again to go back to where you came from. An empty clip that Step Mode made is removed (also when you move to another track or scene).
 
 ### Keys of the lowest octave
 | Key | Does |
 |---|---|
+| C (hold) + pad n | NOTE LENGTH: new steps are n sixteenths long; hold steps too and they get that length |
 | C# / D# | COPY / PASTE (a step pad, a drum key, or a bar in the bar view) |
 | D / E | RESOLUTION (1/16, 1/8, 1/32, triplets) / FOLLOW (pages follow the playhead) |
 | F | DOUBLE: the clip twice as long, everything copied |
@@ -155,13 +163,15 @@ Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC*
 - **New steps** take the pad's velocity (Fader 1 above 10 % = fixed); **E2** with no step held = length of new steps.
 - The key zone is **16 drum keys (C2–D#3)**; the top octave is the Live strip, as everywhere.
 - **Tie**: hold a step and press a later one.
+- **Automation without recording**: turn **AUTO** on (SEQ PLAY), hold a step and turn E1–E8: that macro's value is written at that step.
 - **Melodies**: press **SEQ** in Step Mode: the 2nd-octave keys become scale keys; **OCT** moves them. Both are remembered per track.
 - **Chords**: lock a chord on the main screen first; with scale keys a key picks the whole chord and a pad writes it.
 
 ---
 
 ## 6. Bluetooth
-- On the Mac, connect the keyboard in **Audio MIDI Setup → MIDI Studio → Bluetooth**, then set the KamoteKeys Control Surface Input and Output to that Bluetooth port.
+- On the Mac, connect the keyboard in **Audio MIDI Setup → MIDI Studio → Bluetooth**, then add a KamoteKeys Control Surface row with Input and Output = that Bluetooth port (keep the USB row too). Without it, notes play over Bluetooth but play / record / capture do nothing.
+- Not connecting: in the BT menu E1 must be ON and E3 (role) DEVICE; FORGET MIDI PAIRS on the keyboard (E7, ▶ ▶) and remove the keyboard on the Mac, power-cycle, connect again.
 - Patch page → **MIDI OUT**: AUTO (the port Live talks on; a USB cable that only charges does not count), ALL, USB or BLE.
 
 ## 7. If something doesn't work
@@ -169,6 +179,8 @@ Select a track and a slot in Live (or a pad in Clip Mode), then press **SEQ REC*
 |---|---|
 | Clip / Step Mode pads stay grey, keys just play notes | the Remote Script isn't on this port: Control Surface Input **and** Output = the port you use; Diagnostics shows `LIVE NONE` |
 | no sound from the keyboard | Fader 4 (master volume) and E8; Patch page → internal synth ON |
-| pads too dark / too bright | Patch page → E5 pad brightness |
+| pads too dark / too bright | Patch page → E3 brightness |
+| pads too sensitive / not enough | Diagnostics (hold BT 1.5 s) → E3 pad sensitivity |
+| play / record / capture work on USB but not Bluetooth | add a KamoteKeys Control Surface row for the Bluetooth port (Input and Output) |
 | something odd after an update | replace the Remote Script folder and restart Live |
 | want the factory firmware back | open the official SMK37 OPEN workbench → Restore factory V16 |

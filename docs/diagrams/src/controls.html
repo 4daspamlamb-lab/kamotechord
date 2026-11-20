@@ -25,30 +25,30 @@ td:first-child{color:#fff;font-weight:600;white-space:nowrap}
 .legend span{display:inline-block;margin-right:14px;font-size:12px;color:#8792a2}
 .dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 </style></head><body><div class="wrap">
-<h1>KamoteKeys 0.92 — SMK-37 controls</h1>
+<h1>KamoteKeys — SMK-37 controls</h1>
 <div class="sub">Pro and Elite. Ableton functions need the KamoteKeys Remote Script. <span class="legend"><span><span class="dot" style="background:#7ee08f"></span>Ableton</span><span><span class="dot" style="background:#ffb84d"></span>mode</span><span><span class="dot" style="background:#7fd3e6"></span>hold / combination</span></span></div>
 
 <div class="panel">
  <div><div class="label">Left block</div><div class="block left">
-  <div class="btn able"><b>KNOB BANK</b><span>Session Record (record / overdub)</span><i>CC 25, on release</i></div>
+  <div class="btn able"><b>KNOB BANK</b><span>Session Record (record / overdub)</span><i>CC 25 · again while a clip records: ends on the bar</i></div>
   <div class="btn able"><b>FADER BANK</b><span>Capture MIDI</span><i>CC 22, on release</i></div>
-  <div class="btn able"><b>◀ (HOME)</b><span>Undo (on release)</span><i>◀ + PARA: metronome · Step Mode: page ◀<br>BT menu: back</i></div>
+  <div class="btn able"><b>◀ (HOME)</b><span>Undo: one press = one action</span><i>◀ + PARA: metronome · Step Mode: page ◀<br>BT menu: back</i></div>
   <div class="btn able"><b>▶</b><span>Redo</span><i>Step Mode: page ▶ · BT menu: OK</i></div>
   <div class="btn"><b>OCT −</b><span>Octave down (keys, or pads in Pad Scale / Drum)</span><i>Step Mode: key zone octave (per track)</i></div>
   <div class="btn"><b>OCT +</b><span>Octave up</span></div>
  </div></div>
  <div><div class="label">Right block</div><div class="block right">
-  <div class="btn"><b>ARP</b><span>ARP on / off</span><i>hold: ARP settings on the knobs (turn while held: closes on release)</i></div>
-  <div class="btn"><b>NOTE REPEAT</b><span>SUSTAIN: notes hold until the next key</span><i>with ARP on: holds the arpeggio</i></div>
-  <div class="btn mode"><b>SCALE</b><span>Pad Scale Mode</span></div>
+  <div class="btn"><b>ARP</b><span>ARP on / off</span><i>hold: ARP page: TYPE (arpeggio, strum ↑ ↓ ↕, chord repeat, humanize), speed, division …</i></div>
+  <div class="btn"><b>NOTE REPEAT</b><span>tap: SUSTAIN (notes hold until the next key)</span><i>hold: real Note Repeat on pads / keys (E1 = rate, pressure = loudness)</i></div>
+  <div class="btn mode"><b>SCALE</b><span>Pad Scale Mode</span><i>with Key Scale on: both on</i></div>
   <div class="btn mode"><b>CHORD</b><span>Clip Mode (8 × 2 clip launcher)</span><i>hold: Clip Mode only while held, back on release</i></div>
-  <div class="btn"><b>GLOBE</b><span>Light show while held</span><i>press again: next pattern · 3 quick: ripple lights</i></div>
+  <div class="btn"><b>GLOBE</b><span>Light show while held</span><i>hold 3 s: stays on · again: next pattern · 3 quick: ripples</i></div>
   <div class="btn"><b>BT</b><span>Bluetooth menu</span><i>hold 1.5 s: diagnostics</i></div>
-  <div class="btn"><b>PATCH</b><span>Patch page: patch, synth on/off, MIDI out, pad sensitivity 1–10 (10 = MAX, default)</span><i>+ PARA: metronome</i></div>
-  <div class="btn able"><b>PARA</b><span>Start / Stop, like the spacebar</span><i>CC 23 · Step Mode: make + play / stop the clip</i></div>
+  <div class="btn"><b>PATCH</b><span>Patch page: key, scale, brightness, synth, MIDI out, voicing, CHORD KEYS</span><i>+ PARA: metronome</i></div>
+  <div class="btn able"><b>PARA</b><span>Play / stop, like the space bar</span><i>clips resume on play · Step Mode: play the clip</i></div>
   <div class="btn mode"><b>FX</b><span>Drum Mode (ch 10)</span></div>
-  <div class="btn mode"><b>SEQ</b><span>Key Scale Mode</span><i>Step Mode: scale keys on / off</i></div>
-  <div class="btn"><b>SEQ PLAY</b><span>— (nothing)</span><i>finish &amp; next track = top G#</i></div>
+  <div class="btn mode"><b>SEQ</b><span>Key Scale Mode</span><i>in Pad Scale: keys' scale on / off · Step: scale keys</i></div>
+  <div class="btn"><b>SEQ PLAY = AUTO</b><span>Step automation on / off (lit)</span><i>Step Mode: hold a step + knobs = that step's macros</i></div>
   <div class="btn mode"><b>SEQ REC</b><span>Step Mode (step sequencer) on / off</span><i>leaving returns to the mode you came from</i></div>
  </div></div>
 </div>
@@ -73,7 +73,7 @@ td:first-child{color:#fff;font-weight:600;white-space:nowrap}
    <div class="pad" style="background:#0a1a55;color:#fff">CC 107<small>15</small></div>
    <div class="pad" style="background:#35105a;color:#fff">CC 108<small>16</small></div>
   </div>
-  <div style="font-size:12.5px;color:#8792a2;margin-top:10px;line-height:1.5">Hold chord pads while playing keys (type + extension combine). <b>LOCK</b> latches them and stays on in <b>every mode</b> (the keys keep playing the chord; Step Mode writes it). Pads 5–8, 14–16: MIDI-mappable buttons (CC 102–108, ch 15).</div>
+  <div style="font-size:12.5px;color:#8792a2;margin-top:10px;line-height:1.5">Hold chord pads while playing keys (type + extension combine). <b>LOCK</b> latches them and stays on in <b>every mode</b> (the keys keep playing the chord; Step Mode writes it). Pads 5–8, 14–16: MIDI-mappable buttons (CC 102–108, ch 15). <b>CHORD KEYS</b> (Patch E7): every key plays a chord, e.g. <b>m9</b>: A → A C E G B.</div>
  </div>
  <div class="card" style="flex:1"><div class="label">Faders &amp; knobs</div>
   <table>
@@ -81,11 +81,12 @@ td:first-child{color:#fff;font-weight:600;white-space:nowrap}
    <tr><td>Fader 2</td><td>Live: volume of the selected track</td></tr>
    <tr><td>Fader 3</td><td>Live: Macro 1 of the selected track's rack (no rack: Send A)</td></tr>
    <tr><td>Fader 4</td><td>Master volume (keyboard + Live master)</td></tr>
-   <tr><td>E1 – E3</td><td>BPM (sets Live's tempo when connected) · Key / root · Scale (23 scales)</td></tr>
-   <tr><td>E4 – E7</td><td>Selected Live track: filter (left low-pass, right high-pass) · delay · reverb · sustain (reverb decay)</td></tr>
-   <tr><td>ARP page (hold ARP)</td><td>E2 direction · E3 division · E4 gate · E5 swing · E6 octaves</td></tr>
-   <tr><td>Patch page</td><td>E1 patch · E2 synth on/off · E3 MIDI out · E4 pad sensitivity · E5 pad brightness</td></tr>
-   <tr><td>E8</td><td>Master volume</td></tr>
+   <tr><td>E1 – E8</td><td><b>Macros 1–8</b> of the selected Live track's rack (no rack: its first device), like Move</td></tr>
+   <tr><td>SHIFT + E1 – E5</td><td>BPM (Live's tempo) · filter (LP ↔ HP) · delay · reverb · sustain (reverb decay); SHIFT + E8 master</td></tr>
+   <tr><td>ARP page (hold ARP)</td><td>E1 type · E2 direction / strum speed · E3 division / strum by TIME or BARS · E4 gate · E5 swing · E6 octaves</td></tr>
+   <tr><td>Patch page</td><td>E1 key · E2 scale · E3 brightness · E4 synth · E5 MIDI out · E6 voicing · E7 CHORD KEYS</td></tr>
+   <tr><td>Diagnostics</td><td>E1 RGB test · E2 RGB timing · E3 pad sensitivity</td></tr>
+   <tr><td>NOTE REPEAT held</td><td>E1 = repeat rate</td></tr>
   </table>
  </div>
 </div>
@@ -94,25 +95,25 @@ td:first-child{color:#fff;font-weight:600;white-space:nowrap}
  <div class="card" style="flex:1"><div class="label">Modes (mode button again = back to Normal)</div>
   <table>
    <tr><td>Normal</td><td>Keys chromatic (ch 1); chord pads + LOCK; spare CC pads</td></tr>
-   <tr><td>SEQ · Key Scale</td><td>White keys play the scale from E3 / key E2 (2nd C = root); black keys silent</td></tr>
-   <tr><td>SCALE · Pad Scale</td><td>16 pads = scale notes from the root (root pads cyan, others green); keys stay chromatic and light the pads of the same note</td></tr>
+   <tr><td>SEQ · Key Scale</td><td>White keys play the scale (scale / key on the Patch page; 2nd C = root); black keys silent</td></tr>
+   <tr><td>SCALE · Pad Scale</td><td>16 pads = scale notes from the root (root pads cyan, others green); keys stay chromatic; pads light with the selected Live clip's notes · <b>with Key Scale:</b> PAD+KEY SCALE, keys light their note on the pads</td></tr>
    <tr><td>FX · Drum</td><td>16 pads = GM drums on ch 10 (pad 1 kick 36, pad 9 rim 37, pad 2 snare 38 …); OCT moves them</td></tr>
-   <tr><td>CHORD · Clip</td><td>Pads select clips (F# + pad plays); hold CHORD = Clip Mode while held — see the Clip Mode diagram</td></tr>
+   <tr><td>CHORD · Clip</td><td>Pads play / stop and select clips; F# PLAY · G# STOP · F MUTE · A SCENES · G NORMAL modes; hold CHORD = Clip Mode while held — see the Clip Mode diagram</td></tr>
    <tr><td>SEQ REC · Step</td><td>Step sequencer into Live's selected clip — see the Step Mode diagram</td></tr>
   </table>
  </div>
  <div class="card" style="flex:1"><div class="label">Combos, ARP, Sustain, lights</div>
   <table>
    <tr><td>ARP tap / hold</td><td>Arpeggiator on / off · hold: ARP page (follows Ableton's tempo when connected)</td></tr>
-   <tr><td>NOTE REPEAT</td><td>SUSTAIN: notes hold until the next key; keys pressed together hold together; with ARP: holds the arpeggio (the only ARP hold)</td></tr>
+   <tr><td>NOTE REPEAT</td><td>Tap: SUSTAIN (notes hold until the next key; with ARP: holds the arpeggio) · hold: Note Repeat (E1 rate, pressure = loudness)</td></tr>
    <tr><td>◀ or PATCH + PARA</td><td>Metronome on / off</td></tr>
-   <tr><td>GLOBE</td><td>Light show while held (press again: next pattern; Fader 1 speed) · 3 quick: ripple lights (a giant ring from the middle when they turn on)</td></tr>
+   <tr><td>GLOBE</td><td>Light show while held (press again: next pattern; Fader 1 speed) · hold 3 s: stays on, 3 s again: off · while on, a top pad + the pad below = new pattern every column × 5 s · 3 quick: ripple lights</td></tr>
    <tr><td>BT hold 1.5 s</td><td>Diagnostics (battery ADC + %)</td></tr>
-   <tr><td>Top-octave keys</td><td>The Live strip, in every mode: A# delete clip · G# finish &amp; next · F# launch/stop clip · B solo · A mute · G arm · F quantize · hold C (SHIFT): G#/A# scene ▲▼, F/G track ◀▶, F# launch scene, A duplicate, B double loop, E fixed record length</td></tr>
+   <tr><td>Top-octave keys</td><td>The Live strip, in every mode: A# delete clip · G# finish &amp; next · F# launch/stop clip · B solo (only this track) · A mute · G arm · F quantize · hold C (SHIFT): G#/A# scene ▲▼, F/G track ◀▶, F# launch scene, A duplicate, B double loop, E fixed record length</td></tr>
    <tr><td>Screen header</td><td>Battery gauge (bolt = USB power) · USB · BLE</td></tr>
    <tr><td>MIDI OUT AUTO</td><td>the port Live talks on (USB that only charges does not count)</td></tr>
-   <tr><td>Fader 4</td><td>Master volume; pad brightness = Patch page E5</td></tr>
-   <tr><td>Saved</td><td>BPM, key, scale, ARP settings, patch, MIDI out, synth on/off, pad sensitivity, pad brightness (not the octave)</td></tr>
+   <tr><td>Fader 4</td><td>Master volume; pad brightness = Patch page E3</td></tr>
+   <tr><td>Saved</td><td>BPM, key, scale, ARP settings, CHORD KEYS, voicing, MIDI out, synth on/off, pad sensitivity, pad brightness (not the octave)</td></tr>
   </table>
  </div>
 </div>

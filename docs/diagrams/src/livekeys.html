@@ -17,7 +17,7 @@ h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab;ma
 kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weight:600}
 </style></head><body><div class="wrap">
 <h1><span>LIVE STRIP</span> · one layout for every mode, recording &amp; overdub</h1>
-<div class="sub">KamoteKeys 0.92 · SMK-37 · needs the KamoteKeys Remote Script · <b>top octave = the same LIVE STRIP in every mode</b> · lowest octave = the mode's own tools · Step settings = hold a step + turn a knob · <span style="color:#60a5fa">blue = with SHIFT (top C) held</span></div>
+<div class="sub">KamoteKeys · SMK-37 · needs the KamoteKeys Remote Script · <b>top octave = the same LIVE STRIP in every mode</b> · lowest octave = the mode's own tools · Step settings = hold a step + turn a knob · <span style="color:#60a5fa">blue = with SHIFT (top C) held</span></div>
 
 <h2>1 · Normal, Key Scale, Pad Scale, Drum</h2>
 <svg id="k1" width="1470" height="300"></svg>
@@ -50,7 +50,7 @@ kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weigh
 <b>G# · FINISH</b><span>finish &amp; next track · <span style="color:#60a5fa">SHIFT: scene ▲</span></span>
 <b>A · MUTE</b><span>mute the selected track · <span style="color:#60a5fa">SHIFT: duplicate clip (to the slot below)</span></span>
 <b>A# · DELETE</b><span>delete the selected clip · <span style="color:#60a5fa">SHIFT: scene ▼</span></span>
-<b>B · SOLO</b><span>solo the selected track · <span style="color:#60a5fa">SHIFT: double the clip loop</span></span>
+<b>B · SOLO</b><span>solo only the selected track (other solos off) · <span style="color:#60a5fa">SHIFT: double the clip loop</span></span>
 <b>C · SHIFT</b><span>hold for the blue functions</span>
 <b>E · (note)</b><span><span style="color:#60a5fa">SHIFT: <b>FIXED LENGTH</b> OFF → 1 → 2 → 4 → 8 bars</span></span>
 <b>F (with SHIFT)</b><span><span style="color:#60a5fa">track ◀</span></span>
@@ -61,21 +61,21 @@ kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weigh
 <ul class="tips" style="columns:1">
 <li><b>Set it once:</b> SHIFT + top <kbd>E</kbd> cycles <b>OFF · 1 · 2 · 4 · 8 bars</b>; the screen shows <kbd>REC 4 BARS</kbd>. Saved.</li>
 <li><b>Record:</b> <kbd>KNOB BANK</kbd> on an empty slot of an armed track records exactly that length, then the clip <b>loops on its own</b>; no stop press, never off the beat.</li>
-<li><b>OFF</b> = as now (KNOB BANK again stops).</li>
+<li><b>OFF</b>: press KNOB BANK again and the clip records on to the next bar line (whole bars), then loops.</li>
 <li><b>Band, track by track:</b> KNOB BANK → plays 4 bars, loops → top <kbd>G#</kbd> (next track, armed) → KNOB BANK …</li>
 <li>Same keys in every mode, Clip Mode included.</li>
 </ul>
 <h2>Step Mode: hold a step + turn a knob</h2>
 <ul class="tips" style="columns:1">
-<li><kbd>E1</kbd> velocity · <kbd>E2</kbd> length · <kbd>E3</kbd> repeats 1× / 2× / 3× · <kbd>E4–E7</kbd> filter / delay / reverb / decay <b>for that step only</b> (automation: a later version)</li>
-<li>No step held: knobs as everywhere; Fader 1 = velocity of new steps.</li>
+<li><kbd>E1</kbd> velocity · <kbd>E2</kbd> length · <kbd>E3</kbd> repeats 1× / 2× / 3×; with <b>AUTO</b> (SEQ PLAY) on: the knobs write that step's <b>macros</b> (automation)</li>
+<li>No step held: knobs = macros; Fader 1 = velocity of new steps.</li>
 <li>16 drum keys (C2–D#3) = the 16 pads of a Drum Rack.</li>
 </ul>
 </div>
 </div>
 <h2>Record &amp; overdub</h2>
 <ul class="tips">
-<li><b>Record a new clip</b>: select an empty slot on an armed track (top <kbd>G</kbd>), press <kbd>KNOB BANK</kbd>. With a fixed length it stops by itself and loops; without, press KNOB BANK again.</li>
+<li><b>Record a new clip</b>: select an empty slot on an armed track (top <kbd>G</kbd>), press <kbd>KNOB BANK</kbd>. With a fixed length it stops by itself and loops; without, press KNOB BANK again: it ends on the next bar line and loops.</li>
 <li><b>Overdub</b>: select a track whose clip is <b>playing</b>, arm it, press <kbd>KNOB BANK</kbd>; old notes stay. Again = stop. In Clip Mode: hold the <kbd>lowest C</kbd> + the clip's pad.</li>
 <li><b>Capture</b>: <kbd>FADER BANK</kbd> keeps what you just played. <b>Undo</b>: <kbd>◀</kbd>. <b>Tidy the timing</b>: top <kbd>F</kbd>.</li>
 <li><b>Arm several tracks</b>: <kbd>PATCH</kbd> + top <kbd>G</kbd> adds a track instead of replacing.</li>

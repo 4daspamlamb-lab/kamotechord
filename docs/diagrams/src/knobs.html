@@ -1,0 +1,87 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#14161b;color:#e8e8ec;font:14px/1.35 -apple-system,Segoe UI,Helvetica,Arial,sans-serif}
+.wrap{width:1560px;padding:28px 36px}
+h1{font-size:26px;margin:0 0 4px}h1 span{color:#3b82f6}
+.sub{color:#9aa0ab;margin-bottom:22px}
+h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab;margin:22px 0 10px}
+.row{display:flex;gap:28px;align-items:flex-start}
+.pads{display:grid;grid-template-columns:repeat(8,64px);gap:8px}
+.pad{height:58px;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:600;font-size:13px;color:#111}
+.pad small{font-weight:500;font-size:10px;opacity:.75}
+.leg{display:grid;grid-template-columns:22px 1fr;gap:6px 10px;align-items:center;font-size:13px}
+.sw{width:18px;height:18px;border-radius:4px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{border:1px solid #3a3f4a;border-radius:6px;padding:6px 10px;font-size:12px;color:#8a909b}
+.b.on{background:#3b82f6;color:#fff;border-color:#3b82f6;box-shadow:0 0 14px #3b82f688;font-weight:700}
+.tips{columns:2;column-gap:36px;font-size:13.5px}.tips li{margin-bottom:6px;break-inside:avoid}
+kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weight:600}
+</style></head><body><div class="wrap">
+<style>
+.btngrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.bt{border:1.5px solid #3a3f4a;border-radius:9px;padding:10px 12px;background:#1b1e25;min-height:74px}
+.bt b{display:block;font-size:13.5px;margin-bottom:3px}
+.bt span{display:block;font-size:12.5px;color:#cfd3da}
+.bt i{display:block;font-style:normal;font-size:11.5px;color:#60a5fa;margin-top:5px}
+.bt.new{border-color:#22c55e;box-shadow:0 0 0 1px #22c55e55}
+.bt.shift{border-color:#3b82f6;background:#13233f;box-shadow:0 0 12px #3b82f655}
+.bt span.tag{display:inline-block;margin-bottom:0;font-size:10px;font-weight:700;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.tag.n{background:#22c55e;color:#06210f}.tag.c{background:#f59e0b;color:#231400}
+.knobs{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+.kn{border-radius:10px;padding:10px 6px;text-align:center;background:#1b1e25;border:1.5px solid #3a3f4a}
+.kn .dial{width:38px;height:38px;border-radius:50%;margin:0 auto 6px;border:3px solid #60a5fa;position:relative}
+.kn .dial:after{content:'';position:absolute;left:50%;top:3px;width:3px;height:12px;background:#60a5fa;transform:translateX(-50%)}
+.kn b{display:block;font-size:12.5px}.kn span{font-size:11px;color:#9aa0ab}
+</style>
+<h1><span>KNOBS</span> · pages, ARP types, CHORD KEYS, Note Repeat, step automation</h1>
+<div class="sub">KamoteKeys · SMK-37 · macros and effects need the KamoteKeys Remote Script · <span style="color:#60a5fa">blue = with SHIFT (top C) held</span></div>
+
+<h2>Knob pages</h2>
+<div style="font-size:13px;color:#9aa0ab;margin:-4px 0 8px">1 · <b style="color:#e8e8ec">Default: MACRO page</b> (like Move): the 8 macros of the selected track's first rack; no rack = the first 8 controls of its first device. The screen shows the name and value.</div>
+<div class="knobs" id="kn1"></div>
+<div style="font-size:13px;color:#9aa0ab;margin:14px 0 8px">2 · <b style="color:#60a5fa">Hold SHIFT (top C) + knobs: MIX page</b>: tempo and the selected track's effects</div>
+<div class="knobs" id="kn2"></div>
+<div style="font-size:13px;color:#9aa0ab;margin:14px 0 8px">3 · <b style="color:#e8e8ec">PATCH page</b> (tap PATCH): key, scale, brightness, then CHORD KEYS (E7) and its voicing (E6)</div>
+<div class="knobs" id="kn3"></div>
+<div style="font-size:13px;color:#9aa0ab;margin:14px 0 8px">4 · <b style="color:#e8e8ec">ARP page</b> (hold ARP): TYPE; for strums E2 = speed and E3 = by TIME or BARS</div>
+<div class="knobs" id="kn4"></div>
+
+<div class="row" style="margin-top:10px">
+<div style="flex:1">
+<h2>ARP types (E1 on the ARP page; ARP button = on / off)</h2>
+<div class="leg" style="grid-template-columns:150px 1fr">
+<b>ARPEGGIO</b><span>notes one after another (direction, division, gate, swing, octaves)</span>
+<b>STRUM ↑</b><span>chords strummed low → high; E3 TIME: 8–500 ms between notes, or BARS: 1/32 … 4 bars (follows the tempo); E2 = speed</span>
+<b>STRUM ↓</b><span>high → low</span>
+<b>STRUM ↕</b><span>alternates down / up on every chord, like a guitar</span>
+<b>CHORD REPEAT</b><span>the whole chord re-struck on the beat (division, gate, swing): stabs and pulses</span>
+<b>HUMANIZE</b><span>chord notes a few ms apart at random, velocities varied a little</span>
+</div>
+</div>
+<div style="flex:1">
+<h2>Buttons</h2>
+<div class="leg" style="grid-template-columns:190px 1fr">
+<b style="color:#22c55e">NOTE REPEAT</b><span><b>Note Repeat</b>: hold it and press pads (or keys): they repeat at the rate; harder = louder. While held, E1 = rate (1/4 … 1/32T). <b>Tap</b> = Sustain.</span>
+<b style="color:#22c55e">SEQ PLAY = AUTO</b><span><b>Step automation</b> (Step Mode): turn AUTO on (lit), hold a step and turn knobs: the macros are written for that step only (Move's parameter locks). AUTO off: hold step + E1 / E2 / E3 = velocity / length / repeats. AUTO on + DELETE + step: clear that step's automation.</span>
+<b>PATCH</b><span>tap: PATCH page (above); + PARA: metronome</span>
+<b>Every knob</b><span>shows what it changes on the screen as you turn it · Diagnostics (hold BT): E3 = pad sensitivity</span>
+</div>
+</div>
+</div>
+
+<h2>CHORD KEYS (PATCH E7) · every key plays a chord on its note</h2>
+<ul class="tips">
+<li><b>Same shape on every key:</b> <b>m9</b> (A → A C E G B), maj9, 9, m11, maj7#11, 9sus4, 6/9, m6/9, add9, madd9, quartal (stacked 4ths), power.</li>
+<li><b>From the scale:</b> SCALE 7TH · SCALE 9TH (C major: Am9 on A, Cmaj9 on C, G9 on G) · SCALE 11TH · SCALE SUS2.</li>
+<li><b>Voicing (E6):</b> CLOSE · SPREAD (root an octave down) · DROP 2 (2nd note from the top an octave down).</li>
+<li>Chord pads held still win; LOCK, ARP and strum work with it; OFF = single notes.</li>
+</ul>
+</div>
+<script>
+function knobs(id,list,col){const d=document.getElementById(id);list.forEach((k,i)=>{const e=document.createElement('div');e.className='kn';e.style.borderColor=k[2]||col;
+ e.innerHTML='<div class="dial" style="border-color:'+(k[2]||col)+'"></div><b>E'+(i+1)+' · '+k[0]+'</b><span>'+k[1]+'</span>';d.appendChild(e)})}
+const NEW='#22c55e';
+knobs('kn1',[['MACRO 1','selected rack'],['MACRO 2',''],['MACRO 3',''],['MACRO 4',''],['MACRO 5',''],['MACRO 6',''],['MACRO 7',''],['MACRO 8','']],NEW);
+knobs('kn2',[['BPM','Live tempo'],['FILTER','LP ↔ HP'],['DELAY','amount'],['REVERB','amount'],['SUSTAIN','reverb decay'],['—',''],['—',''],['MASTER','volume']],'#3b82f6');
+knobs('kn3',[['KEY','root'],['SCALE','23 scales'],['BRIGHTNESS','pads'],['SYNTH','on / off'],['MIDI OUT','auto / all / …'],['VOICING','close / spread / drop 2',NEW],['CHORD KEYS','m9, maj9 … scale 9th',NEW],['MASTER','volume']],'#4b5563');
+knobs('kn4',[['TYPE','arp / strum …'],['DIRECTION','strum: speed'],['DIVISION','strum: TIME / BARS',NEW],['GATE','%'],['SWING','%'],['OCTAVES','1–4'],['—',''],['MASTER','volume']],'#4b5563');
+</script></body></html>

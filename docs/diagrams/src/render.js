@@ -9,6 +9,7 @@ const jobs = [
   ['clipmode.html', 'SMK37-Clip-Mode.png', '.wrap', 1632],
   ['stepmode.html', 'SMK37-Step-Mode.png', '.wrap', 1632],
   ['livekeys.html', 'SMK37-Live-Keys.png', '.wrap', 1632],
+  ['knobs.html', 'SMK37-Knobs.png', '.wrap', 1632],
 ];
 (async () => {
   const browser = await chromium.launch();
@@ -17,7 +18,7 @@ const jobs = [
     await page.goto('file://' + path.join(__dirname, src));
     const height = await page.evaluate(s => document.querySelector(s).scrollHeight, sel);
     await page.setViewportSize({width, height});
-    await page.screenshot({path: path.join(__dirname, '..', out), fullPage: true});
+    await page.screenshot({path: path.join(process.env.OUT_DIR || path.join(__dirname, '..'), out), fullPage: true});
     await page.close();
   }
   await browser.close();

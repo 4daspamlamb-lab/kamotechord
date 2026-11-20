@@ -9,7 +9,7 @@ h1{font-size:26px;margin:0 0 4px}.sub{color:#9aa0ab;margin-bottom:14px}
 .pad{height:46px;border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#111}
 .pad small{font-weight:500;font-size:10px;opacity:.75}
 </style></head><body><div class="wrap">
-<h1>KamoteKeys 0.92 — play modes (SMK-37)</h1>
+<h1>KamoteKeys — play modes (SMK-37)</h1>
 <div class="sub">Keyboard on top, the 16 pads below. Mode button again = back to Normal. Clip and Step Mode have their own diagrams. In all four modes the <b>top octave</b> (F to C, except C# D D# E) controls Live's selected track / clip: delete, finish, launch / stop, solo, mute, arm, quantize; hold top C for scene / track navigation.</div>
 <div class="grid" id="g"></div></div>
 <script>
@@ -35,9 +35,9 @@ const dtop=[['KICK',36,'kick'],['SNARE',38,'snare'],['SNR2',40,'snare'],['CHH',4
 const dbot=[['RIM',37,'rim'],['CLAP',39,'clap'],['LFT',41,'tom'],['HFT',43,'tom'],['LTOM',45,'tom'],['LMT',47,'tom'],['CRS1',49,'cym'],['RIDE',51,'cym']];
 const drumPads=[...dtop,...dbot].map(d=>[d[0],fam[d[2]],['tom','rim'].includes(d[2])?'#fff':'#111',d[1]]);
 const cards=[
- ['Normal (default)','#9aa0ab',kb(chroma),pads(chordPads),'<b>Keys</b>: chromatic notes on ch 1 (OCT −2 at power-on: lowest key C1). <b>Hold chord pads</b> (type + extension combine, e.g. MIN + 7) and play keys → chords; extensions alone build diatonic chords from the scale. <b>LOCK</b> latches them in every mode. Pads 5–8, 14–16 are MIDI-mappable buttons (CC 102–108, ch 15). With nothing playing the screen\'s piano marks the scale notes.'],
+ ['Normal (default)','#9aa0ab',kb(chroma),pads(chordPads),'<b>Keys</b>: chromatic notes on ch 1 (OCT −2 at power-on: lowest key C1). <b>Hold chord pads</b> (type + extension combine, e.g. MIN + 7) and play keys → chords; extensions alone build diatonic chords from the scale. <b>LOCK</b> latches them in every mode. Pads 5–8, 14–16 are MIDI-mappable buttons (CC 102–108, ch 15). <b>CHORD KEYS</b> (Patch E7): every key plays a chord, e.g. m9 (A → A C E G B) or SCALE 9TH. With nothing playing the screen\'s piano marks the scale notes.'],
  ['Key Scale (SEQ)','#ffb84d',kb(ks),pads(chordPads),'<b>White keys play the scale</b> set with E3 (scale) and E2 (key); the <b>2nd C is the root</b>, scale degrees go up and down from it; black keys are silent. Chord pads and LOCK work as in Normal, built inside the scale. (Example: C Major.)'],
- ['Pad Scale (SCALE)','#40e070',kb(chroma),pads(scalePads),'<b>16 pads = 16 notes of the scale</b> from the root (root pads cyan, others green), ch 1; OCT − / + move the pads. The keyboard stays chromatic (a locked chord still plays on it) and lights the pads of the same note in any octave. ARP arpeggiates held pads.'],
+ ['Pad Scale (SCALE)','#40e070',kb(chroma),pads(scalePads),'<b>16 pads = 16 notes of the scale</b> from the root (root pads cyan, others green), ch 1; OCT − / + move the pads. The keyboard stays chromatic (a locked chord still plays on it) and shows on the screen\'s keyboard. <b>With Key Scale on too</b> (SEQ then SCALE: PAD+KEY SCALE) the keys play the scale and light their note on the pads. ARP arpeggiates held pads.'],
  ['Drum (FX)','#ff5a5a',kb(chroma),pads(drumPads),'<b>16 GM drum pads on ch 10</b> in vertical pairs (pad 1 kick 36, pad 9 rim 37, pad 2 snare 38 …), coloured by family: kick red, snare orange, hats yellow, toms blue, rim purple, clap pink, cymbals teal. OCT − / + move by 12. The internal drum kit plays them. Same layout as Step Mode\'s DRUM view (hold B).'],
 ];
 document.getElementById('g').innerHTML=cards.map(c=>`<div class="card" style="border-top:4px solid ${c[1]}"><h2>${c[0]}</h2>${c[2]}${c[3]}<p>${c[4]}</p></div>`).join('');

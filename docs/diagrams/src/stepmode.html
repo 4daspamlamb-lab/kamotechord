@@ -17,10 +17,10 @@ h2{font-size:15px;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab;ma
 kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weight:600}
 </style></head><body><div class="wrap">
 <h1><span>SEQ REC</span> · Step Mode (step sequencer)</h1>
-<div class="sub">KamoteKeys 0.92 · SMK-37 · press SEQ REC to enter / leave · needs the KamoteKeys Remote Script · edits Live's selected track + clip slot</div>
+<div class="sub">KamoteKeys · SMK-37 · press SEQ REC to enter / leave · needs the KamoteKeys Remote Script · edits Live's selected track + clip slot</div>
 
 <h2>Buttons</h2>
-<div class="btns"><div class="b on">SEQ REC · Step Mode on/off (lit) · leaving returns to the mode you came from</div><div class="b">PARA · make the clip + play / stop it</div><div class="b">CHORD tap · Clip Mode · hold: Clip Mode while held</div><div class="b">top G# · finish clip, next track</div><div class="b">GLOBE · light show</div><div class="b">OCT −/+ · key zone octave (per track)</div><div class="b">SEQ · drum keys ↔ scale keys (per track)</div><div class="b">◀ / ▶ · page left / right</div></div>
+<div class="btns"><div class="b on">SEQ REC · Step Mode on/off (lit) · leaving returns to the mode you came from</div><div class="b">PARA · play the clip (making it) · stop like the space bar</div><div class="b">SEQ PLAY · AUTO (step automation)</div><div class="b">CHORD tap · Clip Mode · hold: Clip Mode while held</div><div class="b">top G# · finish clip, next track</div><div class="b">GLOBE · light show</div><div class="b">OCT −/+ · key zone octave (per track)</div><div class="b">SEQ · drum keys ↔ scale keys (per track)</div><div class="b">◀ / ▶ · page left / right</div></div>
 
 <h2>Keyboard</h2>
 <svg id="kb" width="1490" height="250"></svg>
@@ -52,25 +52,27 @@ kbd{background:#2a2e37;border-radius:4px;padding:1px 6px;font:inherit;font-weigh
 
 <h2>Moves</h2>
 <ul class="tips">
+<li><b>No clip until the first step:</b> an empty slot shows an empty 1-bar pattern; the first step you tap makes the clip (a deleted clip is not made again).</li>
 <li><b>Tap a pad</b>: note on/off for the selected sound.</li>
 <li><b>Key zone key</b>: plays the sound and selects it. <b>OCT −/+</b> moves the zone, <b>SEQ</b> = scale keys (melodic tracks). Remembered per track.</li>
 <li><b>Hold a step + a later step</b>: one long (tied) note.</li>
-<li><b>Hold a step + turn E1 / E2 / E3</b>: its <b>velocity</b> / <b>length</b> / <b>repeats</b> (1× 2× 3×). New steps take the pad's velocity (Fader 1 above 10 % fixes it); E2 with no step held = length of new steps.</li>
+<li><b>AUTO (SEQ PLAY, lit) + hold a step + turn knobs</b>: that step's <b>macros</b> are written as clip automation (Move's parameter locks); AUTO + DELETE + step clears it.</li><li><b>AUTO off: hold a step + turn E1 / E2 / E3</b>: its <b>velocity</b> / <b>length</b> / <b>repeats</b> (1× 2× 3×). New steps take the pad's velocity (Fader 1 above 10 % fixes it); E2 with no step held = length of new steps.</li>
 
+<li><b>Hold NOTE LENGTH (low C) + pad n</b>: new steps are n sixteenths long; steps held at the same time get that length.</li>
 <li><b>Hold LENGTH + pad n</b>: clip = n bars; growing it repeats the pattern into the new bars.</li>
 <li><b>BARS (A) tap</b>: bar view; tap a bar to show it. Hold <b>DELETE</b> + tap a bar: <b>delete</b> it (later bars move up); hold the bar pad 3 s: only <b>clear</b> it.</li><li><b>Chords</b>: lock a chord on the main screen; with SEQ (scale keys) a key picks the chord, a pad writes it.</li>
 <li><b>COPY</b> tap/hold, then a <b>step pad</b> (all sounds in it), a <b>key</b> (that sound on the page) or, in the BARS view, a <b>bar</b>. <b>PASTE</b> tap = next target, hold = several. Screen shows what is copied.</li>
 <li><b>DELETE (A#)</b> tap: selected sound on this page. Hold + <b>step</b>: every note in it · + <b>bar</b> (BARS view): delete the bar (hold 3 s = clear) · + <b>key</b>: that sound in the whole clip.</li>
 <li><b>Hold DRUM (B)</b>: pads = Drum Mode pads (same order and colours as FX); tap one to play it and select it.</li>
-<li>Screen: <b>BAR 2/4</b> while the clip plays. An existing clip's notes show at once; an empty clip Step Mode made is removed when you leave.</li><li><b>DOUBLE (F)</b>: the clip twice as long, everything copied.</li>
-<li>The track is <b>armed automatically</b> while Step Mode is on. <b>PARA</b> plays / stops the clip (making it if needed). Leaving Step Mode returns to where you came from (e.g. Clip Mode).</li>
+<li>Screen: <b>BAR 2/4</b> while the clip plays. An existing clip's notes show at once; an empty clip Step Mode made is removed when you leave or move to another track / scene.</li><li><b>DOUBLE (F)</b>: the clip twice as long, everything copied.</li>
+<li>The track is <b>armed automatically</b> while Step Mode is on. <b>PARA</b> plays the clip (making it if needed); while Live plays it stops, like the space bar. Leaving Step Mode returns to where you came from (e.g. Clip Mode).</li>
 </ul>
 </div>
 <script>
 const W=['C','D','E','F','G','A','B'],BL={0:'C#',1:'D#',3:'F#',4:'G#',5:'A#'};
 const CTRL={blue:'#3b82f6',drum:'#f59e0b',vel:'#a855f7',play:'#3a3f4a'};
 // label, colour per key index 0..36
-const lab={2:['RES',''],4:['FOLLOW',''],5:['DOUBLE',''],7:['LENGTH','+pad=bars'],9:['BARS','toggle'],11:['DRUM','hold'],
+const lab={0:['NOTE LEN','hold + pad'],2:['RES',''],4:['FOLLOW',''],5:['DOUBLE',''],7:['LENGTH','+pad=bars'],9:['BARS','toggle'],11:['DRUM','hold'],
 1:['COPY','tap/hold'],3:['PASTE','tap/hold'],6:['PAGE','◀'],8:['PAGE','▶'],10:['DELETE','hold +'],
 12:['KICK','36'],13:['RIM','37'],14:['SNARE','38'],15:['CLAP','39'],16:['SNR 2','40'],17:['TOM','41'],18:['CL HAT','42'],19:['TOM','43'],20:['PED HAT','44'],21:['TOM','45'],22:['OP HAT','46'],23:['TOM','47'],
 24:['DRUM 13','48'],25:['14','49'],26:['15','50'],27:['16','51'],29:['QUANT','',CTRL.vel],30:['PLAY','/ stop',CTRL.vel],31:['ARM','',CTRL.vel],32:['FINISH','& next',CTRL.vel],33:['MUTE','',CTRL.vel],34:['DELETE','clip',CTRL.vel],35:['SOLO','',CTRL.vel],36:['SHIFT','hold',CTRL.vel]};
